@@ -1,0 +1,1789 @@
+{
+  "description": "Schema-only synthetic examples. Does not prove concurrency, EGC, ownership or transactions.",
+  "cases": [
+    {
+      "name": "미등록 세션",
+      "schema": "EstablishSessionResponse",
+      "valid": true,
+      "value": {
+        "accessToken": "synthetic-token",
+        "expiresAt": "2026-09-20T15:00:00Z",
+        "context": {
+          "mode": "PRE_PASSENGER",
+          "passenger": null
+        },
+        "consentPolicies": [
+          {
+            "policyId": "synthetic-terms",
+            "version": "1",
+            "title": "합성 약관",
+            "url": "https://policy.invalid.example/synthetic",
+            "required": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "생성 후 ACTIVE 세션",
+      "schema": "CreatePassengerResponse",
+      "valid": true,
+      "value": {
+        "accessToken": "synthetic-token",
+        "expiresAt": "2026-09-20T15:00:00Z",
+        "context": {
+          "mode": "ACTIVE",
+          "passenger": {
+            "passengerCode": "SYNTHETIC-001",
+            "nickname": null,
+            "revision": "r1"
+          },
+          "dataGeneration": "synthetic-g1"
+        },
+        "consentPolicies": [
+          {
+            "policyId": "synthetic-terms",
+            "version": "1",
+            "title": "합성 약관",
+            "url": "https://policy.invalid.example/synthetic",
+            "required": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "생성 후 PRE 반환 거절",
+      "schema": "CreatePassengerResponse",
+      "valid": false,
+      "value": {
+        "accessToken": "synthetic-token",
+        "expiresAt": "2026-09-20T15:00:00Z",
+        "context": {
+          "mode": "PRE_PASSENGER",
+          "passenger": null
+        },
+        "consentPolicies": [
+          {
+            "policyId": "synthetic-terms",
+            "version": "1",
+            "title": "합성 약관",
+            "url": "https://policy.invalid.example/synthetic",
+            "required": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "ACTIVE generation 누락 거절",
+      "schema": "CreatePassengerResponse",
+      "valid": false,
+      "value": {
+        "accessToken": "synthetic-token",
+        "expiresAt": "2026-09-20T15:00:00Z",
+        "context": {
+          "mode": "ACTIVE",
+          "passenger": {
+            "passengerCode": "SYNTHETIC-001",
+            "nickname": null,
+            "revision": "r1"
+          }
+        },
+        "consentPolicies": [
+          {
+            "policyId": "synthetic-terms",
+            "version": "1",
+            "title": "합성 약관",
+            "url": "https://policy.invalid.example/synthetic",
+            "required": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "익명 키 교환",
+      "schema": "EstablishSessionInput",
+      "valid": true,
+      "value": {
+        "anonymousKey": "synthetic-key"
+      }
+    },
+    {
+      "name": "필수 동의 요청",
+      "schema": "CreatePassengerInput",
+      "valid": true,
+      "value": {
+        "consents": [
+          {
+            "policyId": "synthetic-terms",
+            "version": "1",
+            "agreed": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "닉네임 해제와 revision",
+      "schema": "SetNicknameInput",
+      "valid": true,
+      "value": {
+        "nickname": null,
+        "expectedRevision": "r1"
+      }
+    },
+    {
+      "name": "닉네임 생략 거절",
+      "schema": "SetNicknameInput",
+      "valid": false,
+      "value": {
+        "expectedRevision": "r1"
+      }
+    },
+    {
+      "name": "nickname operation ID는 header만",
+      "schema": "SetNicknameInput",
+      "valid": false,
+      "value": {
+        "nickname": "달빛",
+        "expectedRevision": "r1",
+        "operationId": "66d9e9af-2026-4000-8000-000000000001"
+      }
+    },
+    {
+      "name": "닉네임 적용 receipt",
+      "schema": "NicknameReceipt",
+      "valid": true,
+      "value": {
+        "operationId": "66d9e9af-2026-4000-8000-000000000001",
+        "profile": {
+          "passengerCode": "SYNTHETIC-001",
+          "nickname": "달빛",
+          "revision": "r2"
+        },
+        "resultExpiresAt": "2026-09-20T15:00:00Z"
+      }
+    },
+    {
+      "name": "일별 배포 단위 신규 준비",
+      "schema": "PrepareAnswerWriteInput",
+      "valid": true,
+      "value": {
+        "mode": "CREATE",
+        "dailySemaId": "synthetic-day",
+        "semaId": "synthetic-content",
+        "semaVersion": "1",
+        "questionId": "synthetic-q",
+        "questionVersion": "1"
+      }
+    },
+    {
+      "name": "준비 본문 혼입 거절",
+      "schema": "PrepareAnswerWriteInput",
+      "valid": false,
+      "value": {
+        "mode": "CREATE",
+        "dailySemaId": "synthetic-day",
+        "semaId": "synthetic-content",
+        "semaVersion": "1",
+        "questionId": "synthetic-q",
+        "questionVersion": "1",
+        "content": "본문"
+      }
+    },
+    {
+      "name": "dailySemaId 누락 거절",
+      "schema": "PrepareAnswerWriteInput",
+      "valid": false,
+      "value": {
+        "mode": "CREATE",
+        "semaId": "synthetic-content",
+        "semaVersion": "1",
+        "questionId": "synthetic-q",
+        "questionVersion": "1"
+      }
+    },
+    {
+      "name": "과거 답변 수정 준비",
+      "schema": "PrepareAnswerWriteInput",
+      "valid": true,
+      "value": {
+        "mode": "UPDATE",
+        "answerId": "synthetic-answer",
+        "expectedRevision": "r1"
+      }
+    },
+    {
+      "name": "실행 전 준비 상태",
+      "schema": "CommandResult",
+      "valid": true,
+      "value": {
+        "ticketId": "synthetic-ticket",
+        "operationId": "66d9e9af-2026-4000-8000-000000000001",
+        "kind": "ANSWER_WRITE",
+        "target": {
+          "mode": "CREATE",
+          "dailySemaId": "synthetic-day"
+        },
+        "acceptedAt": "2026-09-13T14:59:00Z",
+        "acceptedDateKst": "2026-09-13",
+        "executeBy": "2026-09-13T15:02:00Z",
+        "state": "PREPARED"
+      }
+    },
+    {
+      "name": "실행 수락 상태",
+      "schema": "ExecutingCommandResult",
+      "valid": true,
+      "value": {
+        "ticketId": "synthetic-ticket",
+        "operationId": "66d9e9af-2026-4000-8000-000000000001",
+        "kind": "ANSWER_WRITE",
+        "target": {
+          "mode": "CREATE",
+          "dailySemaId": "synthetic-day"
+        },
+        "acceptedAt": "2026-09-13T14:59:00Z",
+        "acceptedDateKst": "2026-09-13",
+        "executeBy": "2026-09-13T15:02:00Z",
+        "state": "EXECUTING"
+      }
+    },
+    {
+      "name": "미분리 PENDING 거절",
+      "schema": "CommandResult",
+      "valid": false,
+      "value": {
+        "ticketId": "synthetic-ticket",
+        "operationId": "66d9e9af-2026-4000-8000-000000000001",
+        "kind": "ANSWER_WRITE",
+        "target": {
+          "mode": "CREATE",
+          "dailySemaId": "synthetic-day"
+        },
+        "acceptedAt": "2026-09-13T14:59:00Z",
+        "acceptedDateKst": "2026-09-13",
+        "executeBy": "2026-09-13T15:02:00Z",
+        "state": "PENDING"
+      }
+    },
+    {
+      "name": "실행 중을 준비 응답으로 사용 거절",
+      "schema": "AnswerWritePrepared",
+      "valid": false,
+      "value": {
+        "ticketId": "synthetic-ticket",
+        "operationId": "66d9e9af-2026-4000-8000-000000000001",
+        "kind": "ANSWER_WRITE",
+        "target": {
+          "mode": "CREATE",
+          "dailySemaId": "synthetic-day"
+        },
+        "acceptedAt": "2026-09-13T14:59:00Z",
+        "acceptedDateKst": "2026-09-13",
+        "executeBy": "2026-09-13T15:02:00Z",
+        "state": "EXECUTING"
+      }
+    },
+    {
+      "name": "공백·결합 이모지 wire 보존",
+      "schema": "ExecuteCommandInput",
+      "valid": true,
+      "value": {
+        "kind": "ANSWER_WRITE",
+        "content": "  👨‍👩‍👧‍👦\n\n "
+      }
+    },
+    {
+      "name": "삭제 실행에 본문 거절",
+      "schema": "ExecuteCommandInput",
+      "valid": false,
+      "value": {
+        "kind": "ANSWER_DELETE",
+        "content": "민감 입력"
+      }
+    },
+    {
+      "name": "write 성공 표시 정보",
+      "schema": "CommandResult",
+      "valid": true,
+      "value": {
+        "ticketId": "synthetic-ticket",
+        "operationId": "66d9e9af-2026-4000-8000-000000000001",
+        "kind": "ANSWER_WRITE",
+        "target": {
+          "mode": "CREATE",
+          "dailySemaId": "synthetic-day"
+        },
+        "acceptedAt": "2026-09-13T14:59:00Z",
+        "acceptedDateKst": "2026-09-13",
+        "executeBy": "2026-09-13T15:02:00Z",
+        "state": "SUCCEEDED",
+        "completedAt": "2026-09-13T15:00:00Z",
+        "resultExpiresAt": "2026-09-20T15:00:00Z",
+        "proof": {
+          "answerId": "synthetic-answer",
+          "revision": "r1",
+          "mode": "CREATED",
+          "acceptedDateKst": "2026-09-13"
+        },
+        "presentation": {
+          "state": "AVAILABLE",
+          "value": {
+            "question": {
+              "questionId": "synthetic-q",
+              "version": "1",
+              "role": "PRIMARY",
+              "text": "오늘 기억하고 싶은 순간은 무엇인가요?"
+            },
+            "excerpt": {
+              "state": "AVAILABLE",
+              "value": {
+                "profile": "COMPACT",
+                "limits": {
+                  "maxGraphemes": 96,
+                  "maxLogicalLines": 4
+                },
+                "sourceRevision": "r1",
+                "text": "  오늘의 합성 기록",
+                "isTruncated": false
+              }
+            },
+            "activeAnswerCount": {
+              "state": "AVAILABLE",
+              "value": {
+                "count": 1,
+                "observedAt": "2026-09-13T15:00:00Z"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "ack 뒤 최소 proof",
+      "schema": "CommandResult",
+      "valid": true,
+      "value": {
+        "ticketId": "synthetic-ticket",
+        "operationId": "66d9e9af-2026-4000-8000-000000000001",
+        "kind": "ANSWER_WRITE",
+        "target": {
+          "mode": "CREATE",
+          "dailySemaId": "synthetic-day"
+        },
+        "acceptedAt": "2026-09-13T14:59:00Z",
+        "acceptedDateKst": "2026-09-13",
+        "executeBy": "2026-09-13T15:02:00Z",
+        "state": "SUCCEEDED",
+        "completedAt": "2026-09-13T15:00:00Z",
+        "resultExpiresAt": "2026-09-20T15:00:00Z",
+        "proof": {
+          "answerId": "synthetic-answer",
+          "revision": "r1",
+          "mode": "CREATED",
+          "acceptedDateKst": "2026-09-13"
+        },
+        "presentation": {
+          "state": "ACKNOWLEDGED"
+        }
+      }
+    },
+    {
+      "name": "수정/삭제 후 표시 무효",
+      "schema": "CommandResult",
+      "valid": true,
+      "value": {
+        "ticketId": "synthetic-ticket",
+        "operationId": "66d9e9af-2026-4000-8000-000000000001",
+        "kind": "ANSWER_WRITE",
+        "target": {
+          "mode": "CREATE",
+          "dailySemaId": "synthetic-day"
+        },
+        "acceptedAt": "2026-09-13T14:59:00Z",
+        "acceptedDateKst": "2026-09-13",
+        "executeBy": "2026-09-13T15:02:00Z",
+        "state": "SUCCEEDED",
+        "completedAt": "2026-09-13T15:00:00Z",
+        "resultExpiresAt": "2026-09-20T15:00:00Z",
+        "proof": {
+          "answerId": "synthetic-answer",
+          "revision": "r1",
+          "mode": "CREATED",
+          "acceptedDateKst": "2026-09-13"
+        },
+        "presentation": {
+          "state": "RESOURCE_CHANGED"
+        }
+      }
+    },
+    {
+      "name": "발췌만 unavailable",
+      "schema": "CommandResult",
+      "valid": true,
+      "value": {
+        "ticketId": "synthetic-ticket",
+        "operationId": "66d9e9af-2026-4000-8000-000000000001",
+        "kind": "ANSWER_WRITE",
+        "target": {
+          "mode": "CREATE",
+          "dailySemaId": "synthetic-day"
+        },
+        "acceptedAt": "2026-09-13T14:59:00Z",
+        "acceptedDateKst": "2026-09-13",
+        "executeBy": "2026-09-13T15:02:00Z",
+        "state": "SUCCEEDED",
+        "completedAt": "2026-09-13T15:00:00Z",
+        "resultExpiresAt": "2026-09-20T15:00:00Z",
+        "proof": {
+          "answerId": "synthetic-answer",
+          "revision": "r1",
+          "mode": "CREATED",
+          "acceptedDateKst": "2026-09-13"
+        },
+        "presentation": {
+          "state": "AVAILABLE",
+          "value": {
+            "question": {
+              "questionId": "synthetic-q",
+              "version": "1",
+              "role": "PRIMARY",
+              "text": "오늘 기억하고 싶은 순간은 무엇인가요?"
+            },
+            "excerpt": {
+              "state": "UNAVAILABLE",
+              "retryable": true
+            },
+            "activeAnswerCount": {
+              "state": "AVAILABLE",
+              "value": {
+                "count": 1,
+                "observedAt": "2026-09-13T15:00:00Z"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "성공 proof 누락 거절",
+      "schema": "CommandResult",
+      "valid": false,
+      "value": {
+        "ticketId": "synthetic-ticket",
+        "operationId": "66d9e9af-2026-4000-8000-000000000001",
+        "kind": "ANSWER_WRITE",
+        "target": {
+          "mode": "CREATE",
+          "dailySemaId": "synthetic-day"
+        },
+        "acceptedAt": "2026-09-13T14:59:00Z",
+        "acceptedDateKst": "2026-09-13",
+        "executeBy": "2026-09-13T15:02:00Z",
+        "state": "SUCCEEDED",
+        "completedAt": "2026-09-13T15:00:00Z",
+        "resultExpiresAt": "2026-09-20T15:00:00Z",
+        "presentation": {
+          "state": "AVAILABLE",
+          "value": {
+            "question": {
+              "questionId": "synthetic-q",
+              "version": "1",
+              "role": "PRIMARY",
+              "text": "오늘 기억하고 싶은 순간은 무엇인가요?"
+            },
+            "excerpt": {
+              "state": "AVAILABLE",
+              "value": {
+                "profile": "COMPACT",
+                "limits": {
+                  "maxGraphemes": 96,
+                  "maxLogicalLines": 4
+                },
+                "sourceRevision": "r1",
+                "text": "  오늘의 합성 기록",
+                "isTruncated": false
+              }
+            },
+            "activeAnswerCount": {
+              "state": "AVAILABLE",
+              "value": {
+                "count": 1,
+                "observedAt": "2026-09-13T15:00:00Z"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "terminal 미적용",
+      "schema": "CommandResult",
+      "valid": true,
+      "value": {
+        "ticketId": "synthetic-ticket",
+        "operationId": "66d9e9af-2026-4000-8000-000000000001",
+        "kind": "ANSWER_WRITE",
+        "target": {
+          "mode": "CREATE",
+          "dailySemaId": "synthetic-day"
+        },
+        "acceptedAt": "2026-09-13T14:59:00Z",
+        "acceptedDateKst": "2026-09-13",
+        "executeBy": "2026-09-13T15:02:00Z",
+        "state": "NOT_APPLIED",
+        "completedAt": "2026-09-13T15:00:00Z",
+        "resultExpiresAt": "2026-09-20T15:00:00Z",
+        "error": {
+          "code": "COMMAND_CLOSED",
+          "category": "CONFLICT"
+        }
+      }
+    },
+    {
+      "name": "write에 전체 삭제 오류 거절",
+      "schema": "CommandResult",
+      "valid": false,
+      "value": {
+        "ticketId": "synthetic-ticket",
+        "operationId": "66d9e9af-2026-4000-8000-000000000001",
+        "kind": "ANSWER_WRITE",
+        "target": {
+          "mode": "CREATE",
+          "dailySemaId": "synthetic-day"
+        },
+        "acceptedAt": "2026-09-13T14:59:00Z",
+        "acceptedDateKst": "2026-09-13",
+        "executeBy": "2026-09-13T15:02:00Z",
+        "state": "NOT_APPLIED",
+        "completedAt": "2026-09-13T15:00:00Z",
+        "resultExpiresAt": "2026-09-20T15:00:00Z",
+        "error": {
+          "code": "ALL_DATA_DELETE_FAILED",
+          "category": "MAINTENANCE"
+        }
+      }
+    },
+    {
+      "name": "만료 결과 safe 조회",
+      "schema": "CommandResult",
+      "valid": true,
+      "value": {
+        "ticketId": "synthetic-ticket",
+        "operationId": "66d9e9af-2026-4000-8000-000000000001",
+        "kind": "ANSWER_WRITE",
+        "target": {
+          "mode": "CREATE",
+          "dailySemaId": "synthetic-day"
+        },
+        "acceptedAt": "2026-09-13T14:59:00Z",
+        "acceptedDateKst": "2026-09-13",
+        "executeBy": "2026-09-13T15:02:00Z",
+        "state": "CLOSED_OUTCOME_UNAVAILABLE",
+        "executionSealed": true
+      }
+    },
+    {
+      "name": "정리에는 최신 상태 필요",
+      "schema": "ClosureResult",
+      "valid": false,
+      "value": {
+        "ticketId": "synthetic-ticket",
+        "operationId": "66d9e9af-2026-4000-8000-000000000001",
+        "kind": "ANSWER_WRITE",
+        "target": {
+          "mode": "CREATE",
+          "dailySemaId": "synthetic-day"
+        },
+        "acceptedAt": "2026-09-13T14:59:00Z",
+        "acceptedDateKst": "2026-09-13",
+        "executeBy": "2026-09-13T15:02:00Z",
+        "state": "CLOSED_OUTCOME_UNAVAILABLE",
+        "executionSealed": true
+      }
+    },
+    {
+      "name": "정리 뒤 현재 기록 보기",
+      "schema": "ClosureResult",
+      "valid": true,
+      "value": {
+        "ticketId": "synthetic-ticket",
+        "operationId": "66d9e9af-2026-4000-8000-000000000001",
+        "kind": "ANSWER_WRITE",
+        "target": {
+          "mode": "CREATE",
+          "dailySemaId": "synthetic-day"
+        },
+        "acceptedAt": "2026-09-13T14:59:00Z",
+        "acceptedDateKst": "2026-09-13",
+        "executeBy": "2026-09-13T15:02:00Z",
+        "state": "CLOSED_OUTCOME_UNAVAILABLE",
+        "executionSealed": true,
+        "reconciliation": {
+          "checkedAt": "2026-09-20T15:00:00Z",
+          "nextAction": "REVIEW_CURRENT_ANSWER",
+          "answerId": "synthetic-answer",
+          "revision": "r2"
+        }
+      }
+    },
+    {
+      "name": "정리 뒤 새 사용자 저장 가능",
+      "schema": "ClosureResult",
+      "valid": true,
+      "value": {
+        "ticketId": "synthetic-ticket",
+        "operationId": "66d9e9af-2026-4000-8000-000000000001",
+        "kind": "ANSWER_WRITE",
+        "target": {
+          "mode": "CREATE",
+          "dailySemaId": "synthetic-day"
+        },
+        "acceptedAt": "2026-09-13T14:59:00Z",
+        "acceptedDateKst": "2026-09-13",
+        "executeBy": "2026-09-13T15:02:00Z",
+        "state": "CLOSED_OUTCOME_UNAVAILABLE",
+        "executionSealed": true,
+        "reconciliation": {
+          "checkedAt": "2026-09-20T15:00:00Z",
+          "nextAction": "CREATE_CURRENT_DAY"
+        }
+      }
+    },
+    {
+      "name": "종료 봉인 false 거절",
+      "schema": "CommandResult",
+      "valid": false,
+      "value": {
+        "ticketId": "synthetic-ticket",
+        "operationId": "66d9e9af-2026-4000-8000-000000000001",
+        "kind": "ANSWER_WRITE",
+        "target": {
+          "mode": "CREATE",
+          "dailySemaId": "synthetic-day"
+        },
+        "acceptedAt": "2026-09-13T14:59:00Z",
+        "acceptedDateKst": "2026-09-13",
+        "executeBy": "2026-09-13T15:02:00Z",
+        "state": "CLOSED_OUTCOME_UNAVAILABLE",
+        "executionSealed": false
+      }
+    },
+    {
+      "name": "개별 삭제 준비",
+      "schema": "AnswerDeletePrepared",
+      "valid": true,
+      "value": {
+        "ticketId": "synthetic-ticket",
+        "operationId": "66d9e9af-2026-4000-8000-000000000001",
+        "kind": "ANSWER_DELETE",
+        "target": {
+          "answerId": "synthetic-answer",
+          "expectedRevision": "r1"
+        },
+        "acceptedAt": "2026-09-13T14:59:00Z",
+        "acceptedDateKst": "2026-09-13",
+        "executeBy": "2026-09-13T15:02:00Z",
+        "state": "PREPARED"
+      }
+    },
+    {
+      "name": "write prepare에 delete ticket 거절",
+      "schema": "AnswerWritePrepared",
+      "valid": false,
+      "value": {
+        "ticketId": "synthetic-ticket",
+        "operationId": "66d9e9af-2026-4000-8000-000000000001",
+        "kind": "ANSWER_DELETE",
+        "target": {
+          "answerId": "synthetic-answer",
+          "expectedRevision": "r1"
+        },
+        "acceptedAt": "2026-09-13T14:59:00Z",
+        "acceptedDateKst": "2026-09-13",
+        "executeBy": "2026-09-13T15:02:00Z",
+        "state": "PREPARED"
+      }
+    },
+    {
+      "name": "이미 삭제됨 합류",
+      "schema": "CommandResult",
+      "valid": true,
+      "value": {
+        "ticketId": "synthetic-ticket",
+        "operationId": "66d9e9af-2026-4000-8000-000000000001",
+        "kind": "ANSWER_DELETE",
+        "target": {
+          "answerId": "synthetic-answer",
+          "expectedRevision": "r1"
+        },
+        "acceptedAt": "2026-09-13T14:59:00Z",
+        "acceptedDateKst": "2026-09-13",
+        "executeBy": "2026-09-13T15:02:00Z",
+        "state": "SUCCEEDED",
+        "completedAt": "2026-09-13T15:00:00Z",
+        "resultExpiresAt": "2026-09-20T15:00:00Z",
+        "proof": {
+          "answerId": "synthetic-answer",
+          "effect": "ALREADY_ABSENT",
+          "deletedAt": "2026-09-13T15:00:00Z"
+        },
+        "presentation": {
+          "state": "ACKNOWLEDGED"
+        }
+      }
+    },
+    {
+      "name": "전체 삭제 증명",
+      "schema": "CommandResult",
+      "valid": true,
+      "value": {
+        "ticketId": "synthetic-ticket",
+        "operationId": "66d9e9af-2026-4000-8000-000000000001",
+        "kind": "ALL_DATA_DELETE",
+        "target": {},
+        "acceptedAt": "2026-09-13T14:59:00Z",
+        "acceptedDateKst": "2026-09-13",
+        "executeBy": "2026-09-13T15:02:00Z",
+        "state": "SUCCEEDED",
+        "completedAt": "2026-09-13T15:00:00Z",
+        "resultExpiresAt": "2026-09-20T15:00:00Z",
+        "proof": {
+          "effect": "DELETED",
+          "deletedAt": "2026-09-13T15:00:00Z",
+          "consentEvidenceRetainedUntil": "2027-09-13T15:00:00Z",
+          "backupsExpireBy": "2026-10-13T14:59:00Z"
+        }
+      }
+    },
+    {
+      "name": "재탑승 ACTIVE와 이전 삭제 receipt",
+      "schema": "EstablishSessionResponse",
+      "valid": true,
+      "value": {
+        "accessToken": "synthetic-token",
+        "expiresAt": "2026-09-20T15:00:00Z",
+        "context": {
+          "mode": "ACTIVE",
+          "passenger": {
+            "passengerCode": "SYNTHETIC-001",
+            "nickname": null,
+            "revision": "r1"
+          },
+          "dataGeneration": "synthetic-g2"
+        },
+        "consentPolicies": [
+          {
+            "policyId": "synthetic-terms",
+            "version": "1",
+            "title": "합성 약관",
+            "url": "https://policy.invalid.example/synthetic",
+            "required": true
+          }
+        ],
+        "recentDeletion": {
+          "ticketId": "synthetic-deletion-ticket",
+          "deletedGeneration": "synthetic-g1",
+          "resultExpiresAt": "2026-09-20T15:00:00Z",
+          "proof": {
+            "effect": "DELETED",
+            "deletedAt": "2026-09-13T15:00:00Z",
+            "consentEvidenceRetainedUntil": "2027-09-13T15:00:00Z",
+            "backupsExpireBy": "2026-10-13T14:59:00Z"
+          }
+        }
+      }
+    },
+    {
+      "name": "서버 지정 세션 복구",
+      "schema": "ApiErrorEnvelope",
+      "valid": true,
+      "value": {
+        "error": {
+          "code": "SESSION_RECOVERY_REQUIRED",
+          "category": "AUTH",
+          "requestId": "synthetic-request",
+          "recovery": {
+            "kind": "REESTABLISH_SESSION",
+            "recoveryAllowed": true
+          }
+        }
+      }
+    },
+    {
+      "name": "필수 recovery 누락 거절",
+      "schema": "ApiErrorEnvelope",
+      "valid": false,
+      "value": {
+        "error": {
+          "code": "SESSION_RECOVERY_REQUIRED",
+          "category": "AUTH",
+          "requestId": "synthetic-request"
+        }
+      }
+    },
+    {
+      "name": "오류에 민감 details 거절",
+      "schema": "ApiErrorEnvelope",
+      "valid": false,
+      "value": {
+        "error": {
+          "code": "NICKNAME_INVALID",
+          "category": "VALIDATION",
+          "requestId": "synthetic-request",
+          "details": {
+            "nickname": "누출 금지"
+          }
+        }
+      }
+    },
+    {
+      "name": "오류 code/category 불일치 거절",
+      "schema": "ApiErrorEnvelope",
+      "valid": false,
+      "value": {
+        "error": {
+          "code": "NICKNAME_INVALID",
+          "category": "AUTH",
+          "requestId": "synthetic-request"
+        }
+      }
+    },
+    {
+      "name": "알 수 없는 오류 거절",
+      "schema": "ApiErrorEnvelope",
+      "valid": false,
+      "value": {
+        "error": {
+          "code": "NEW_UNKNOWN",
+          "category": "AUTH",
+          "requestId": "synthetic-request"
+        }
+      }
+    },
+    {
+      "name": "프로필 예산 조정은 같은 enum",
+      "schema": "Excerpt",
+      "valid": true,
+      "value": {
+        "profile": "COMPACT",
+        "limits": {
+          "maxGraphemes": 108,
+          "maxLogicalLines": 5
+        },
+        "sourceRevision": "r1",
+        "text": "  오늘의 합성 기록",
+        "isTruncated": false
+      }
+    },
+    {
+      "name": "화면/숫자 enum 제거",
+      "schema": "Excerpt",
+      "valid": false,
+      "value": {
+        "profile": "RESULT_96",
+        "limits": {
+          "maxGraphemes": 96,
+          "maxLogicalLines": 4
+        },
+        "sourceRevision": "r1",
+        "text": "  오늘의 합성 기록",
+        "isTruncated": false
+      }
+    },
+    {
+      "name": "발췌 revision 누락 거절",
+      "schema": "Excerpt",
+      "valid": false,
+      "value": {
+        "profile": "COMPACT",
+        "limits": {
+          "maxGraphemes": 96,
+          "maxLogicalLines": 4
+        },
+        "text": "  오늘의 합성 기록",
+        "isTruncated": false
+      }
+    },
+    {
+      "name": "수 관찰 시점 누락 거절",
+      "schema": "CountSnapshot",
+      "valid": false,
+      "value": {
+        "count": 1
+      }
+    },
+    {
+      "name": "교체 콘텐츠와 기존 완료 snapshot",
+      "schema": "TodayReadModel",
+      "valid": true,
+      "value": {
+        "dateKst": "2026-09-13",
+        "sema": {
+          "dailySemaId": "synthetic-day",
+          "semaId": "synthetic-new-content",
+          "version": "2",
+          "semaCode": "SYN-2",
+          "dateKst": "2026-09-13",
+          "primaryQuestion": {
+            "questionId": "synthetic-new-q",
+            "version": "2",
+            "role": "PRIMARY",
+            "text": "오늘 기억하고 싶은 순간은 무엇인가요?"
+          },
+          "alternateQuestion": {
+            "questionId": "synthetic-alt",
+            "version": "1",
+            "role": "ALTERNATE",
+            "text": "오늘 기억하고 싶은 순간은 무엇인가요?"
+          }
+        },
+        "answer": {
+          "state": "ANSWERED",
+          "value": {
+            "answerId": "synthetic-answer",
+            "revision": "r1",
+            "dailySemaId": "synthetic-day",
+            "semaId": "synthetic-content",
+            "semaVersion": "1",
+            "semaCode": "SYN-1",
+            "createdAt": "2026-09-13T15:00:00Z",
+            "updatedAt": "2026-09-13T15:00:00Z",
+            "createdDateKst": "2026-09-13",
+            "isEdited": false,
+            "question": {
+              "questionId": "synthetic-q",
+              "version": "1",
+              "role": "PRIMARY",
+              "text": "오늘 기억하고 싶은 순간은 무엇인가요?"
+            },
+            "excerpt": {
+              "state": "AVAILABLE",
+              "value": {
+                "profile": "COMPACT",
+                "limits": {
+                  "maxGraphemes": 96,
+                  "maxLogicalLines": 4
+                },
+                "sourceRevision": "r1",
+                "text": "  오늘의 합성 기록",
+                "isTruncated": false
+              }
+            }
+          }
+        },
+        "activeAnswerCount": {
+          "state": "AVAILABLE",
+          "value": {
+            "count": 1,
+            "observedAt": "2026-09-13T15:00:00Z"
+          }
+        }
+      }
+    },
+    {
+      "name": "빈 목록",
+      "schema": "AnswerPage",
+      "valid": true,
+      "value": {
+        "items": [],
+        "nextCursor": null,
+        "pageSnapshotAt": "2026-09-13T15:00:00Z"
+      }
+    },
+    {
+      "name": "21개 page 거절",
+      "schema": "AnswerPage",
+      "valid": false,
+      "value": {
+        "items": [
+          {
+            "answerId": "synthetic-answer",
+            "revision": "r1",
+            "dailySemaId": "synthetic-day",
+            "semaId": "synthetic-content",
+            "semaVersion": "1",
+            "semaCode": "SYN-1",
+            "createdAt": "2026-09-13T15:00:00Z",
+            "updatedAt": "2026-09-13T15:00:00Z",
+            "createdDateKst": "2026-09-13",
+            "isEdited": false,
+            "question": {
+              "questionId": "synthetic-q",
+              "version": "1",
+              "role": "PRIMARY",
+              "text": "오늘 기억하고 싶은 순간은 무엇인가요?"
+            },
+            "excerpt": {
+              "state": "AVAILABLE",
+              "value": {
+                "profile": "COMPACT",
+                "limits": {
+                  "maxGraphemes": 96,
+                  "maxLogicalLines": 4
+                },
+                "sourceRevision": "r1",
+                "text": "  오늘의 합성 기록",
+                "isTruncated": false
+              }
+            }
+          },
+          {
+            "answerId": "synthetic-answer",
+            "revision": "r1",
+            "dailySemaId": "synthetic-day",
+            "semaId": "synthetic-content",
+            "semaVersion": "1",
+            "semaCode": "SYN-1",
+            "createdAt": "2026-09-13T15:00:00Z",
+            "updatedAt": "2026-09-13T15:00:00Z",
+            "createdDateKst": "2026-09-13",
+            "isEdited": false,
+            "question": {
+              "questionId": "synthetic-q",
+              "version": "1",
+              "role": "PRIMARY",
+              "text": "오늘 기억하고 싶은 순간은 무엇인가요?"
+            },
+            "excerpt": {
+              "state": "AVAILABLE",
+              "value": {
+                "profile": "COMPACT",
+                "limits": {
+                  "maxGraphemes": 96,
+                  "maxLogicalLines": 4
+                },
+                "sourceRevision": "r1",
+                "text": "  오늘의 합성 기록",
+                "isTruncated": false
+              }
+            }
+          },
+          {
+            "answerId": "synthetic-answer",
+            "revision": "r1",
+            "dailySemaId": "synthetic-day",
+            "semaId": "synthetic-content",
+            "semaVersion": "1",
+            "semaCode": "SYN-1",
+            "createdAt": "2026-09-13T15:00:00Z",
+            "updatedAt": "2026-09-13T15:00:00Z",
+            "createdDateKst": "2026-09-13",
+            "isEdited": false,
+            "question": {
+              "questionId": "synthetic-q",
+              "version": "1",
+              "role": "PRIMARY",
+              "text": "오늘 기억하고 싶은 순간은 무엇인가요?"
+            },
+            "excerpt": {
+              "state": "AVAILABLE",
+              "value": {
+                "profile": "COMPACT",
+                "limits": {
+                  "maxGraphemes": 96,
+                  "maxLogicalLines": 4
+                },
+                "sourceRevision": "r1",
+                "text": "  오늘의 합성 기록",
+                "isTruncated": false
+              }
+            }
+          },
+          {
+            "answerId": "synthetic-answer",
+            "revision": "r1",
+            "dailySemaId": "synthetic-day",
+            "semaId": "synthetic-content",
+            "semaVersion": "1",
+            "semaCode": "SYN-1",
+            "createdAt": "2026-09-13T15:00:00Z",
+            "updatedAt": "2026-09-13T15:00:00Z",
+            "createdDateKst": "2026-09-13",
+            "isEdited": false,
+            "question": {
+              "questionId": "synthetic-q",
+              "version": "1",
+              "role": "PRIMARY",
+              "text": "오늘 기억하고 싶은 순간은 무엇인가요?"
+            },
+            "excerpt": {
+              "state": "AVAILABLE",
+              "value": {
+                "profile": "COMPACT",
+                "limits": {
+                  "maxGraphemes": 96,
+                  "maxLogicalLines": 4
+                },
+                "sourceRevision": "r1",
+                "text": "  오늘의 합성 기록",
+                "isTruncated": false
+              }
+            }
+          },
+          {
+            "answerId": "synthetic-answer",
+            "revision": "r1",
+            "dailySemaId": "synthetic-day",
+            "semaId": "synthetic-content",
+            "semaVersion": "1",
+            "semaCode": "SYN-1",
+            "createdAt": "2026-09-13T15:00:00Z",
+            "updatedAt": "2026-09-13T15:00:00Z",
+            "createdDateKst": "2026-09-13",
+            "isEdited": false,
+            "question": {
+              "questionId": "synthetic-q",
+              "version": "1",
+              "role": "PRIMARY",
+              "text": "오늘 기억하고 싶은 순간은 무엇인가요?"
+            },
+            "excerpt": {
+              "state": "AVAILABLE",
+              "value": {
+                "profile": "COMPACT",
+                "limits": {
+                  "maxGraphemes": 96,
+                  "maxLogicalLines": 4
+                },
+                "sourceRevision": "r1",
+                "text": "  오늘의 합성 기록",
+                "isTruncated": false
+              }
+            }
+          },
+          {
+            "answerId": "synthetic-answer",
+            "revision": "r1",
+            "dailySemaId": "synthetic-day",
+            "semaId": "synthetic-content",
+            "semaVersion": "1",
+            "semaCode": "SYN-1",
+            "createdAt": "2026-09-13T15:00:00Z",
+            "updatedAt": "2026-09-13T15:00:00Z",
+            "createdDateKst": "2026-09-13",
+            "isEdited": false,
+            "question": {
+              "questionId": "synthetic-q",
+              "version": "1",
+              "role": "PRIMARY",
+              "text": "오늘 기억하고 싶은 순간은 무엇인가요?"
+            },
+            "excerpt": {
+              "state": "AVAILABLE",
+              "value": {
+                "profile": "COMPACT",
+                "limits": {
+                  "maxGraphemes": 96,
+                  "maxLogicalLines": 4
+                },
+                "sourceRevision": "r1",
+                "text": "  오늘의 합성 기록",
+                "isTruncated": false
+              }
+            }
+          },
+          {
+            "answerId": "synthetic-answer",
+            "revision": "r1",
+            "dailySemaId": "synthetic-day",
+            "semaId": "synthetic-content",
+            "semaVersion": "1",
+            "semaCode": "SYN-1",
+            "createdAt": "2026-09-13T15:00:00Z",
+            "updatedAt": "2026-09-13T15:00:00Z",
+            "createdDateKst": "2026-09-13",
+            "isEdited": false,
+            "question": {
+              "questionId": "synthetic-q",
+              "version": "1",
+              "role": "PRIMARY",
+              "text": "오늘 기억하고 싶은 순간은 무엇인가요?"
+            },
+            "excerpt": {
+              "state": "AVAILABLE",
+              "value": {
+                "profile": "COMPACT",
+                "limits": {
+                  "maxGraphemes": 96,
+                  "maxLogicalLines": 4
+                },
+                "sourceRevision": "r1",
+                "text": "  오늘의 합성 기록",
+                "isTruncated": false
+              }
+            }
+          },
+          {
+            "answerId": "synthetic-answer",
+            "revision": "r1",
+            "dailySemaId": "synthetic-day",
+            "semaId": "synthetic-content",
+            "semaVersion": "1",
+            "semaCode": "SYN-1",
+            "createdAt": "2026-09-13T15:00:00Z",
+            "updatedAt": "2026-09-13T15:00:00Z",
+            "createdDateKst": "2026-09-13",
+            "isEdited": false,
+            "question": {
+              "questionId": "synthetic-q",
+              "version": "1",
+              "role": "PRIMARY",
+              "text": "오늘 기억하고 싶은 순간은 무엇인가요?"
+            },
+            "excerpt": {
+              "state": "AVAILABLE",
+              "value": {
+                "profile": "COMPACT",
+                "limits": {
+                  "maxGraphemes": 96,
+                  "maxLogicalLines": 4
+                },
+                "sourceRevision": "r1",
+                "text": "  오늘의 합성 기록",
+                "isTruncated": false
+              }
+            }
+          },
+          {
+            "answerId": "synthetic-answer",
+            "revision": "r1",
+            "dailySemaId": "synthetic-day",
+            "semaId": "synthetic-content",
+            "semaVersion": "1",
+            "semaCode": "SYN-1",
+            "createdAt": "2026-09-13T15:00:00Z",
+            "updatedAt": "2026-09-13T15:00:00Z",
+            "createdDateKst": "2026-09-13",
+            "isEdited": false,
+            "question": {
+              "questionId": "synthetic-q",
+              "version": "1",
+              "role": "PRIMARY",
+              "text": "오늘 기억하고 싶은 순간은 무엇인가요?"
+            },
+            "excerpt": {
+              "state": "AVAILABLE",
+              "value": {
+                "profile": "COMPACT",
+                "limits": {
+                  "maxGraphemes": 96,
+                  "maxLogicalLines": 4
+                },
+                "sourceRevision": "r1",
+                "text": "  오늘의 합성 기록",
+                "isTruncated": false
+              }
+            }
+          },
+          {
+            "answerId": "synthetic-answer",
+            "revision": "r1",
+            "dailySemaId": "synthetic-day",
+            "semaId": "synthetic-content",
+            "semaVersion": "1",
+            "semaCode": "SYN-1",
+            "createdAt": "2026-09-13T15:00:00Z",
+            "updatedAt": "2026-09-13T15:00:00Z",
+            "createdDateKst": "2026-09-13",
+            "isEdited": false,
+            "question": {
+              "questionId": "synthetic-q",
+              "version": "1",
+              "role": "PRIMARY",
+              "text": "오늘 기억하고 싶은 순간은 무엇인가요?"
+            },
+            "excerpt": {
+              "state": "AVAILABLE",
+              "value": {
+                "profile": "COMPACT",
+                "limits": {
+                  "maxGraphemes": 96,
+                  "maxLogicalLines": 4
+                },
+                "sourceRevision": "r1",
+                "text": "  오늘의 합성 기록",
+                "isTruncated": false
+              }
+            }
+          },
+          {
+            "answerId": "synthetic-answer",
+            "revision": "r1",
+            "dailySemaId": "synthetic-day",
+            "semaId": "synthetic-content",
+            "semaVersion": "1",
+            "semaCode": "SYN-1",
+            "createdAt": "2026-09-13T15:00:00Z",
+            "updatedAt": "2026-09-13T15:00:00Z",
+            "createdDateKst": "2026-09-13",
+            "isEdited": false,
+            "question": {
+              "questionId": "synthetic-q",
+              "version": "1",
+              "role": "PRIMARY",
+              "text": "오늘 기억하고 싶은 순간은 무엇인가요?"
+            },
+            "excerpt": {
+              "state": "AVAILABLE",
+              "value": {
+                "profile": "COMPACT",
+                "limits": {
+                  "maxGraphemes": 96,
+                  "maxLogicalLines": 4
+                },
+                "sourceRevision": "r1",
+                "text": "  오늘의 합성 기록",
+                "isTruncated": false
+              }
+            }
+          },
+          {
+            "answerId": "synthetic-answer",
+            "revision": "r1",
+            "dailySemaId": "synthetic-day",
+            "semaId": "synthetic-content",
+            "semaVersion": "1",
+            "semaCode": "SYN-1",
+            "createdAt": "2026-09-13T15:00:00Z",
+            "updatedAt": "2026-09-13T15:00:00Z",
+            "createdDateKst": "2026-09-13",
+            "isEdited": false,
+            "question": {
+              "questionId": "synthetic-q",
+              "version": "1",
+              "role": "PRIMARY",
+              "text": "오늘 기억하고 싶은 순간은 무엇인가요?"
+            },
+            "excerpt": {
+              "state": "AVAILABLE",
+              "value": {
+                "profile": "COMPACT",
+                "limits": {
+                  "maxGraphemes": 96,
+                  "maxLogicalLines": 4
+                },
+                "sourceRevision": "r1",
+                "text": "  오늘의 합성 기록",
+                "isTruncated": false
+              }
+            }
+          },
+          {
+            "answerId": "synthetic-answer",
+            "revision": "r1",
+            "dailySemaId": "synthetic-day",
+            "semaId": "synthetic-content",
+            "semaVersion": "1",
+            "semaCode": "SYN-1",
+            "createdAt": "2026-09-13T15:00:00Z",
+            "updatedAt": "2026-09-13T15:00:00Z",
+            "createdDateKst": "2026-09-13",
+            "isEdited": false,
+            "question": {
+              "questionId": "synthetic-q",
+              "version": "1",
+              "role": "PRIMARY",
+              "text": "오늘 기억하고 싶은 순간은 무엇인가요?"
+            },
+            "excerpt": {
+              "state": "AVAILABLE",
+              "value": {
+                "profile": "COMPACT",
+                "limits": {
+                  "maxGraphemes": 96,
+                  "maxLogicalLines": 4
+                },
+                "sourceRevision": "r1",
+                "text": "  오늘의 합성 기록",
+                "isTruncated": false
+              }
+            }
+          },
+          {
+            "answerId": "synthetic-answer",
+            "revision": "r1",
+            "dailySemaId": "synthetic-day",
+            "semaId": "synthetic-content",
+            "semaVersion": "1",
+            "semaCode": "SYN-1",
+            "createdAt": "2026-09-13T15:00:00Z",
+            "updatedAt": "2026-09-13T15:00:00Z",
+            "createdDateKst": "2026-09-13",
+            "isEdited": false,
+            "question": {
+              "questionId": "synthetic-q",
+              "version": "1",
+              "role": "PRIMARY",
+              "text": "오늘 기억하고 싶은 순간은 무엇인가요?"
+            },
+            "excerpt": {
+              "state": "AVAILABLE",
+              "value": {
+                "profile": "COMPACT",
+                "limits": {
+                  "maxGraphemes": 96,
+                  "maxLogicalLines": 4
+                },
+                "sourceRevision": "r1",
+                "text": "  오늘의 합성 기록",
+                "isTruncated": false
+              }
+            }
+          },
+          {
+            "answerId": "synthetic-answer",
+            "revision": "r1",
+            "dailySemaId": "synthetic-day",
+            "semaId": "synthetic-content",
+            "semaVersion": "1",
+            "semaCode": "SYN-1",
+            "createdAt": "2026-09-13T15:00:00Z",
+            "updatedAt": "2026-09-13T15:00:00Z",
+            "createdDateKst": "2026-09-13",
+            "isEdited": false,
+            "question": {
+              "questionId": "synthetic-q",
+              "version": "1",
+              "role": "PRIMARY",
+              "text": "오늘 기억하고 싶은 순간은 무엇인가요?"
+            },
+            "excerpt": {
+              "state": "AVAILABLE",
+              "value": {
+                "profile": "COMPACT",
+                "limits": {
+                  "maxGraphemes": 96,
+                  "maxLogicalLines": 4
+                },
+                "sourceRevision": "r1",
+                "text": "  오늘의 합성 기록",
+                "isTruncated": false
+              }
+            }
+          },
+          {
+            "answerId": "synthetic-answer",
+            "revision": "r1",
+            "dailySemaId": "synthetic-day",
+            "semaId": "synthetic-content",
+            "semaVersion": "1",
+            "semaCode": "SYN-1",
+            "createdAt": "2026-09-13T15:00:00Z",
+            "updatedAt": "2026-09-13T15:00:00Z",
+            "createdDateKst": "2026-09-13",
+            "isEdited": false,
+            "question": {
+              "questionId": "synthetic-q",
+              "version": "1",
+              "role": "PRIMARY",
+              "text": "오늘 기억하고 싶은 순간은 무엇인가요?"
+            },
+            "excerpt": {
+              "state": "AVAILABLE",
+              "value": {
+                "profile": "COMPACT",
+                "limits": {
+                  "maxGraphemes": 96,
+                  "maxLogicalLines": 4
+                },
+                "sourceRevision": "r1",
+                "text": "  오늘의 합성 기록",
+                "isTruncated": false
+              }
+            }
+          },
+          {
+            "answerId": "synthetic-answer",
+            "revision": "r1",
+            "dailySemaId": "synthetic-day",
+            "semaId": "synthetic-content",
+            "semaVersion": "1",
+            "semaCode": "SYN-1",
+            "createdAt": "2026-09-13T15:00:00Z",
+            "updatedAt": "2026-09-13T15:00:00Z",
+            "createdDateKst": "2026-09-13",
+            "isEdited": false,
+            "question": {
+              "questionId": "synthetic-q",
+              "version": "1",
+              "role": "PRIMARY",
+              "text": "오늘 기억하고 싶은 순간은 무엇인가요?"
+            },
+            "excerpt": {
+              "state": "AVAILABLE",
+              "value": {
+                "profile": "COMPACT",
+                "limits": {
+                  "maxGraphemes": 96,
+                  "maxLogicalLines": 4
+                },
+                "sourceRevision": "r1",
+                "text": "  오늘의 합성 기록",
+                "isTruncated": false
+              }
+            }
+          },
+          {
+            "answerId": "synthetic-answer",
+            "revision": "r1",
+            "dailySemaId": "synthetic-day",
+            "semaId": "synthetic-content",
+            "semaVersion": "1",
+            "semaCode": "SYN-1",
+            "createdAt": "2026-09-13T15:00:00Z",
+            "updatedAt": "2026-09-13T15:00:00Z",
+            "createdDateKst": "2026-09-13",
+            "isEdited": false,
+            "question": {
+              "questionId": "synthetic-q",
+              "version": "1",
+              "role": "PRIMARY",
+              "text": "오늘 기억하고 싶은 순간은 무엇인가요?"
+            },
+            "excerpt": {
+              "state": "AVAILABLE",
+              "value": {
+                "profile": "COMPACT",
+                "limits": {
+                  "maxGraphemes": 96,
+                  "maxLogicalLines": 4
+                },
+                "sourceRevision": "r1",
+                "text": "  오늘의 합성 기록",
+                "isTruncated": false
+              }
+            }
+          },
+          {
+            "answerId": "synthetic-answer",
+            "revision": "r1",
+            "dailySemaId": "synthetic-day",
+            "semaId": "synthetic-content",
+            "semaVersion": "1",
+            "semaCode": "SYN-1",
+            "createdAt": "2026-09-13T15:00:00Z",
+            "updatedAt": "2026-09-13T15:00:00Z",
+            "createdDateKst": "2026-09-13",
+            "isEdited": false,
+            "question": {
+              "questionId": "synthetic-q",
+              "version": "1",
+              "role": "PRIMARY",
+              "text": "오늘 기억하고 싶은 순간은 무엇인가요?"
+            },
+            "excerpt": {
+              "state": "AVAILABLE",
+              "value": {
+                "profile": "COMPACT",
+                "limits": {
+                  "maxGraphemes": 96,
+                  "maxLogicalLines": 4
+                },
+                "sourceRevision": "r1",
+                "text": "  오늘의 합성 기록",
+                "isTruncated": false
+              }
+            }
+          },
+          {
+            "answerId": "synthetic-answer",
+            "revision": "r1",
+            "dailySemaId": "synthetic-day",
+            "semaId": "synthetic-content",
+            "semaVersion": "1",
+            "semaCode": "SYN-1",
+            "createdAt": "2026-09-13T15:00:00Z",
+            "updatedAt": "2026-09-13T15:00:00Z",
+            "createdDateKst": "2026-09-13",
+            "isEdited": false,
+            "question": {
+              "questionId": "synthetic-q",
+              "version": "1",
+              "role": "PRIMARY",
+              "text": "오늘 기억하고 싶은 순간은 무엇인가요?"
+            },
+            "excerpt": {
+              "state": "AVAILABLE",
+              "value": {
+                "profile": "COMPACT",
+                "limits": {
+                  "maxGraphemes": 96,
+                  "maxLogicalLines": 4
+                },
+                "sourceRevision": "r1",
+                "text": "  오늘의 합성 기록",
+                "isTruncated": false
+              }
+            }
+          },
+          {
+            "answerId": "synthetic-answer",
+            "revision": "r1",
+            "dailySemaId": "synthetic-day",
+            "semaId": "synthetic-content",
+            "semaVersion": "1",
+            "semaCode": "SYN-1",
+            "createdAt": "2026-09-13T15:00:00Z",
+            "updatedAt": "2026-09-13T15:00:00Z",
+            "createdDateKst": "2026-09-13",
+            "isEdited": false,
+            "question": {
+              "questionId": "synthetic-q",
+              "version": "1",
+              "role": "PRIMARY",
+              "text": "오늘 기억하고 싶은 순간은 무엇인가요?"
+            },
+            "excerpt": {
+              "state": "AVAILABLE",
+              "value": {
+                "profile": "COMPACT",
+                "limits": {
+                  "maxGraphemes": 96,
+                  "maxLogicalLines": 4
+                },
+                "sourceRevision": "r1",
+                "text": "  오늘의 합성 기록",
+                "isTruncated": false
+              }
+            }
+          }
+        ],
+        "nextCursor": null,
+        "pageSnapshotAt": "2026-09-13T15:00:00Z"
+      }
+    },
+    {
+      "name": "답변 상세",
+      "schema": "AnswerDetail",
+      "valid": true,
+      "value": {
+        "answerId": "synthetic-answer",
+        "revision": "r1",
+        "dailySemaId": "synthetic-day",
+        "semaId": "synthetic-content",
+        "semaVersion": "1",
+        "semaCode": "SYN-1",
+        "createdAt": "2026-09-13T15:00:00Z",
+        "updatedAt": "2026-09-13T15:00:00Z",
+        "createdDateKst": "2026-09-13",
+        "isEdited": false,
+        "question": {
+          "questionId": "synthetic-q",
+          "version": "1",
+          "role": "PRIMARY",
+          "text": "오늘 기억하고 싶은 순간은 무엇인가요?"
+        },
+        "content": "  오늘의 합성 기록"
+      }
+    },
+    {
+      "name": "허용 FE 이벤트",
+      "schema": "ProductEventBatchInput",
+      "valid": true,
+      "value": {
+        "events": [
+          {
+            "eventId": "66d9e9af-2026-4000-8000-000000000001",
+            "schemaVersion": 1,
+            "name": "answer_started",
+            "occurredAt": "2026-09-13T14:59:00Z",
+            "properties": {
+              "mode": "CREATE"
+            }
+          }
+        ],
+        "platform": "IOS"
+      }
+    },
+    {
+      "name": "이벤트 본문 혼입 거절",
+      "schema": "ProductEventBatchInput",
+      "valid": false,
+      "value": {
+        "events": [
+          {
+            "eventId": "66d9e9af-2026-4000-8000-000000000001",
+            "schemaVersion": 1,
+            "name": "answer_started",
+            "occurredAt": "2026-09-13T14:59:00Z",
+            "properties": {
+              "mode": "CREATE",
+              "content": "누출 금지"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "이벤트 이름/속성 불일치 거절",
+      "schema": "ProductEventInput",
+      "valid": false,
+      "value": {
+        "eventId": "66d9e9af-2026-4000-8000-000000000001",
+        "schemaVersion": 1,
+        "name": "onboarding_started",
+        "occurredAt": "2026-09-13T14:59:00Z",
+        "properties": {
+          "mode": "CREATE"
+        }
+      }
+    },
+    {
+      "name": "BE 성공 이벤트의 FE 전송 거절",
+      "schema": "ProductEventInput",
+      "valid": false,
+      "value": {
+        "eventId": "66d9e9af-2026-4000-8000-000000000001",
+        "schemaVersion": 1,
+        "name": "answer_saved",
+        "occurredAt": "2026-09-13T14:59:00Z",
+        "properties": {}
+      }
+    },
+    {
+      "name": "빈 이벤트 batch 거절",
+      "schema": "ProductEventBatchInput",
+      "valid": false,
+      "value": {
+        "events": []
+      }
+    },
+    {
+      "name": "승인되지 않은 reasonCode 거절",
+      "schema": "ProductEventInput",
+      "valid": false,
+      "value": {
+        "eventId": "66d9e9af-2026-4000-8000-000000000001",
+        "schemaVersion": 1,
+        "name": "answer_save_failed",
+        "occurredAt": "2026-09-13T14:59:00Z",
+        "properties": {
+          "mode": "CREATE",
+          "certainty": "UNKNOWN",
+          "reasonCode": "arbitrary user content"
+        }
+      }
+    },
+    {
+      "name": "미확인 저장 이벤트",
+      "schema": "ProductEventInput",
+      "valid": true,
+      "value": {
+        "eventId": "66d9e9af-2026-4000-8000-000000000001",
+        "schemaVersion": 1,
+        "name": "answer_save_failed",
+        "occurredAt": "2026-09-13T14:59:00Z",
+        "properties": {
+          "mode": "CREATE",
+          "certainty": "UNKNOWN",
+          "reasonCode": "NETWORK_UNCONFIRMED"
+        }
+      }
+    },
+    {
+      "name": "204 ack 입력",
+      "schema": "EmptyInput",
+      "valid": true,
+      "value": {}
+    }
+  ]
+}

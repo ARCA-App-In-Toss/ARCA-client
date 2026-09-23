@@ -1,0 +1,4860 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "ARCA MVP API — adopted proposal",
+    "version": "1.1.0",
+    "description": "Wire 구조의 SSOT. 실제 API host/서버는 미구현. 의미·권한·원자성·EGC·시간 경계는 05_API_SPEC.md. 임의 서버 URL은 제공하지 않음."
+  },
+  "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/v1/sessions": {
+      "post": {
+        "operationId": "establishSession",
+        "x-arca-operation-id": "OP-001",
+        "x-contract-status": "adopted-proposal",
+        "x-allowed-session-modes": [
+          "NONE"
+        ],
+        "responses": {
+          "201": {
+            "description": "성공",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "const": "no-store"
+                },
+                "description": "인증·민감 응답의 저장 금지"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EstablishSessionResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "인증된 오류 envelope; 상태별 의미는 05 §8",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "const": "no-store"
+                },
+                "description": "인증·민감 응답의 저장 금지"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EstablishSessionInput"
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/v1/passenger": {
+      "get": {
+        "operationId": "getPassenger",
+        "x-arca-operation-id": "OP-002",
+        "x-contract-status": "adopted-proposal",
+        "x-allowed-session-modes": [
+          "ACTIVE"
+        ],
+        "responses": {
+          "200": {
+            "description": "성공",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "const": "no-store"
+                },
+                "description": "인증·민감 응답의 저장 금지"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PassengerProfile"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "인증된 오류 envelope; 상태별 의미는 05 §8",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "const": "no-store"
+                },
+                "description": "인증·민감 응답의 저장 금지"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createPassenger",
+        "x-arca-operation-id": "OP-003",
+        "x-contract-status": "adopted-proposal",
+        "x-allowed-session-modes": [
+          "PRE_PASSENGER",
+          "ACTIVE_REPLAY"
+        ],
+        "responses": {
+          "201": {
+            "description": "성공",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "const": "no-store"
+                },
+                "description": "인증·민감 응답의 저장 금지"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatePassengerResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "성공",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "const": "no-store"
+                },
+                "description": "인증·민감 응답의 저장 금지"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatePassengerResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "인증된 오류 envelope; 상태별 의미는 05 §8",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "const": "no-store"
+                },
+                "description": "인증·민감 응답의 저장 금지"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/OperationId"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePassengerInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/passenger/nickname": {
+      "put": {
+        "operationId": "setNickname",
+        "x-arca-operation-id": "OP-004",
+        "x-contract-status": "adopted-proposal",
+        "x-allowed-session-modes": [
+          "ACTIVE"
+        ],
+        "responses": {
+          "200": {
+            "description": "성공",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "const": "no-store"
+                },
+                "description": "인증·민감 응답의 저장 금지"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NicknameReceipt"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "인증된 오류 envelope; 상태별 의미는 05 §8",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "const": "no-store"
+                },
+                "description": "인증·민감 응답의 저장 금지"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/OperationId"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetNicknameInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/today": {
+      "get": {
+        "operationId": "getToday",
+        "x-arca-operation-id": "OP-005",
+        "x-contract-status": "adopted-proposal",
+        "x-allowed-session-modes": [
+          "ACTIVE"
+        ],
+        "responses": {
+          "200": {
+            "description": "성공",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "const": "no-store"
+                },
+                "description": "인증·민감 응답의 저장 금지"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TodayReadModel"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "인증된 오류 envelope; 상태별 의미는 05 §8",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "const": "no-store"
+                },
+                "description": "인증·민감 응답의 저장 금지"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "excerptProfile",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/ExcerptProfile",
+              "default": "EXPANDED"
+            }
+          }
+        ]
+      }
+    },
+    "/v1/answer-write-commands": {
+      "post": {
+        "operationId": "prepareAnswerWrite",
+        "x-arca-operation-id": "OP-006",
+        "x-contract-status": "adopted-proposal",
+        "x-allowed-session-modes": [
+          "ACTIVE"
+        ],
+        "responses": {
+          "201": {
+            "description": "성공",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "const": "no-store"
+                },
+                "description": "인증·민감 응답의 저장 금지"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnswerWritePrepared"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "성공",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "const": "no-store"
+                },
+                "description": "인증·민감 응답의 저장 금지"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnswerWriteCommandResult"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "인증된 오류 envelope; 상태별 의미는 05 §8",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "const": "no-store"
+                },
+                "description": "인증·민감 응답의 저장 금지"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/OperationId"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PrepareAnswerWriteInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/commands/{ticketId}/execution": {
+      "put": {
+        "operationId": "executeCommand",
+        "x-arca-operation-id": "OP-007",
+        "x-contract-status": "adopted-proposal",
+        "x-allowed-session-modes": [
+          "ACTIVE",
+          "DELETION_RECOVERY_SAME_TICKET"
+        ],
+        "responses": {
+          "200": {
+            "description": "성공",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "const": "no-store"
+                },
+                "description": "인증·민감 응답의 저장 금지"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettledCommandResult"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "성공",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "const": "no-store"
+                },
+                "description": "인증·민감 응답의 저장 금지"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExecutingCommandResult"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "인증된 오류 envelope; 상태별 의미는 05 §8",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "const": "no-store"
+                },
+                "description": "인증·민감 응답의 저장 금지"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "ticketId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/EntityId"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExecuteCommandInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/commands/{ticketId}": {
+      "get": {
+        "operationId": "getCommandResult",
+        "x-arca-operation-id": "OP-008",
+        "x-contract-status": "adopted-proposal",
+        "x-allowed-session-modes": [
+          "ACTIVE",
+          "DELETION_RECOVERY_SAME_TICKET",
+          "RECENT_DELETION_RECEIPT_ONLY"
+        ],
+        "responses": {
+          "200": {
+            "description": "성공",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "const": "no-store"
+                },
+                "description": "인증·민감 응답의 저장 금지"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommandResult"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "인증된 오류 envelope; 상태별 의미는 05 §8",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "const": "no-store"
+                },
+                "description": "인증·민감 응답의 저장 금지"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "ticketId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/EntityId"
+            }
+          },
+          {
+            "name": "excerptProfile",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/ExcerptProfile",
+              "default": "COMPACT"
+            }
+          }
+        ]
+      }
+    },
+    "/v1/commands/{ticketId}/acknowledgement": {
+      "put": {
+        "operationId": "acknowledgeCommandResult",
+        "x-arca-operation-id": "OP-009",
+        "x-contract-status": "adopted-proposal",
+        "x-allowed-session-modes": [
+          "ACTIVE",
+          "DELETION_RECOVERY_SAME_TICKET",
+          "RECENT_DELETION_RECEIPT_ONLY"
+        ],
+        "responses": {
+          "204": {
+            "description": "성공",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "const": "no-store"
+                },
+                "description": "인증·민감 응답의 저장 금지"
+              }
+            }
+          },
+          "default": {
+            "description": "인증된 오류 envelope; 상태별 의미는 05 §8",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "const": "no-store"
+                },
+                "description": "인증·민감 응답의 저장 금지"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "ticketId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/EntityId"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmptyInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/answers": {
+      "get": {
+        "operationId": "listAnswers",
+        "x-arca-operation-id": "OP-010",
+        "x-contract-status": "adopted-proposal",
+        "x-allowed-session-modes": [
+          "ACTIVE"
+        ],
+        "responses": {
+          "200": {
+            "description": "성공",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "const": "no-store"
+                },
+                "description": "인증·민감 응답의 저장 금지"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnswerPage"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "인증된 오류 envelope; 상태별 의미는 05 §8",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "const": "no-store"
+                },
+                "description": "인증·민감 응답의 저장 금지"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "name": "excerptProfile",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/ExcerptProfile",
+              "default": "STANDARD"
+            }
+          }
+        ]
+      }
+    },
+    "/v1/answers/{answerId}": {
+      "get": {
+        "operationId": "getAnswer",
+        "x-arca-operation-id": "OP-011",
+        "x-contract-status": "adopted-proposal",
+        "x-allowed-session-modes": [
+          "ACTIVE"
+        ],
+        "responses": {
+          "200": {
+            "description": "성공",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "const": "no-store"
+                },
+                "description": "인증·민감 응답의 저장 금지"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnswerDetail"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "인증된 오류 envelope; 상태별 의미는 05 §8",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "const": "no-store"
+                },
+                "description": "인증·민감 응답의 저장 금지"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "answerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/EntityId"
+            }
+          }
+        ]
+      }
+    },
+    "/v1/answer-delete-commands": {
+      "post": {
+        "operationId": "prepareAnswerDelete",
+        "x-arca-operation-id": "OP-012",
+        "x-contract-status": "adopted-proposal",
+        "x-allowed-session-modes": [
+          "ACTIVE"
+        ],
+        "responses": {
+          "201": {
+            "description": "성공",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "const": "no-store"
+                },
+                "description": "인증·민감 응답의 저장 금지"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnswerDeletePrepared"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "성공",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "const": "no-store"
+                },
+                "description": "인증·민감 응답의 저장 금지"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnswerDeleteCommandResult"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "인증된 오류 envelope; 상태별 의미는 05 §8",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "const": "no-store"
+                },
+                "description": "인증·민감 응답의 저장 금지"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/OperationId"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PrepareAnswerDeleteInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/data-deletion-commands": {
+      "post": {
+        "operationId": "prepareAllDataDelete",
+        "x-arca-operation-id": "OP-013",
+        "x-contract-status": "adopted-proposal",
+        "x-allowed-session-modes": [
+          "ACTIVE"
+        ],
+        "responses": {
+          "201": {
+            "description": "성공",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "const": "no-store"
+                },
+                "description": "인증·민감 응답의 저장 금지"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AllDataDeletePrepared"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "성공",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "const": "no-store"
+                },
+                "description": "인증·민감 응답의 저장 금지"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AllDataDeleteCommandResult"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "인증된 오류 envelope; 상태별 의미는 05 §8",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "const": "no-store"
+                },
+                "description": "인증·민감 응답의 저장 금지"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/OperationId"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmptyInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/analytics/event-batches": {
+      "post": {
+        "operationId": "submitProductEventBatch",
+        "x-arca-operation-id": "OP-014",
+        "x-contract-status": "adopted-proposal",
+        "x-allowed-session-modes": [
+          "PRE_PASSENGER",
+          "ACTIVE"
+        ],
+        "responses": {
+          "202": {
+            "description": "성공",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "const": "no-store"
+                },
+                "description": "인증·민감 응답의 저장 금지"
+              }
+            }
+          },
+          "default": {
+            "description": "인증된 오류 envelope; 상태별 의미는 05 §8",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "const": "no-store"
+                },
+                "description": "인증·민감 응답의 저장 금지"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProductEventBatchInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/commands/{ticketId}/closure": {
+      "put": {
+        "operationId": "closeCommand",
+        "x-arca-operation-id": "OP-015",
+        "x-contract-status": "adopted-proposal",
+        "x-allowed-session-modes": [
+          "ACTIVE",
+          "DELETION_RECOVERY_SAME_TICKET"
+        ],
+        "responses": {
+          "200": {
+            "description": "성공",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "const": "no-store"
+                },
+                "description": "인증·민감 응답의 저장 금지"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClosureResult"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "성공",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "const": "no-store"
+                },
+                "description": "인증·민감 응답의 저장 금지"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExecutingCommandResult"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "인증된 오류 envelope; 상태별 의미는 05 §8",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "const": "no-store"
+                },
+                "description": "인증·민감 응답의 저장 금지"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "ticketId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/EntityId"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmptyInput"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "opaque"
+      }
+    },
+    "schemas": {
+      "EntityId": {
+        "type": "string",
+        "minLength": 1
+      },
+      "Revision": {
+        "type": "string",
+        "minLength": 1
+      },
+      "OperationId": {
+        "type": "string",
+        "format": "uuid"
+      },
+      "Instant": {
+        "type": "string",
+        "format": "date-time",
+        "pattern": "Z$"
+      },
+      "KstDate": {
+        "type": "string",
+        "format": "date",
+        "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+      },
+      "EmptyInput": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "PassengerProfile": {
+        "type": "object",
+        "properties": {
+          "passengerCode": {
+            "type": "string",
+            "minLength": 1
+          },
+          "nickname": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "revision": {
+            "$ref": "#/components/schemas/Revision"
+          }
+        },
+        "required": [
+          "passengerCode",
+          "nickname",
+          "revision"
+        ]
+      },
+      "ConsentPolicy": {
+        "type": "object",
+        "properties": {
+          "policyId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "version": {
+            "type": "string",
+            "minLength": 1
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "pattern": "^https://"
+          },
+          "required": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "policyId",
+          "version",
+          "title",
+          "url",
+          "required"
+        ]
+      },
+      "ConsentReceiptInput": {
+        "type": "object",
+        "properties": {
+          "policyId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "version": {
+            "type": "string",
+            "minLength": 1
+          },
+          "agreed": {
+            "const": true
+          }
+        },
+        "required": [
+          "policyId",
+          "version",
+          "agreed"
+        ],
+        "additionalProperties": false
+      },
+      "AllDataDeleteReceipt": {
+        "type": "object",
+        "properties": {
+          "effect": {
+            "const": "DELETED"
+          },
+          "deletedAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "consentEvidenceRetainedUntil": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "backupsExpireBy": {
+            "$ref": "#/components/schemas/Instant"
+          }
+        },
+        "required": [
+          "effect",
+          "deletedAt",
+          "consentEvidenceRetainedUntil",
+          "backupsExpireBy"
+        ]
+      },
+      "RecentDeletion": {
+        "type": "object",
+        "properties": {
+          "ticketId": {
+            "$ref": "#/components/schemas/EntityId"
+          },
+          "deletedGeneration": {
+            "$ref": "#/components/schemas/EntityId"
+          },
+          "resultExpiresAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "proof": {
+            "$ref": "#/components/schemas/AllDataDeleteReceipt"
+          }
+        },
+        "required": [
+          "ticketId",
+          "deletedGeneration",
+          "resultExpiresAt",
+          "proof"
+        ]
+      },
+      "ActiveSessionContext": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "const": "ACTIVE"
+          },
+          "passenger": {
+            "$ref": "#/components/schemas/PassengerProfile"
+          },
+          "dataGeneration": {
+            "$ref": "#/components/schemas/EntityId"
+          }
+        },
+        "required": [
+          "mode",
+          "passenger",
+          "dataGeneration"
+        ]
+      },
+      "SessionContext": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "mode": {
+                "const": "PRE_PASSENGER"
+              },
+              "passenger": {
+                "const": null
+              }
+            },
+            "required": [
+              "mode",
+              "passenger"
+            ]
+          },
+          {
+            "$ref": "#/components/schemas/ActiveSessionContext"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "mode": {
+                "const": "DELETION_RECOVERY"
+              },
+              "passenger": {
+                "const": null
+              },
+              "deletionTicketId": {
+                "$ref": "#/components/schemas/EntityId"
+              },
+              "dataGeneration": {
+                "$ref": "#/components/schemas/EntityId"
+              }
+            },
+            "required": [
+              "mode",
+              "passenger",
+              "deletionTicketId",
+              "dataGeneration"
+            ]
+          }
+        ]
+      },
+      "EstablishSessionResponse": {
+        "type": "object",
+        "properties": {
+          "accessToken": {
+            "type": "string",
+            "minLength": 1
+          },
+          "expiresAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "context": {
+            "$ref": "#/components/schemas/SessionContext"
+          },
+          "consentPolicies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConsentPolicy"
+            }
+          },
+          "recentDeletion": {
+            "$ref": "#/components/schemas/RecentDeletion"
+          }
+        },
+        "required": [
+          "accessToken",
+          "expiresAt",
+          "context",
+          "consentPolicies"
+        ]
+      },
+      "EstablishSessionInput": {
+        "type": "object",
+        "properties": {
+          "anonymousKey": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "anonymousKey"
+        ],
+        "additionalProperties": false
+      },
+      "CreatePassengerInput": {
+        "type": "object",
+        "properties": {
+          "consents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConsentReceiptInput"
+            },
+            "minItems": 1
+          }
+        },
+        "required": [
+          "consents"
+        ],
+        "additionalProperties": false
+      },
+      "CreatePassengerResponse": {
+        "type": "object",
+        "properties": {
+          "accessToken": {
+            "type": "string",
+            "minLength": 1
+          },
+          "expiresAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "context": {
+            "$ref": "#/components/schemas/ActiveSessionContext"
+          },
+          "consentPolicies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConsentPolicy"
+            }
+          },
+          "recentDeletion": {
+            "$ref": "#/components/schemas/RecentDeletion"
+          }
+        },
+        "required": [
+          "accessToken",
+          "expiresAt",
+          "context",
+          "consentPolicies"
+        ]
+      },
+      "SetNicknameInput": {
+        "type": "object",
+        "properties": {
+          "nickname": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expectedRevision": {
+            "$ref": "#/components/schemas/Revision"
+          }
+        },
+        "required": [
+          "nickname",
+          "expectedRevision"
+        ],
+        "additionalProperties": false
+      },
+      "NicknameReceipt": {
+        "type": "object",
+        "properties": {
+          "operationId": {
+            "$ref": "#/components/schemas/OperationId"
+          },
+          "profile": {
+            "$ref": "#/components/schemas/PassengerProfile"
+          },
+          "resultExpiresAt": {
+            "$ref": "#/components/schemas/Instant"
+          }
+        },
+        "required": [
+          "operationId",
+          "profile",
+          "resultExpiresAt"
+        ]
+      },
+      "QuestionSnapshot": {
+        "type": "object",
+        "properties": {
+          "questionId": {
+            "$ref": "#/components/schemas/EntityId"
+          },
+          "version": {
+            "type": "string",
+            "minLength": 1
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "PRIMARY",
+              "ALTERNATE"
+            ]
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "questionId",
+          "version",
+          "role",
+          "text"
+        ]
+      },
+      "Sema": {
+        "type": "object",
+        "properties": {
+          "dailySemaId": {
+            "$ref": "#/components/schemas/EntityId"
+          },
+          "semaId": {
+            "$ref": "#/components/schemas/EntityId"
+          },
+          "version": {
+            "type": "string",
+            "minLength": 1
+          },
+          "semaCode": {
+            "type": "string",
+            "minLength": 1
+          },
+          "dateKst": {
+            "$ref": "#/components/schemas/KstDate"
+          },
+          "primaryQuestion": {
+            "$ref": "#/components/schemas/QuestionSnapshot"
+          },
+          "alternateQuestion": {
+            "$ref": "#/components/schemas/QuestionSnapshot"
+          }
+        },
+        "required": [
+          "dailySemaId",
+          "semaId",
+          "version",
+          "semaCode",
+          "dateKst",
+          "primaryQuestion",
+          "alternateQuestion"
+        ]
+      },
+      "ExcerptProfile": {
+        "type": "string",
+        "enum": [
+          "COMPACT",
+          "STANDARD",
+          "EXPANDED"
+        ]
+      },
+      "Excerpt": {
+        "type": "object",
+        "properties": {
+          "profile": {
+            "$ref": "#/components/schemas/ExcerptProfile"
+          },
+          "limits": {
+            "type": "object",
+            "properties": {
+              "maxGraphemes": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "maxLogicalLines": {
+                "type": "integer",
+                "minimum": 1
+              }
+            },
+            "required": [
+              "maxGraphemes",
+              "maxLogicalLines"
+            ]
+          },
+          "sourceRevision": {
+            "$ref": "#/components/schemas/Revision"
+          },
+          "text": {
+            "type": "string"
+          },
+          "isTruncated": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "profile",
+          "limits",
+          "sourceRevision",
+          "text",
+          "isTruncated"
+        ]
+      },
+      "ExcerptAvailability": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "state": {
+                "const": "AVAILABLE"
+              },
+              "value": {
+                "$ref": "#/components/schemas/Excerpt"
+              }
+            },
+            "required": [
+              "state",
+              "value"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "state": {
+                "const": "UNAVAILABLE"
+              },
+              "retryable": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "state",
+              "retryable"
+            ]
+          }
+        ]
+      },
+      "CountSnapshot": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "observedAt": {
+            "$ref": "#/components/schemas/Instant"
+          }
+        },
+        "required": [
+          "count",
+          "observedAt"
+        ]
+      },
+      "CountAvailability": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "state": {
+                "const": "AVAILABLE"
+              },
+              "value": {
+                "$ref": "#/components/schemas/CountSnapshot"
+              }
+            },
+            "required": [
+              "state",
+              "value"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "state": {
+                "const": "UNAVAILABLE"
+              },
+              "retryable": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "state",
+              "retryable"
+            ]
+          }
+        ]
+      },
+      "AnswerCore": {
+        "type": "object",
+        "properties": {
+          "answerId": {
+            "$ref": "#/components/schemas/EntityId"
+          },
+          "revision": {
+            "$ref": "#/components/schemas/Revision"
+          },
+          "dailySemaId": {
+            "$ref": "#/components/schemas/EntityId"
+          },
+          "semaId": {
+            "$ref": "#/components/schemas/EntityId"
+          },
+          "semaVersion": {
+            "type": "string",
+            "minLength": 1
+          },
+          "semaCode": {
+            "type": "string",
+            "minLength": 1
+          },
+          "createdAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "updatedAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "createdDateKst": {
+            "$ref": "#/components/schemas/KstDate"
+          },
+          "isEdited": {
+            "type": "boolean"
+          },
+          "question": {
+            "$ref": "#/components/schemas/QuestionSnapshot"
+          }
+        },
+        "required": [
+          "answerId",
+          "revision",
+          "dailySemaId",
+          "semaId",
+          "semaVersion",
+          "semaCode",
+          "createdAt",
+          "updatedAt",
+          "createdDateKst",
+          "isEdited",
+          "question"
+        ]
+      },
+      "AnswerDetail": {
+        "type": "object",
+        "properties": {
+          "answerId": {
+            "$ref": "#/components/schemas/EntityId"
+          },
+          "revision": {
+            "$ref": "#/components/schemas/Revision"
+          },
+          "dailySemaId": {
+            "$ref": "#/components/schemas/EntityId"
+          },
+          "semaId": {
+            "$ref": "#/components/schemas/EntityId"
+          },
+          "semaVersion": {
+            "type": "string",
+            "minLength": 1
+          },
+          "semaCode": {
+            "type": "string",
+            "minLength": 1
+          },
+          "createdAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "updatedAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "createdDateKst": {
+            "$ref": "#/components/schemas/KstDate"
+          },
+          "isEdited": {
+            "type": "boolean"
+          },
+          "question": {
+            "$ref": "#/components/schemas/QuestionSnapshot"
+          },
+          "content": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "answerId",
+          "revision",
+          "dailySemaId",
+          "semaId",
+          "semaVersion",
+          "semaCode",
+          "createdAt",
+          "updatedAt",
+          "createdDateKst",
+          "isEdited",
+          "question",
+          "content"
+        ]
+      },
+      "ExcerptAnswer": {
+        "type": "object",
+        "properties": {
+          "answerId": {
+            "$ref": "#/components/schemas/EntityId"
+          },
+          "revision": {
+            "$ref": "#/components/schemas/Revision"
+          },
+          "dailySemaId": {
+            "$ref": "#/components/schemas/EntityId"
+          },
+          "semaId": {
+            "$ref": "#/components/schemas/EntityId"
+          },
+          "semaVersion": {
+            "type": "string",
+            "minLength": 1
+          },
+          "semaCode": {
+            "type": "string",
+            "minLength": 1
+          },
+          "createdAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "updatedAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "createdDateKst": {
+            "$ref": "#/components/schemas/KstDate"
+          },
+          "isEdited": {
+            "type": "boolean"
+          },
+          "question": {
+            "$ref": "#/components/schemas/QuestionSnapshot"
+          },
+          "excerpt": {
+            "$ref": "#/components/schemas/ExcerptAvailability"
+          }
+        },
+        "required": [
+          "answerId",
+          "revision",
+          "dailySemaId",
+          "semaId",
+          "semaVersion",
+          "semaCode",
+          "createdAt",
+          "updatedAt",
+          "createdDateKst",
+          "isEdited",
+          "question",
+          "excerpt"
+        ]
+      },
+      "TodayReadModel": {
+        "type": "object",
+        "properties": {
+          "dateKst": {
+            "$ref": "#/components/schemas/KstDate"
+          },
+          "sema": {
+            "$ref": "#/components/schemas/Sema"
+          },
+          "answer": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "state": {
+                    "const": "UNANSWERED"
+                  }
+                },
+                "required": [
+                  "state"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "state": {
+                    "const": "ANSWERED"
+                  },
+                  "value": {
+                    "$ref": "#/components/schemas/ExcerptAnswer"
+                  }
+                },
+                "required": [
+                  "state",
+                  "value"
+                ]
+              }
+            ]
+          },
+          "activeAnswerCount": {
+            "$ref": "#/components/schemas/CountAvailability"
+          }
+        },
+        "required": [
+          "dateKst",
+          "sema",
+          "answer",
+          "activeAnswerCount"
+        ]
+      },
+      "AnswerPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExcerptAnswer"
+            },
+            "maxItems": 20
+          },
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pageSnapshotAt": {
+            "$ref": "#/components/schemas/Instant"
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor",
+          "pageSnapshotAt"
+        ]
+      },
+      "PrepareAnswerWriteInput": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "mode": {
+                "const": "CREATE"
+              },
+              "dailySemaId": {
+                "$ref": "#/components/schemas/EntityId"
+              },
+              "semaId": {
+                "$ref": "#/components/schemas/EntityId"
+              },
+              "semaVersion": {
+                "type": "string",
+                "minLength": 1
+              },
+              "questionId": {
+                "$ref": "#/components/schemas/EntityId"
+              },
+              "questionVersion": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "mode",
+              "dailySemaId",
+              "semaId",
+              "semaVersion",
+              "questionId",
+              "questionVersion"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "mode": {
+                "const": "UPDATE"
+              },
+              "answerId": {
+                "$ref": "#/components/schemas/EntityId"
+              },
+              "expectedRevision": {
+                "$ref": "#/components/schemas/Revision"
+              }
+            },
+            "required": [
+              "mode",
+              "answerId",
+              "expectedRevision"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "PrepareAnswerDeleteInput": {
+        "type": "object",
+        "properties": {
+          "answerId": {
+            "$ref": "#/components/schemas/EntityId"
+          },
+          "expectedRevision": {
+            "$ref": "#/components/schemas/Revision"
+          }
+        },
+        "required": [
+          "answerId",
+          "expectedRevision"
+        ],
+        "additionalProperties": false
+      },
+      "ExecuteCommandInput": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "ANSWER_WRITE"
+              },
+              "content": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "content"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "ANSWER_DELETE"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "ALL_DATA_DELETE"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "DomainError": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "code": {
+                "const": "ANSWER_CONTENT_INVALID"
+              },
+              "category": {
+                "const": "VALIDATION"
+              }
+            },
+            "required": [
+              "code",
+              "category"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "code": {
+                "const": "ANSWER_NOT_FOUND"
+              },
+              "category": {
+                "const": "VALIDATION"
+              }
+            },
+            "required": [
+              "code",
+              "category"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "code": {
+                "const": "REVISION_CONFLICT"
+              },
+              "category": {
+                "const": "CONFLICT"
+              }
+            },
+            "required": [
+              "code",
+              "category"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "code": {
+                "const": "COMMAND_CLOSED"
+              },
+              "category": {
+                "const": "CONFLICT"
+              }
+            },
+            "required": [
+              "code",
+              "category"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "code": {
+                "const": "COMMAND_EXPIRED"
+              },
+              "category": {
+                "const": "CONFLICT"
+              }
+            },
+            "required": [
+              "code",
+              "category"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "code": {
+                "const": "ALL_DATA_DELETE_FAILED"
+              },
+              "category": {
+                "const": "MAINTENANCE"
+              }
+            },
+            "required": [
+              "code",
+              "category"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "ApiError": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "code": {
+                "const": "INVALID_REQUEST"
+              },
+              "category": {
+                "const": "VALIDATION"
+              },
+              "requestId": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "code",
+              "category",
+              "requestId"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "code": {
+                "const": "ANONYMOUS_KEY_INVALID"
+              },
+              "category": {
+                "const": "AUTH"
+              },
+              "requestId": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "code",
+              "category",
+              "requestId"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "code": {
+                "const": "SESSION_RECOVERY_REQUIRED"
+              },
+              "category": {
+                "const": "AUTH"
+              },
+              "requestId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "recovery": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "const": "REESTABLISH_SESSION"
+                  },
+                  "recoveryAllowed": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "kind",
+                  "recoveryAllowed"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "code",
+              "category",
+              "requestId",
+              "recovery"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "code": {
+                "const": "SESSION_INVALID"
+              },
+              "category": {
+                "const": "AUTH"
+              },
+              "requestId": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "code",
+              "category",
+              "requestId"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "code": {
+                "const": "SESSION_SCOPE_INSUFFICIENT"
+              },
+              "category": {
+                "const": "AUTH"
+              },
+              "requestId": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "code",
+              "category",
+              "requestId"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "code": {
+                "const": "PASSENGER_NOT_FOUND"
+              },
+              "category": {
+                "const": "VALIDATION"
+              },
+              "requestId": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "code",
+              "category",
+              "requestId"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "code": {
+                "const": "PASSENGER_ALREADY_EXISTS"
+              },
+              "category": {
+                "const": "CONFLICT"
+              },
+              "requestId": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "code",
+              "category",
+              "requestId"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "code": {
+                "const": "CONSENT_REQUIRED"
+              },
+              "category": {
+                "const": "VALIDATION"
+              },
+              "requestId": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "code",
+              "category",
+              "requestId"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "code": {
+                "const": "POLICY_VERSION_CHANGED"
+              },
+              "category": {
+                "const": "VALIDATION"
+              },
+              "requestId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "recovery": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "const": "REFRESH_POLICIES"
+                  },
+                  "policies": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/ConsentPolicy"
+                    }
+                  }
+                },
+                "required": [
+                  "kind",
+                  "policies"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "code",
+              "category",
+              "requestId",
+              "recovery"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "code": {
+                "const": "NICKNAME_INVALID"
+              },
+              "category": {
+                "const": "VALIDATION"
+              },
+              "requestId": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "code",
+              "category",
+              "requestId"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "code": {
+                "const": "DATE_CHANGED"
+              },
+              "category": {
+                "const": "VALIDATION"
+              },
+              "requestId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "recovery": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "const": "REFRESH_TODAY"
+                  }
+                },
+                "required": [
+                  "kind"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "code",
+              "category",
+              "requestId",
+              "recovery"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "code": {
+                "const": "SEMA_REPLACED"
+              },
+              "category": {
+                "const": "VALIDATION"
+              },
+              "requestId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "recovery": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "const": "REFRESH_TODAY"
+                  }
+                },
+                "required": [
+                  "kind"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "code",
+              "category",
+              "requestId",
+              "recovery"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "code": {
+                "const": "ANSWER_ALREADY_EXISTS"
+              },
+              "category": {
+                "const": "CONFLICT"
+              },
+              "requestId": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "code",
+              "category",
+              "requestId"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "code": {
+                "const": "CURSOR_INVALID"
+              },
+              "category": {
+                "const": "VALIDATION"
+              },
+              "requestId": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "code",
+              "category",
+              "requestId"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "code": {
+                "const": "COMMAND_ALREADY_PENDING"
+              },
+              "category": {
+                "const": "CONFLICT"
+              },
+              "requestId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "recovery": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "const": "QUERY_COMMAND"
+                  },
+                  "ticketId": {
+                    "$ref": "#/components/schemas/EntityId"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "ticketId"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "code",
+              "category",
+              "requestId",
+              "recovery"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "code": {
+                "const": "COMMAND_NOT_FOUND"
+              },
+              "category": {
+                "const": "VALIDATION"
+              },
+              "requestId": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "code",
+              "category",
+              "requestId"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "code": {
+                "const": "COMMAND_PAYLOAD_MISMATCH"
+              },
+              "category": {
+                "const": "VALIDATION"
+              },
+              "requestId": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "code",
+              "category",
+              "requestId"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "code": {
+                "const": "IDEMPOTENCY_KEY_REUSED"
+              },
+              "category": {
+                "const": "CONFLICT"
+              },
+              "requestId": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "code",
+              "category",
+              "requestId"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "code": {
+                "const": "COMMAND_NOT_TERMINAL"
+              },
+              "category": {
+                "const": "CONFLICT"
+              },
+              "requestId": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "code",
+              "category",
+              "requestId"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "code": {
+                "const": "OPERATION_RESULT_EXPIRED"
+              },
+              "category": {
+                "const": "CONFLICT"
+              },
+              "requestId": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "code",
+              "category",
+              "requestId"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "code": {
+                "const": "RATE_LIMITED"
+              },
+              "category": {
+                "const": "RATE_LIMIT"
+              },
+              "requestId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "retryAfterSeconds": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "code",
+              "category",
+              "requestId"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "code": {
+                "const": "MAINTENANCE"
+              },
+              "category": {
+                "const": "MAINTENANCE"
+              },
+              "requestId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "retryAfterSeconds": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "code",
+              "category",
+              "requestId"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "code": {
+                "const": "INTERNAL_ERROR"
+              },
+              "category": {
+                "const": "MAINTENANCE"
+              },
+              "requestId": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "code",
+              "category",
+              "requestId"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "code": {
+                "const": "ANSWER_NOT_FOUND"
+              },
+              "category": {
+                "const": "VALIDATION"
+              },
+              "requestId": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "code",
+              "category",
+              "requestId"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "code": {
+                "const": "REVISION_CONFLICT"
+              },
+              "category": {
+                "const": "CONFLICT"
+              },
+              "requestId": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "code",
+              "category",
+              "requestId"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "ApiErrorEnvelope": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ApiError"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "additionalProperties": false
+      },
+      "AnswerWriteReceipt": {
+        "type": "object",
+        "properties": {
+          "answerId": {
+            "$ref": "#/components/schemas/EntityId"
+          },
+          "revision": {
+            "$ref": "#/components/schemas/Revision"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "CREATED",
+              "UPDATED"
+            ]
+          },
+          "acceptedDateKst": {
+            "$ref": "#/components/schemas/KstDate"
+          }
+        },
+        "required": [
+          "answerId",
+          "revision",
+          "mode",
+          "acceptedDateKst"
+        ]
+      },
+      "AnswerDeleteReceipt": {
+        "type": "object",
+        "properties": {
+          "answerId": {
+            "$ref": "#/components/schemas/EntityId"
+          },
+          "effect": {
+            "type": "string",
+            "enum": [
+              "DELETED",
+              "ALREADY_ABSENT"
+            ]
+          },
+          "deletedAt": {
+            "$ref": "#/components/schemas/Instant"
+          }
+        },
+        "required": [
+          "answerId",
+          "effect",
+          "deletedAt"
+        ]
+      },
+      "AnswerWritePresentation": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "state": {
+                "const": "AVAILABLE"
+              },
+              "value": {
+                "type": "object",
+                "properties": {
+                  "question": {
+                    "$ref": "#/components/schemas/QuestionSnapshot"
+                  },
+                  "excerpt": {
+                    "$ref": "#/components/schemas/ExcerptAvailability"
+                  },
+                  "activeAnswerCount": {
+                    "$ref": "#/components/schemas/CountAvailability"
+                  }
+                },
+                "required": [
+                  "question",
+                  "excerpt",
+                  "activeAnswerCount"
+                ]
+              }
+            },
+            "required": [
+              "state",
+              "value"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "state": {
+                "const": "UNAVAILABLE"
+              },
+              "retryable": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "state",
+              "retryable"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "state": {
+                "const": "ACKNOWLEDGED"
+              }
+            },
+            "required": [
+              "state"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "state": {
+                "const": "RESOURCE_CHANGED"
+              }
+            },
+            "required": [
+              "state"
+            ]
+          }
+        ]
+      },
+      "AnswerDeletePresentation": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "state": {
+                "const": "AVAILABLE"
+              },
+              "value": {
+                "type": "object",
+                "properties": {
+                  "activeAnswerCount": {
+                    "$ref": "#/components/schemas/CountAvailability"
+                  }
+                },
+                "required": [
+                  "activeAnswerCount"
+                ]
+              }
+            },
+            "required": [
+              "state",
+              "value"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "state": {
+                "const": "UNAVAILABLE"
+              },
+              "retryable": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "state",
+              "retryable"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "state": {
+                "const": "ACKNOWLEDGED"
+              }
+            },
+            "required": [
+              "state"
+            ]
+          }
+        ]
+      },
+      "Reconciliation": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "checkedAt": {
+                "$ref": "#/components/schemas/Instant"
+              },
+              "nextAction": {
+                "type": "string",
+                "enum": [
+                  "CREATE_CURRENT_DAY",
+                  "RETURN_TODAY",
+                  "RETURN_ARCHIVE"
+                ]
+              }
+            },
+            "required": [
+              "checkedAt",
+              "nextAction"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "checkedAt": {
+                "$ref": "#/components/schemas/Instant"
+              },
+              "nextAction": {
+                "const": "REVIEW_CURRENT_ANSWER"
+              },
+              "answerId": {
+                "$ref": "#/components/schemas/EntityId"
+              },
+              "revision": {
+                "$ref": "#/components/schemas/Revision"
+              }
+            },
+            "required": [
+              "checkedAt",
+              "nextAction",
+              "answerId",
+              "revision"
+            ]
+          }
+        ]
+      },
+      "AnswerWritePrepared": {
+        "type": "object",
+        "properties": {
+          "ticketId": {
+            "$ref": "#/components/schemas/EntityId"
+          },
+          "operationId": {
+            "$ref": "#/components/schemas/OperationId"
+          },
+          "kind": {
+            "const": "ANSWER_WRITE"
+          },
+          "target": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "mode": {
+                    "const": "CREATE"
+                  },
+                  "dailySemaId": {
+                    "$ref": "#/components/schemas/EntityId"
+                  }
+                },
+                "required": [
+                  "mode",
+                  "dailySemaId"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "mode": {
+                    "const": "UPDATE"
+                  },
+                  "answerId": {
+                    "$ref": "#/components/schemas/EntityId"
+                  },
+                  "expectedRevision": {
+                    "$ref": "#/components/schemas/Revision"
+                  }
+                },
+                "required": [
+                  "mode",
+                  "answerId",
+                  "expectedRevision"
+                ]
+              }
+            ]
+          },
+          "acceptedAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "acceptedDateKst": {
+            "$ref": "#/components/schemas/KstDate"
+          },
+          "executeBy": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "state": {
+            "const": "PREPARED"
+          }
+        },
+        "required": [
+          "ticketId",
+          "operationId",
+          "kind",
+          "target",
+          "acceptedAt",
+          "acceptedDateKst",
+          "executeBy",
+          "state"
+        ]
+      },
+      "AnswerWriteExecuting": {
+        "type": "object",
+        "properties": {
+          "ticketId": {
+            "$ref": "#/components/schemas/EntityId"
+          },
+          "operationId": {
+            "$ref": "#/components/schemas/OperationId"
+          },
+          "kind": {
+            "const": "ANSWER_WRITE"
+          },
+          "target": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "mode": {
+                    "const": "CREATE"
+                  },
+                  "dailySemaId": {
+                    "$ref": "#/components/schemas/EntityId"
+                  }
+                },
+                "required": [
+                  "mode",
+                  "dailySemaId"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "mode": {
+                    "const": "UPDATE"
+                  },
+                  "answerId": {
+                    "$ref": "#/components/schemas/EntityId"
+                  },
+                  "expectedRevision": {
+                    "$ref": "#/components/schemas/Revision"
+                  }
+                },
+                "required": [
+                  "mode",
+                  "answerId",
+                  "expectedRevision"
+                ]
+              }
+            ]
+          },
+          "acceptedAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "acceptedDateKst": {
+            "$ref": "#/components/schemas/KstDate"
+          },
+          "executeBy": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "state": {
+            "const": "EXECUTING"
+          }
+        },
+        "required": [
+          "ticketId",
+          "operationId",
+          "kind",
+          "target",
+          "acceptedAt",
+          "acceptedDateKst",
+          "executeBy",
+          "state"
+        ]
+      },
+      "AnswerWriteSucceeded": {
+        "type": "object",
+        "properties": {
+          "ticketId": {
+            "$ref": "#/components/schemas/EntityId"
+          },
+          "operationId": {
+            "$ref": "#/components/schemas/OperationId"
+          },
+          "kind": {
+            "const": "ANSWER_WRITE"
+          },
+          "target": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "mode": {
+                    "const": "CREATE"
+                  },
+                  "dailySemaId": {
+                    "$ref": "#/components/schemas/EntityId"
+                  }
+                },
+                "required": [
+                  "mode",
+                  "dailySemaId"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "mode": {
+                    "const": "UPDATE"
+                  },
+                  "answerId": {
+                    "$ref": "#/components/schemas/EntityId"
+                  },
+                  "expectedRevision": {
+                    "$ref": "#/components/schemas/Revision"
+                  }
+                },
+                "required": [
+                  "mode",
+                  "answerId",
+                  "expectedRevision"
+                ]
+              }
+            ]
+          },
+          "acceptedAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "acceptedDateKst": {
+            "$ref": "#/components/schemas/KstDate"
+          },
+          "executeBy": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "state": {
+            "const": "SUCCEEDED"
+          },
+          "completedAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "resultExpiresAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "proof": {
+            "$ref": "#/components/schemas/AnswerWriteReceipt"
+          },
+          "presentation": {
+            "$ref": "#/components/schemas/AnswerWritePresentation"
+          }
+        },
+        "required": [
+          "ticketId",
+          "operationId",
+          "kind",
+          "target",
+          "acceptedAt",
+          "acceptedDateKst",
+          "executeBy",
+          "state",
+          "completedAt",
+          "resultExpiresAt",
+          "proof",
+          "presentation"
+        ]
+      },
+      "AnswerWriteNotApplied": {
+        "type": "object",
+        "properties": {
+          "ticketId": {
+            "$ref": "#/components/schemas/EntityId"
+          },
+          "operationId": {
+            "$ref": "#/components/schemas/OperationId"
+          },
+          "kind": {
+            "const": "ANSWER_WRITE"
+          },
+          "target": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "mode": {
+                    "const": "CREATE"
+                  },
+                  "dailySemaId": {
+                    "$ref": "#/components/schemas/EntityId"
+                  }
+                },
+                "required": [
+                  "mode",
+                  "dailySemaId"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "mode": {
+                    "const": "UPDATE"
+                  },
+                  "answerId": {
+                    "$ref": "#/components/schemas/EntityId"
+                  },
+                  "expectedRevision": {
+                    "$ref": "#/components/schemas/Revision"
+                  }
+                },
+                "required": [
+                  "mode",
+                  "answerId",
+                  "expectedRevision"
+                ]
+              }
+            ]
+          },
+          "acceptedAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "acceptedDateKst": {
+            "$ref": "#/components/schemas/KstDate"
+          },
+          "executeBy": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "state": {
+            "const": "NOT_APPLIED"
+          },
+          "completedAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "resultExpiresAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "error": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "const": "ANSWER_CONTENT_INVALID"
+                  },
+                  "category": {
+                    "const": "VALIDATION"
+                  }
+                },
+                "required": [
+                  "code",
+                  "category"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "const": "ANSWER_NOT_FOUND"
+                  },
+                  "category": {
+                    "const": "VALIDATION"
+                  }
+                },
+                "required": [
+                  "code",
+                  "category"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "const": "REVISION_CONFLICT"
+                  },
+                  "category": {
+                    "const": "CONFLICT"
+                  }
+                },
+                "required": [
+                  "code",
+                  "category"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "const": "COMMAND_CLOSED"
+                  },
+                  "category": {
+                    "const": "CONFLICT"
+                  }
+                },
+                "required": [
+                  "code",
+                  "category"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "const": "COMMAND_EXPIRED"
+                  },
+                  "category": {
+                    "const": "CONFLICT"
+                  }
+                },
+                "required": [
+                  "code",
+                  "category"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          }
+        },
+        "required": [
+          "ticketId",
+          "operationId",
+          "kind",
+          "target",
+          "acceptedAt",
+          "acceptedDateKst",
+          "executeBy",
+          "state",
+          "completedAt",
+          "resultExpiresAt",
+          "error"
+        ]
+      },
+      "AnswerWriteClosedOutcomeUnavailable": {
+        "type": "object",
+        "properties": {
+          "ticketId": {
+            "$ref": "#/components/schemas/EntityId"
+          },
+          "operationId": {
+            "$ref": "#/components/schemas/OperationId"
+          },
+          "kind": {
+            "const": "ANSWER_WRITE"
+          },
+          "target": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "mode": {
+                    "const": "CREATE"
+                  },
+                  "dailySemaId": {
+                    "$ref": "#/components/schemas/EntityId"
+                  }
+                },
+                "required": [
+                  "mode",
+                  "dailySemaId"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "mode": {
+                    "const": "UPDATE"
+                  },
+                  "answerId": {
+                    "$ref": "#/components/schemas/EntityId"
+                  },
+                  "expectedRevision": {
+                    "$ref": "#/components/schemas/Revision"
+                  }
+                },
+                "required": [
+                  "mode",
+                  "answerId",
+                  "expectedRevision"
+                ]
+              }
+            ]
+          },
+          "acceptedAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "acceptedDateKst": {
+            "$ref": "#/components/schemas/KstDate"
+          },
+          "executeBy": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "state": {
+            "const": "CLOSED_OUTCOME_UNAVAILABLE"
+          },
+          "executionSealed": {
+            "const": true
+          },
+          "reconciliation": {
+            "$ref": "#/components/schemas/Reconciliation"
+          }
+        },
+        "required": [
+          "ticketId",
+          "operationId",
+          "kind",
+          "target",
+          "acceptedAt",
+          "acceptedDateKst",
+          "executeBy",
+          "state",
+          "executionSealed"
+        ]
+      },
+      "AnswerDeletePrepared": {
+        "type": "object",
+        "properties": {
+          "ticketId": {
+            "$ref": "#/components/schemas/EntityId"
+          },
+          "operationId": {
+            "$ref": "#/components/schemas/OperationId"
+          },
+          "kind": {
+            "const": "ANSWER_DELETE"
+          },
+          "target": {
+            "type": "object",
+            "properties": {
+              "answerId": {
+                "$ref": "#/components/schemas/EntityId"
+              },
+              "expectedRevision": {
+                "$ref": "#/components/schemas/Revision"
+              }
+            },
+            "required": [
+              "answerId",
+              "expectedRevision"
+            ]
+          },
+          "acceptedAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "acceptedDateKst": {
+            "$ref": "#/components/schemas/KstDate"
+          },
+          "executeBy": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "state": {
+            "const": "PREPARED"
+          }
+        },
+        "required": [
+          "ticketId",
+          "operationId",
+          "kind",
+          "target",
+          "acceptedAt",
+          "acceptedDateKst",
+          "executeBy",
+          "state"
+        ]
+      },
+      "AnswerDeleteExecuting": {
+        "type": "object",
+        "properties": {
+          "ticketId": {
+            "$ref": "#/components/schemas/EntityId"
+          },
+          "operationId": {
+            "$ref": "#/components/schemas/OperationId"
+          },
+          "kind": {
+            "const": "ANSWER_DELETE"
+          },
+          "target": {
+            "type": "object",
+            "properties": {
+              "answerId": {
+                "$ref": "#/components/schemas/EntityId"
+              },
+              "expectedRevision": {
+                "$ref": "#/components/schemas/Revision"
+              }
+            },
+            "required": [
+              "answerId",
+              "expectedRevision"
+            ]
+          },
+          "acceptedAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "acceptedDateKst": {
+            "$ref": "#/components/schemas/KstDate"
+          },
+          "executeBy": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "state": {
+            "const": "EXECUTING"
+          }
+        },
+        "required": [
+          "ticketId",
+          "operationId",
+          "kind",
+          "target",
+          "acceptedAt",
+          "acceptedDateKst",
+          "executeBy",
+          "state"
+        ]
+      },
+      "AnswerDeleteSucceeded": {
+        "type": "object",
+        "properties": {
+          "ticketId": {
+            "$ref": "#/components/schemas/EntityId"
+          },
+          "operationId": {
+            "$ref": "#/components/schemas/OperationId"
+          },
+          "kind": {
+            "const": "ANSWER_DELETE"
+          },
+          "target": {
+            "type": "object",
+            "properties": {
+              "answerId": {
+                "$ref": "#/components/schemas/EntityId"
+              },
+              "expectedRevision": {
+                "$ref": "#/components/schemas/Revision"
+              }
+            },
+            "required": [
+              "answerId",
+              "expectedRevision"
+            ]
+          },
+          "acceptedAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "acceptedDateKst": {
+            "$ref": "#/components/schemas/KstDate"
+          },
+          "executeBy": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "state": {
+            "const": "SUCCEEDED"
+          },
+          "completedAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "resultExpiresAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "proof": {
+            "$ref": "#/components/schemas/AnswerDeleteReceipt"
+          },
+          "presentation": {
+            "$ref": "#/components/schemas/AnswerDeletePresentation"
+          }
+        },
+        "required": [
+          "ticketId",
+          "operationId",
+          "kind",
+          "target",
+          "acceptedAt",
+          "acceptedDateKst",
+          "executeBy",
+          "state",
+          "completedAt",
+          "resultExpiresAt",
+          "proof",
+          "presentation"
+        ]
+      },
+      "AnswerDeleteNotApplied": {
+        "type": "object",
+        "properties": {
+          "ticketId": {
+            "$ref": "#/components/schemas/EntityId"
+          },
+          "operationId": {
+            "$ref": "#/components/schemas/OperationId"
+          },
+          "kind": {
+            "const": "ANSWER_DELETE"
+          },
+          "target": {
+            "type": "object",
+            "properties": {
+              "answerId": {
+                "$ref": "#/components/schemas/EntityId"
+              },
+              "expectedRevision": {
+                "$ref": "#/components/schemas/Revision"
+              }
+            },
+            "required": [
+              "answerId",
+              "expectedRevision"
+            ]
+          },
+          "acceptedAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "acceptedDateKst": {
+            "$ref": "#/components/schemas/KstDate"
+          },
+          "executeBy": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "state": {
+            "const": "NOT_APPLIED"
+          },
+          "completedAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "resultExpiresAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "error": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "const": "ANSWER_NOT_FOUND"
+                  },
+                  "category": {
+                    "const": "VALIDATION"
+                  }
+                },
+                "required": [
+                  "code",
+                  "category"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "const": "REVISION_CONFLICT"
+                  },
+                  "category": {
+                    "const": "CONFLICT"
+                  }
+                },
+                "required": [
+                  "code",
+                  "category"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "const": "COMMAND_CLOSED"
+                  },
+                  "category": {
+                    "const": "CONFLICT"
+                  }
+                },
+                "required": [
+                  "code",
+                  "category"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "const": "COMMAND_EXPIRED"
+                  },
+                  "category": {
+                    "const": "CONFLICT"
+                  }
+                },
+                "required": [
+                  "code",
+                  "category"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          }
+        },
+        "required": [
+          "ticketId",
+          "operationId",
+          "kind",
+          "target",
+          "acceptedAt",
+          "acceptedDateKst",
+          "executeBy",
+          "state",
+          "completedAt",
+          "resultExpiresAt",
+          "error"
+        ]
+      },
+      "AnswerDeleteClosedOutcomeUnavailable": {
+        "type": "object",
+        "properties": {
+          "ticketId": {
+            "$ref": "#/components/schemas/EntityId"
+          },
+          "operationId": {
+            "$ref": "#/components/schemas/OperationId"
+          },
+          "kind": {
+            "const": "ANSWER_DELETE"
+          },
+          "target": {
+            "type": "object",
+            "properties": {
+              "answerId": {
+                "$ref": "#/components/schemas/EntityId"
+              },
+              "expectedRevision": {
+                "$ref": "#/components/schemas/Revision"
+              }
+            },
+            "required": [
+              "answerId",
+              "expectedRevision"
+            ]
+          },
+          "acceptedAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "acceptedDateKst": {
+            "$ref": "#/components/schemas/KstDate"
+          },
+          "executeBy": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "state": {
+            "const": "CLOSED_OUTCOME_UNAVAILABLE"
+          },
+          "executionSealed": {
+            "const": true
+          },
+          "reconciliation": {
+            "$ref": "#/components/schemas/Reconciliation"
+          }
+        },
+        "required": [
+          "ticketId",
+          "operationId",
+          "kind",
+          "target",
+          "acceptedAt",
+          "acceptedDateKst",
+          "executeBy",
+          "state",
+          "executionSealed"
+        ]
+      },
+      "AllDataDeletePrepared": {
+        "type": "object",
+        "properties": {
+          "ticketId": {
+            "$ref": "#/components/schemas/EntityId"
+          },
+          "operationId": {
+            "$ref": "#/components/schemas/OperationId"
+          },
+          "kind": {
+            "const": "ALL_DATA_DELETE"
+          },
+          "target": {
+            "type": "object",
+            "properties": {},
+            "required": []
+          },
+          "acceptedAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "acceptedDateKst": {
+            "$ref": "#/components/schemas/KstDate"
+          },
+          "executeBy": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "state": {
+            "const": "PREPARED"
+          }
+        },
+        "required": [
+          "ticketId",
+          "operationId",
+          "kind",
+          "target",
+          "acceptedAt",
+          "acceptedDateKst",
+          "executeBy",
+          "state"
+        ]
+      },
+      "AllDataDeleteExecuting": {
+        "type": "object",
+        "properties": {
+          "ticketId": {
+            "$ref": "#/components/schemas/EntityId"
+          },
+          "operationId": {
+            "$ref": "#/components/schemas/OperationId"
+          },
+          "kind": {
+            "const": "ALL_DATA_DELETE"
+          },
+          "target": {
+            "type": "object",
+            "properties": {},
+            "required": []
+          },
+          "acceptedAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "acceptedDateKst": {
+            "$ref": "#/components/schemas/KstDate"
+          },
+          "executeBy": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "state": {
+            "const": "EXECUTING"
+          }
+        },
+        "required": [
+          "ticketId",
+          "operationId",
+          "kind",
+          "target",
+          "acceptedAt",
+          "acceptedDateKst",
+          "executeBy",
+          "state"
+        ]
+      },
+      "AllDataDeleteSucceeded": {
+        "type": "object",
+        "properties": {
+          "ticketId": {
+            "$ref": "#/components/schemas/EntityId"
+          },
+          "operationId": {
+            "$ref": "#/components/schemas/OperationId"
+          },
+          "kind": {
+            "const": "ALL_DATA_DELETE"
+          },
+          "target": {
+            "type": "object",
+            "properties": {},
+            "required": []
+          },
+          "acceptedAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "acceptedDateKst": {
+            "$ref": "#/components/schemas/KstDate"
+          },
+          "executeBy": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "state": {
+            "const": "SUCCEEDED"
+          },
+          "completedAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "resultExpiresAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "proof": {
+            "$ref": "#/components/schemas/AllDataDeleteReceipt"
+          }
+        },
+        "required": [
+          "ticketId",
+          "operationId",
+          "kind",
+          "target",
+          "acceptedAt",
+          "acceptedDateKst",
+          "executeBy",
+          "state",
+          "completedAt",
+          "resultExpiresAt",
+          "proof"
+        ]
+      },
+      "AllDataDeleteNotApplied": {
+        "type": "object",
+        "properties": {
+          "ticketId": {
+            "$ref": "#/components/schemas/EntityId"
+          },
+          "operationId": {
+            "$ref": "#/components/schemas/OperationId"
+          },
+          "kind": {
+            "const": "ALL_DATA_DELETE"
+          },
+          "target": {
+            "type": "object",
+            "properties": {},
+            "required": []
+          },
+          "acceptedAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "acceptedDateKst": {
+            "$ref": "#/components/schemas/KstDate"
+          },
+          "executeBy": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "state": {
+            "const": "NOT_APPLIED"
+          },
+          "completedAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "resultExpiresAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "error": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "const": "COMMAND_CLOSED"
+                  },
+                  "category": {
+                    "const": "CONFLICT"
+                  }
+                },
+                "required": [
+                  "code",
+                  "category"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "const": "COMMAND_EXPIRED"
+                  },
+                  "category": {
+                    "const": "CONFLICT"
+                  }
+                },
+                "required": [
+                  "code",
+                  "category"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "const": "ALL_DATA_DELETE_FAILED"
+                  },
+                  "category": {
+                    "const": "MAINTENANCE"
+                  }
+                },
+                "required": [
+                  "code",
+                  "category"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          }
+        },
+        "required": [
+          "ticketId",
+          "operationId",
+          "kind",
+          "target",
+          "acceptedAt",
+          "acceptedDateKst",
+          "executeBy",
+          "state",
+          "completedAt",
+          "resultExpiresAt",
+          "error"
+        ]
+      },
+      "AllDataDeleteClosedOutcomeUnavailable": {
+        "type": "object",
+        "properties": {
+          "ticketId": {
+            "$ref": "#/components/schemas/EntityId"
+          },
+          "operationId": {
+            "$ref": "#/components/schemas/OperationId"
+          },
+          "kind": {
+            "const": "ALL_DATA_DELETE"
+          },
+          "target": {
+            "type": "object",
+            "properties": {},
+            "required": []
+          },
+          "acceptedAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "acceptedDateKst": {
+            "$ref": "#/components/schemas/KstDate"
+          },
+          "executeBy": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "state": {
+            "const": "CLOSED_OUTCOME_UNAVAILABLE"
+          },
+          "executionSealed": {
+            "const": true
+          },
+          "reconciliation": {
+            "$ref": "#/components/schemas/Reconciliation"
+          }
+        },
+        "required": [
+          "ticketId",
+          "operationId",
+          "kind",
+          "target",
+          "acceptedAt",
+          "acceptedDateKst",
+          "executeBy",
+          "state",
+          "executionSealed"
+        ]
+      },
+      "AnswerWriteCommandResult": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/AnswerWritePrepared"
+          },
+          {
+            "$ref": "#/components/schemas/AnswerWriteExecuting"
+          },
+          {
+            "$ref": "#/components/schemas/AnswerWriteSucceeded"
+          },
+          {
+            "$ref": "#/components/schemas/AnswerWriteNotApplied"
+          },
+          {
+            "$ref": "#/components/schemas/AnswerWriteClosedOutcomeUnavailable"
+          }
+        ]
+      },
+      "AnswerDeleteCommandResult": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/AnswerDeletePrepared"
+          },
+          {
+            "$ref": "#/components/schemas/AnswerDeleteExecuting"
+          },
+          {
+            "$ref": "#/components/schemas/AnswerDeleteSucceeded"
+          },
+          {
+            "$ref": "#/components/schemas/AnswerDeleteNotApplied"
+          },
+          {
+            "$ref": "#/components/schemas/AnswerDeleteClosedOutcomeUnavailable"
+          }
+        ]
+      },
+      "AllDataDeleteCommandResult": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/AllDataDeletePrepared"
+          },
+          {
+            "$ref": "#/components/schemas/AllDataDeleteExecuting"
+          },
+          {
+            "$ref": "#/components/schemas/AllDataDeleteSucceeded"
+          },
+          {
+            "$ref": "#/components/schemas/AllDataDeleteNotApplied"
+          },
+          {
+            "$ref": "#/components/schemas/AllDataDeleteClosedOutcomeUnavailable"
+          }
+        ]
+      },
+      "CommandTicket": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/AnswerWritePrepared"
+          },
+          {
+            "$ref": "#/components/schemas/AnswerDeletePrepared"
+          },
+          {
+            "$ref": "#/components/schemas/AllDataDeletePrepared"
+          }
+        ]
+      },
+      "ExecutingCommandResult": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/AnswerWriteExecuting"
+          },
+          {
+            "$ref": "#/components/schemas/AnswerDeleteExecuting"
+          },
+          {
+            "$ref": "#/components/schemas/AllDataDeleteExecuting"
+          }
+        ]
+      },
+      "SettledCommandResult": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/AnswerWriteSucceeded"
+          },
+          {
+            "$ref": "#/components/schemas/AnswerWriteNotApplied"
+          },
+          {
+            "$ref": "#/components/schemas/AnswerWriteClosedOutcomeUnavailable"
+          },
+          {
+            "$ref": "#/components/schemas/AnswerDeleteSucceeded"
+          },
+          {
+            "$ref": "#/components/schemas/AnswerDeleteNotApplied"
+          },
+          {
+            "$ref": "#/components/schemas/AnswerDeleteClosedOutcomeUnavailable"
+          },
+          {
+            "$ref": "#/components/schemas/AllDataDeleteSucceeded"
+          },
+          {
+            "$ref": "#/components/schemas/AllDataDeleteNotApplied"
+          },
+          {
+            "$ref": "#/components/schemas/AllDataDeleteClosedOutcomeUnavailable"
+          }
+        ]
+      },
+      "CommandResult": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/AnswerWritePrepared"
+          },
+          {
+            "$ref": "#/components/schemas/AnswerWriteExecuting"
+          },
+          {
+            "$ref": "#/components/schemas/AnswerWriteSucceeded"
+          },
+          {
+            "$ref": "#/components/schemas/AnswerWriteNotApplied"
+          },
+          {
+            "$ref": "#/components/schemas/AnswerWriteClosedOutcomeUnavailable"
+          },
+          {
+            "$ref": "#/components/schemas/AnswerDeletePrepared"
+          },
+          {
+            "$ref": "#/components/schemas/AnswerDeleteExecuting"
+          },
+          {
+            "$ref": "#/components/schemas/AnswerDeleteSucceeded"
+          },
+          {
+            "$ref": "#/components/schemas/AnswerDeleteNotApplied"
+          },
+          {
+            "$ref": "#/components/schemas/AnswerDeleteClosedOutcomeUnavailable"
+          },
+          {
+            "$ref": "#/components/schemas/AllDataDeletePrepared"
+          },
+          {
+            "$ref": "#/components/schemas/AllDataDeleteExecuting"
+          },
+          {
+            "$ref": "#/components/schemas/AllDataDeleteSucceeded"
+          },
+          {
+            "$ref": "#/components/schemas/AllDataDeleteNotApplied"
+          },
+          {
+            "$ref": "#/components/schemas/AllDataDeleteClosedOutcomeUnavailable"
+          }
+        ]
+      },
+      "AnswerWriteClosedOutcomeUnavailableReconciled": {
+        "type": "object",
+        "properties": {
+          "ticketId": {
+            "$ref": "#/components/schemas/EntityId"
+          },
+          "operationId": {
+            "$ref": "#/components/schemas/OperationId"
+          },
+          "kind": {
+            "const": "ANSWER_WRITE"
+          },
+          "target": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "mode": {
+                    "const": "CREATE"
+                  },
+                  "dailySemaId": {
+                    "$ref": "#/components/schemas/EntityId"
+                  }
+                },
+                "required": [
+                  "mode",
+                  "dailySemaId"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "mode": {
+                    "const": "UPDATE"
+                  },
+                  "answerId": {
+                    "$ref": "#/components/schemas/EntityId"
+                  },
+                  "expectedRevision": {
+                    "$ref": "#/components/schemas/Revision"
+                  }
+                },
+                "required": [
+                  "mode",
+                  "answerId",
+                  "expectedRevision"
+                ]
+              }
+            ]
+          },
+          "acceptedAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "acceptedDateKst": {
+            "$ref": "#/components/schemas/KstDate"
+          },
+          "executeBy": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "state": {
+            "const": "CLOSED_OUTCOME_UNAVAILABLE"
+          },
+          "executionSealed": {
+            "const": true
+          },
+          "reconciliation": {
+            "$ref": "#/components/schemas/Reconciliation"
+          }
+        },
+        "required": [
+          "ticketId",
+          "operationId",
+          "kind",
+          "target",
+          "acceptedAt",
+          "acceptedDateKst",
+          "executeBy",
+          "state",
+          "executionSealed",
+          "reconciliation"
+        ]
+      },
+      "AnswerDeleteClosedOutcomeUnavailableReconciled": {
+        "type": "object",
+        "properties": {
+          "ticketId": {
+            "$ref": "#/components/schemas/EntityId"
+          },
+          "operationId": {
+            "$ref": "#/components/schemas/OperationId"
+          },
+          "kind": {
+            "const": "ANSWER_DELETE"
+          },
+          "target": {
+            "type": "object",
+            "properties": {
+              "answerId": {
+                "$ref": "#/components/schemas/EntityId"
+              },
+              "expectedRevision": {
+                "$ref": "#/components/schemas/Revision"
+              }
+            },
+            "required": [
+              "answerId",
+              "expectedRevision"
+            ]
+          },
+          "acceptedAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "acceptedDateKst": {
+            "$ref": "#/components/schemas/KstDate"
+          },
+          "executeBy": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "state": {
+            "const": "CLOSED_OUTCOME_UNAVAILABLE"
+          },
+          "executionSealed": {
+            "const": true
+          },
+          "reconciliation": {
+            "$ref": "#/components/schemas/Reconciliation"
+          }
+        },
+        "required": [
+          "ticketId",
+          "operationId",
+          "kind",
+          "target",
+          "acceptedAt",
+          "acceptedDateKst",
+          "executeBy",
+          "state",
+          "executionSealed",
+          "reconciliation"
+        ]
+      },
+      "AllDataDeleteClosedOutcomeUnavailableReconciled": {
+        "type": "object",
+        "properties": {
+          "ticketId": {
+            "$ref": "#/components/schemas/EntityId"
+          },
+          "operationId": {
+            "$ref": "#/components/schemas/OperationId"
+          },
+          "kind": {
+            "const": "ALL_DATA_DELETE"
+          },
+          "target": {
+            "type": "object",
+            "properties": {},
+            "required": []
+          },
+          "acceptedAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "acceptedDateKst": {
+            "$ref": "#/components/schemas/KstDate"
+          },
+          "executeBy": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "state": {
+            "const": "CLOSED_OUTCOME_UNAVAILABLE"
+          },
+          "executionSealed": {
+            "const": true
+          },
+          "reconciliation": {
+            "$ref": "#/components/schemas/Reconciliation"
+          }
+        },
+        "required": [
+          "ticketId",
+          "operationId",
+          "kind",
+          "target",
+          "acceptedAt",
+          "acceptedDateKst",
+          "executeBy",
+          "state",
+          "executionSealed",
+          "reconciliation"
+        ]
+      },
+      "ClosureResult": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/AnswerWriteSucceeded"
+          },
+          {
+            "$ref": "#/components/schemas/AnswerWriteNotApplied"
+          },
+          {
+            "$ref": "#/components/schemas/AnswerWriteClosedOutcomeUnavailableReconciled"
+          },
+          {
+            "$ref": "#/components/schemas/AnswerDeleteSucceeded"
+          },
+          {
+            "$ref": "#/components/schemas/AnswerDeleteNotApplied"
+          },
+          {
+            "$ref": "#/components/schemas/AnswerDeleteClosedOutcomeUnavailableReconciled"
+          },
+          {
+            "$ref": "#/components/schemas/AllDataDeleteSucceeded"
+          },
+          {
+            "$ref": "#/components/schemas/AllDataDeleteNotApplied"
+          },
+          {
+            "$ref": "#/components/schemas/AllDataDeleteClosedOutcomeUnavailableReconciled"
+          }
+        ]
+      },
+      "ProductEventInput": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "eventId": {
+                "$ref": "#/components/schemas/OperationId"
+              },
+              "schemaVersion": {
+                "const": 1
+              },
+              "name": {
+                "const": "onboarding_started"
+              },
+              "occurredAt": {
+                "$ref": "#/components/schemas/Instant"
+              },
+              "properties": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "eventId",
+              "schemaVersion",
+              "name",
+              "occurredAt",
+              "properties"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "eventId": {
+                "$ref": "#/components/schemas/OperationId"
+              },
+              "schemaVersion": {
+                "const": 1
+              },
+              "name": {
+                "const": "onboarding_skipped"
+              },
+              "occurredAt": {
+                "$ref": "#/components/schemas/Instant"
+              },
+              "properties": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "eventId",
+              "schemaVersion",
+              "name",
+              "occurredAt",
+              "properties"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "eventId": {
+                "$ref": "#/components/schemas/OperationId"
+              },
+              "schemaVersion": {
+                "const": 1
+              },
+              "name": {
+                "const": "today_sema_viewed"
+              },
+              "occurredAt": {
+                "$ref": "#/components/schemas/Instant"
+              },
+              "properties": {
+                "type": "object",
+                "properties": {
+                  "answerState": {
+                    "type": "string",
+                    "enum": [
+                      "UNANSWERED",
+                      "ANSWERED"
+                    ]
+                  }
+                },
+                "required": [
+                  "answerState"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "eventId",
+              "schemaVersion",
+              "name",
+              "occurredAt",
+              "properties"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "eventId": {
+                "$ref": "#/components/schemas/OperationId"
+              },
+              "schemaVersion": {
+                "const": 1
+              },
+              "name": {
+                "const": "alternate_question_viewed"
+              },
+              "occurredAt": {
+                "$ref": "#/components/schemas/Instant"
+              },
+              "properties": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "eventId",
+              "schemaVersion",
+              "name",
+              "occurredAt",
+              "properties"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "eventId": {
+                "$ref": "#/components/schemas/OperationId"
+              },
+              "schemaVersion": {
+                "const": 1
+              },
+              "name": {
+                "const": "sema_question_changed"
+              },
+              "occurredAt": {
+                "$ref": "#/components/schemas/Instant"
+              },
+              "properties": {
+                "type": "object",
+                "properties": {
+                  "from": {
+                    "type": "string",
+                    "enum": [
+                      "PRIMARY",
+                      "ALTERNATE"
+                    ]
+                  },
+                  "to": {
+                    "type": "string",
+                    "enum": [
+                      "PRIMARY",
+                      "ALTERNATE"
+                    ]
+                  }
+                },
+                "required": [
+                  "from",
+                  "to"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "eventId",
+              "schemaVersion",
+              "name",
+              "occurredAt",
+              "properties"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "eventId": {
+                "$ref": "#/components/schemas/OperationId"
+              },
+              "schemaVersion": {
+                "const": 1
+              },
+              "name": {
+                "const": "answer_started"
+              },
+              "occurredAt": {
+                "$ref": "#/components/schemas/Instant"
+              },
+              "properties": {
+                "type": "object",
+                "properties": {
+                  "mode": {
+                    "type": "string",
+                    "enum": [
+                      "CREATE",
+                      "UPDATE"
+                    ]
+                  }
+                },
+                "required": [
+                  "mode"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "eventId",
+              "schemaVersion",
+              "name",
+              "occurredAt",
+              "properties"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "eventId": {
+                "$ref": "#/components/schemas/OperationId"
+              },
+              "schemaVersion": {
+                "const": 1
+              },
+              "name": {
+                "const": "answer_save_failed"
+              },
+              "occurredAt": {
+                "$ref": "#/components/schemas/Instant"
+              },
+              "properties": {
+                "type": "object",
+                "properties": {
+                  "mode": {
+                    "type": "string",
+                    "enum": [
+                      "CREATE",
+                      "UPDATE"
+                    ]
+                  },
+                  "certainty": {
+                    "type": "string",
+                    "enum": [
+                      "NOT_APPLIED",
+                      "UNKNOWN"
+                    ]
+                  },
+                  "reasonCode": {
+                    "type": "string",
+                    "enum": [
+                      "VALIDATION_REJECTED",
+                      "DATE_CHANGED",
+                      "CONTENT_REPLACED",
+                      "CONFLICT",
+                      "NETWORK_UNCONFIRMED",
+                      "SERVER_UNAVAILABLE",
+                      "PROTOCOL_UNCONFIRMED",
+                      "COMMAND_CLOSED",
+                      "COMMAND_EXPIRED"
+                    ]
+                  }
+                },
+                "required": [
+                  "mode",
+                  "certainty",
+                  "reasonCode"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "eventId",
+              "schemaVersion",
+              "name",
+              "occurredAt",
+              "properties"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "eventId": {
+                "$ref": "#/components/schemas/OperationId"
+              },
+              "schemaVersion": {
+                "const": 1
+              },
+              "name": {
+                "const": "archive_viewed"
+              },
+              "occurredAt": {
+                "$ref": "#/components/schemas/Instant"
+              },
+              "properties": {
+                "type": "object",
+                "properties": {
+                  "state": {
+                    "type": "string",
+                    "enum": [
+                      "EMPTY",
+                      "NON_EMPTY"
+                    ]
+                  }
+                },
+                "required": [
+                  "state"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "eventId",
+              "schemaVersion",
+              "name",
+              "occurredAt",
+              "properties"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "ProductEventBatchInput": {
+        "type": "object",
+        "properties": {
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProductEventInput"
+            },
+            "minItems": 1,
+            "maxItems": 20
+          },
+          "appVersion": {
+            "type": "string",
+            "minLength": 1
+          },
+          "platform": {
+            "type": "string",
+            "enum": [
+              "IOS",
+              "ANDROID"
+            ]
+          }
+        },
+        "required": [
+          "events"
+        ],
+        "additionalProperties": false
+      }
+    }
+  }
+}

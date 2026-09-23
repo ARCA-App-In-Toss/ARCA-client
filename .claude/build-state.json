@@ -1,0 +1,73 @@
+{
+  "meta": {
+    "harness_version": "1.1.0-arca",
+    "phase": "BUILD",
+    "project": "arca",
+    "spec_index": ".claude/spec/00_INDEX.md",
+    "plan_source": ".claude/spec/06_FRONTEND_SPEC.md#12-구현-순서",
+    "note": "checklist는 06 §12의 단계다. 앞선 미승인·manual-review를 먼저 처리하며, 단계 안에서는 작은 작업 단위 하나씩 구현한다."
+  },
+  "checklist": [
+    {
+      "id": "step-1-intake",
+      "status": "TODO",
+      "phase_file": ".claude/resource/phases/step-1-intake.md",
+      "scope": ["repository", "toolchain", "contracts", "ui-candidates"],
+      "required_reviewers": []
+    },
+    {
+      "id": "step-2-minimum-boundary",
+      "status": "TODO",
+      "phase_file": ".claude/resource/phases/step-2-minimum-boundary.md",
+      "scope": ["F00", "F90", "session", "generation", "journal", "routes"],
+      "required_reviewers": ["spec", "architecture", "experience"]
+    },
+    {
+      "id": "step-3-core-experience",
+      "status": "TODO",
+      "phase_file": ".claude/resource/phases/step-3-core-experience.md",
+      "scope": ["F10", "F11", "F12", "F20", "F21", "draft", "command"],
+      "required_reviewers": ["spec", "architecture", "experience"]
+    },
+    {
+      "id": "step-4-onboarding",
+      "status": "TODO",
+      "phase_file": ".claude/resource/phases/step-4-onboarding.md",
+      "scope": ["F01", "F02", "F03", "OP-003", "OP-004"],
+      "required_reviewers": ["spec", "architecture", "experience"]
+    },
+    {
+      "id": "step-5-recovery",
+      "status": "TODO",
+      "phase_file": ".claude/resource/phases/step-5-recovery.md",
+      "scope": ["F13", "OP-015", "session-refresh", "expiry"],
+      "required_reviewers": ["spec", "architecture", "experience"]
+    },
+    {
+      "id": "step-6-archive-management",
+      "status": "TODO",
+      "phase_file": ".claude/resource/phases/step-6-archive-management.md",
+      "scope": ["F20", "F21", "F22", "F23", "pagination", "edit", "delete"],
+      "required_reviewers": ["spec", "architecture", "experience"]
+    },
+    {
+      "id": "step-7-settings-delete",
+      "status": "TODO",
+      "phase_file": ".claude/resource/phases/step-7-settings-delete.md",
+      "scope": ["F30", "F31", "generation-fence", "local-cleanup"],
+      "required_reviewers": ["spec", "architecture", "experience"]
+    },
+    {
+      "id": "step-8-integration",
+      "status": "TODO",
+      "phase_file": ".claude/resource/phases/step-8-integration.md",
+      "scope": ["real-server", "real-device", "operations", "release-evidence"],
+      "required_reviewers": ["spec", "architecture", "experience"]
+    }
+  ],
+  "retry": {},
+  "manual_review": [],
+  "approvals": {},
+  "log": []
+}
+

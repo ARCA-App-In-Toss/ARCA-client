@@ -1,0 +1,4 @@
+# 실제 토큰 SSOT 파일이 Step 1에서 달라지면 근거와 함께 이 목록을 갱신한다.
+src/ui/tokens.css
+src/app/styles/tokens.css
+
