@@ -25,7 +25,7 @@ const area = { kind: 'generation', ref: 'area-cmd' } as const;
 /** Test hook: override the fence (undefined = use the setup's owner). */
 const fenceOverride: { value?: { ownerScope: string; generation: string | null } | null | undefined } = {};
 
-async function setup() {
+async function setup(options: { deletionFenced?: () => boolean } = {}) {
   const world = createMockWorld('server.activeUnanswered');
   server.use(...createHandlers(world));
   const storage = createFakeStorage();
@@ -54,6 +54,7 @@ async function setup() {
     syncCurrentResources: async (event) => {
       synced.push(event.answerId);
     },
+    ...(options.deletionFenced ? { deletionFenced: options.deletionFenced } : {}),
   });
   const input: PrepareAnswerCreate = {
     mode: 'CREATE',
@@ -658,8 +659,8 @@ describe('7-day payload expiry (06 §8.6)', () => {
   const OPERATION = '66d9e9af-2026-4000-8000-000000000005';
   const DAY = 24 * 60 * 60 * 1_000;
 
-  async function preparedWithPayload(editedAgo: number) {
-    const ctx = await setup();
+  async function preparedWithPayload(editedAgo: number, options: Parameters<typeof setup>[0] = {}) {
+    const ctx = await setup(options);
     const { world, store, input } = ctx;
     world.tickets.set('synthetic-ticket-5', {
       owner: SYNTHETIC_KEYS.registered,
@@ -695,6 +696,31 @@ describe('7-day payload expiry (06 §8.6)', () => {
     });
     return ctx;
   }
+
+  test('MS-ALLDEL-005 behind the deletion fence a new save is refused before anything is kept or sent', async () => {
+    let fenced = true;
+    const { save, coordinator, ops, store, input } = await setup({ deletionFenced: () => fenced });
+    await save('펜스 뒤 합성');
+    expect(coordinator.getView(input.dailySemaId)).toEqual({ kind: 'rejected', code: 'COMMAND_ALREADY_PENDING' });
+    expect(ops('OP-006')).toBe(0);
+    await expect(store.getTracker(input.dailySemaId)).resolves.toBeNull();
+    fenced = false;
+    coordinator.acknowledgeView(input.dailySemaId);
+    await save('펜스 뒤 합성');
+    expect(ops('OP-006')).toBe(1);
+  });
+
+  test('MS-ALLDEL-005 behind the deletion fence a kept PREPARED payload is not executed; recheckAll is skipped', async () => {
+    let fenced = true;
+    const { coordinator, input, ops } = await preparedWithPayload(DAY, { deletionFenced: () => fenced });
+    await coordinator.recheckAll();
+    expect(ops('OP-008')).toBe(0);
+    await coordinator.recheck(input.dailySemaId);
+    expect(ops('OP-007')).toBe(0);
+    fenced = false;
+    await coordinator.recheck(input.dailySemaId);
+    expect(ops('OP-007')).toBe(1);
+  }, 20_000);
 
   test('expired payload: removed, no auto-execution, close offered; the tracker stays', async () => {
     const { coordinator, store, input, ops } = await preparedWithPayload(7 * DAY + 1);

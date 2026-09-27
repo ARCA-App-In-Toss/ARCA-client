@@ -141,10 +141,10 @@ describe('F22 edit (03 §6.3, 04 §6.11)', () => {
     expect(opCount(world, 'OP-006')).toBe(0);
   });
 
-  test('MS-EDIT-002: another device edited first → not applied, input kept, the latest detail is read', async () => {
+  test('MS-EDIT-002: another device edited first → not applied, input kept, re-edit on the latest base without mixing', async () => {
     const world = createMockWorld('server.activeUnanswered');
     const [, newer] = seedTwo(world);
-    await openDetail(world, '9월 합성 답변');
+    const { storage } = await openDetail(world, '9월 합성 답변');
     const textarea = await openEdit();
     fireEvent.change(textarea, { target: { value: '기기 B 합성' } });
     // Device A commits between B's prepare and execute.
@@ -158,15 +158,40 @@ describe('F22 edit (03 §6.3, 04 §6.11)', () => {
       current.revision = 'a-r-other';
     }
     release();
-    expect(await screen.findByText(new RegExp(copy['CPY-F22-016']))).toBeInTheDocument();
+    expect(await screen.findByText(copy['CPY-F22-034'])).toBeInTheDocument();
     expect((screen.getByRole('textbox', { name: copy['CPY-F22-003'] }) as HTMLTextAreaElement).value).toBe(
       '기기 B 합성',
     );
     expect(world.answers.get(newer.answerId)?.content).toBe('기기 A 합성');
     // No futile retry on the old base; copying stays available.
-    expect(screen.getByRole('button', { name: copy['CPY-F22-017'] })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: copy['CPY-F22-017'] })).toBeNull();
     expect(screen.getByRole('button', { name: copy['CPY-F11-029'] })).toBeInTheDocument();
-    await waitFor(() => expect(opCount(world, 'OP-011')).toBeGreaterThanOrEqual(2));
+
+    // Explicit re-edit: the latest detail is the new base; B's input stays apart as the old-base draft.
+    const reads = opCount(world, 'OP-011');
+    await userEvent.click(screen.getByRole('button', { name: copy['CPY-F22-035'] }));
+    await waitFor(() =>
+      expect((screen.getByRole('textbox', { name: copy['CPY-F22-003'] }) as HTMLTextAreaElement).value).toBe(
+        '기기 A 합성',
+      ),
+    );
+    expect(opCount(world, 'OP-011')).toBeGreaterThan(reads);
+    const stale = await screen.findByRole('region', { name: copy['CPY-F22-036'] });
+    expect(within(stale).getByText('기기 B 합성')).toBeInTheDocument();
+    expect(screen.queryByText(copy['CPY-F22-034'])).toBeNull();
+
+    // Discarding the old input needs a confirmation and leaves the current input alone.
+    await userEvent.click(within(stale).getByRole('button', { name: copy['CPY-F22-038'] }));
+    const dialog = await screen.findByRole('alertdialog', { name: copy['CPY-F22-025'] });
+    await userEvent.click(within(dialog).getByRole('button', { name: copy['CPY-F22-038'] }));
+    await waitFor(() => expect(screen.queryByRole('region', { name: copy['CPY-F22-036'] })).toBeNull());
+    expect(updateDrafts(storage).some((v) => v.includes('기기 B 합성'))).toBe(false);
+
+    const next = screen.getByRole('textbox', { name: copy['CPY-F22-003'] });
+    fireEvent.change(next, { target: { value: '기기 A 합성에 덧붙인 합성' } });
+    await userEvent.click(screen.getByRole('button', { name: copy['CPY-F22-014'] }));
+    await findTitle(copy['CPY-F21-001']);
+    expect(world.answers.get(newer.answerId)?.content).toBe('기기 A 합성에 덧붙인 합성');
   });
 });
 
@@ -283,6 +308,38 @@ describe('F23 single delete (03 §6.4, 04 §6.12, 06 §9.2)', () => {
     const ticket = [...world.tickets.values()].find((t) => t.answerTarget?.kind === 'DELETE');
     expect(ticket?.deleteEffect).toBe('ALREADY_ABSENT');
   });
+
+  test('unconfirmed delete: check later closes the dialog, F21 keeps tracking; a later check settles it once', async () => {
+    const world = createMockWorld('server.activeUnanswered');
+    const [, newer] = seedTwo(world);
+    const { router } = await openDetail(world, '9월 합성 답변');
+    world.addFault('OP-007', { kind: 'lose-response' });
+    world.addFault('OP-008', { kind: 'network' }, { kind: 'network' }, { kind: 'network' }, { kind: 'network' });
+    const trigger = screen.getByRole('button', { name: copy['CPY-F21-009'] });
+    await userEvent.click(trigger);
+    const dialog = await screen.findByRole('alertdialog', { name: copy['CPY-F23-001'] });
+    await userEvent.click(within(dialog).getByRole('button', { name: copy['CPY-F23-007'] }));
+
+    // Neither success nor failure is claimed; closing is allowed and the request stays tracked.
+    await within(dialog).findByText(copy['CPY-F23-011'], undefined, { timeout: 10_000 });
+    expect(within(dialog).getByRole('button', { name: copy['CPY-COM-007'] })).toBeInTheDocument();
+    await userEvent.click(within(dialog).getByRole('button', { name: copy['CPY-F23-012'] }));
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
+    expect(router.state.location.pathname).toBe(paths.detail);
+    expect(screen.getByText('9월 합성 답변')).toBeInTheDocument();
+    expect(screen.getByText(copy['CPY-F21-019'])).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: copy['CPY-F21-008'] })).toBeDisabled();
+    const check = screen.getByRole('button', { name: copy['CPY-F21-020'] });
+    expect(check).toHaveFocus();
+    expect(world.answers.has(newer.answerId)).toBe(false);
+
+    await userEvent.click(check);
+    const again = await screen.findByRole('alertdialog', { name: copy['CPY-F23-001'] });
+    await userEvent.click(within(again).getByRole('button', { name: copy['CPY-COM-007'] }));
+    await findTitle(copy['CPY-F20-001']);
+    await waitFor(() => expect(rowTexts()).toEqual(['8월 합성 답변']));
+    expect(opCount(world, 'OP-007')).toBe(1);
+  }, 20_000);
 
   test('delete of an answer with an edit draft removes every edit draft of it', async () => {
     const world = createMockWorld('server.activeUnanswered');

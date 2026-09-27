@@ -5,6 +5,6 @@
     "types": ["vite/client", "node", "@testing-library/jest-dom/vitest"],
     "resolveJsonModule": true
   },
-  "include": ["src/**/*.test.ts", "src/**/*.test.tsx", "src/test", "tests"],
+  "include": ["src/**/*.test.ts", "src/**/*.test.tsx", "src/test", "tests", "src/vite-env.d.ts"],
   "exclude": []
 }

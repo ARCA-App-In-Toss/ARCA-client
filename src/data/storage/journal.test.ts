@@ -224,3 +224,88 @@ describe('records: pending → record → ready', () => {
     expect([...storage.data.keys()]).toEqual([]);
   });
 });
+
+describe('full deletion purge (06 §8.2, §9.4)', () => {
+  const oldArea = { kind: 'generation', ref: 'area-old' } as const;
+  const newArea = { kind: 'generation', ref: 'area-new' } as const;
+  const receipt = {
+    ticketId: 'synthetic-deletion-1',
+    deletedGeneration: 'gen-old',
+    resultExpiresAt: '2026-10-04T02:00:00Z',
+  };
+
+  async function seedOld(journal: StorageJournal) {
+    await journal.initArea(oldArea);
+    await journal.putRecord(oldArea, 'draft:x', { text: '삭제될 합성' });
+    await journal.updateRoot(() => ({
+      currentGeneration: 'gen-old',
+      routeEpoch: 3,
+      generations: [{ generation: 'gen-old', ref: oldArea.ref }],
+    }));
+  }
+
+  test('only the deleted generation known: the whole app storage is wiped, then the receipt is in both root copies', async () => {
+    const storage = createFakeStorage();
+    const journal = journalOn(storage);
+    await seedOld(journal);
+    storage.data.set('unrelated-orphan', 'x');
+    const { routeEpoch } = await journal.purgeGeneration(oldArea, 'gen-old');
+    expect(storage.clearCount).toBe(1);
+    expect(storage.data.size).toBe(0);
+    await journal.recordDeletion(receipt, routeEpoch);
+    for (const slot of ['a', 'b'] as const) {
+      const root = JSON.parse(storage.data.get(storageKeys.root(slot)) ?? '{}') as { data: { deletion: unknown } };
+      expect(root.data.deletion).toEqual(receipt);
+    }
+    const root = await journal.readRoot();
+    expect(root).toMatchObject({ currentGeneration: null, generations: [], routeEpoch: 4 });
+  });
+
+  test('MS-ALLDEL-004 a newer generation exists: only the old area goes; A/B root tombstone; the new area stays', async () => {
+    const storage = createFakeStorage();
+    const journal = journalOn(storage);
+    await seedOld(journal);
+    await journal.initArea(newArea);
+    await journal.putRecord(newArea, 'draft:y', { text: '새 탑승 합성' });
+    await journal.updateRoot((current) => ({
+      currentGeneration: 'gen-new',
+      routeEpoch: (current?.routeEpoch ?? 0) + 1,
+      generations: [...(current?.generations ?? []), { generation: 'gen-new', ref: newArea.ref }],
+    }));
+    await journal.purgeGeneration(oldArea, 'gen-old');
+    expect(storage.clearCount).toBe(0);
+    expect([...storage.data.keys()].some((k) => k.includes(oldArea.ref))).toBe(false);
+    expect([...storage.data.values()].some((v) => v.includes('삭제될 합성'))).toBe(false);
+    await expect(journal.getRecord(newArea, 'draft:y')).resolves.toEqual({ text: '새 탑승 합성' });
+    for (const slot of ['a', 'b'] as const) {
+      const root = JSON.parse(storage.data.get(storageKeys.root(slot)) ?? '{}') as {
+        data: { currentGeneration: string; generations: { ref: string }[] };
+      };
+      expect(root.data.currentGeneration).toBe('gen-new');
+      expect(root.data.generations.map((g) => g.ref)).toEqual([newArea.ref]);
+    }
+  });
+
+  test('MS-STORAGE-006 a write queued before the barrier cannot recreate the deleted area', async () => {
+    const storage = createFakeStorage();
+    const journal = journalOn(storage);
+    await seedOld(journal);
+    const late = journal.putRecord(oldArea, 'draft:late', { text: '늦은 합성' });
+    const purge = journal.purgeGeneration(oldArea, 'gen-old');
+    await expect(late).rejects.toMatchObject({ reason: 'sealed' });
+    await purge;
+    expect([...storage.data.values()].some((v) => v.includes('늦은 합성') || v.includes('삭제될 합성'))).toBe(false);
+    await expect(journal.initArea(oldArea)).rejects.toBeInstanceOf(LocalPersistenceFailure);
+  });
+
+  test('MS-ALLDEL-003 a failed removal rejects (no claim of local deletion); a retry completes it', async () => {
+    const storage = createFakeStorage();
+    const journal = journalOn(storage);
+    await seedOld(journal);
+    storage.failNextRemovals(1);
+    await expect(journal.purgeGeneration(oldArea, 'gen-old')).rejects.toBeInstanceOf(LocalPersistenceFailure);
+    expect([...storage.data.values()].some((v) => v.includes('삭제될 합성'))).toBe(true);
+    await journal.purgeGeneration(oldArea, 'gen-old');
+    expect(storage.data.size).toBe(0);
+  });
+});

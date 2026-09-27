@@ -17,7 +17,7 @@ afterEach(() => {
 });
 afterAll(() => server.close());
 
-async function setup() {
+async function setup(options: { fenced?: () => boolean } = {}) {
   const world = createMockWorld('server.activeUnanswered');
   server.use(...createHandlers(world));
   const platform = createFakePlatform();
@@ -40,6 +40,7 @@ async function setup() {
     network: platform.network,
     area: () => area,
     syncProfile: async () => undefined,
+    ...(options.fenced ? { deletionFenced: options.fenced } : {}),
   });
   const ops = () => world.requests.filter((r) => r.op === 'OP-004').length;
   return { world, journal, nickname, areaA, ops, moveArea: () => (area = { kind: 'generation', ref: 'area-b' }) };
@@ -65,5 +66,14 @@ describe('nickname resume (06 §9.1, §4.2)', () => {
     await nickname.resume();
     expect(ops()).toBe(0);
     expect(await original(areaA, 'setNickname')).not.toBeNull();
+  });
+});
+
+describe('nickname behind the full-deletion fence (06 §9.3)', () => {
+  test('neither a new save nor a resume is sent while the fence holds', async () => {
+    const { nickname, ops } = await setup({ fenced: () => true });
+    await expect(nickname.save('새 항해자', 'p-r1')).resolves.toBe('rejected');
+    await nickname.resume();
+    expect(ops()).toBe(0);
   });
 });
