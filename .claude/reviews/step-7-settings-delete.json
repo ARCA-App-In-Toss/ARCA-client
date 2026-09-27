@@ -1,0 +1,115 @@
+{
+  "id": "step-7-settings-delete",
+  "reviewers": {
+    "spec": "PASS",
+    "architecture": "PASS",
+    "experience": "PASS"
+  },
+  "methods": {
+    "spec": "agent",
+    "architecture": "agent",
+    "experience": "agent"
+  },
+  "review_rounds": {
+    "spec": "round 1 FAIL partial (unsent after possibly-sent timeout; deletion target not routed to F31) -> fix 1 -> round 2 FAIL (fence did not refuse new answer/nickname commands after leaving F31) -> fix 2 -> user-approved confirmation review PASS (also covered F21~F23 Q1/Q2, ownerIdentityOf, 07 mapping)",
+    "architecture": "round 1 FAIL partial (fence not released after SUCCEEDED) -> fix 1 -> round 2 PASS (session, api mapping, hooks, config covered)",
+    "experience": "round 1 FAIL partial (F30 success notice live region remount) -> fix 1 -> round 2 PASS (css, RootHeader, copy match, F22 re-edit covered)"
+  },
+  "files": [
+    ".claude/spec/03_SCREENS_SPEC.md",
+    ".claude/spec/04_INTERACTIONS_AND_COPY.md",
+    "src/app/AppServices.tsx",
+    "src/app/bootstrap/bootstrap.ts",
+    "src/app/composition.ts",
+    "src/app/drafts.ts",
+    "src/app/navigation.ts",
+    "src/app/routes.tsx",
+    "src/data/api/arcaApi.ts",
+    "src/data/api/models.ts",
+    "src/data/failures.ts",
+    "src/data/storage/journal.test.ts",
+    "src/data/storage/journal.ts",
+    "src/domain/commands/answerWriteCoordinator.test.ts",
+    "src/domain/commands/answerWriteCoordinator.ts",
+    "src/domain/deletion/allDataDeleteCoordinator.ts",
+    "src/domain/onboarding/nicknameCoordinator.test.ts",
+    "src/domain/onboarding/nicknameCoordinator.ts",
+    "src/domain/session/sessionController.ts",
+    "src/mocks/handlers.ts",
+    "src/mocks/platform.ts",
+    "src/mocks/world.ts",
+    "src/platform/appsInTossPlatform.ts",
+    "src/platform/ports.ts",
+    "src/screens/RootTabs.tsx",
+    "src/screens/archive/AnswerDetailScreen.tsx",
+    "src/screens/archive/ArchiveScreen.tsx",
+    "src/screens/archive/EditScreen.tsx",
+    "src/screens/archive/ManageAnswer.test.tsx",
+    "src/screens/onboarding/IntroScreen.tsx",
+    "src/screens/settings/DeleteAll.test.tsx",
+    "src/screens/settings/DeleteAllScreen.tsx",
+    "src/screens/settings/SettingsScreen.test.tsx",
+    "src/screens/settings/SettingsScreen.tsx",
+    "src/screens/today/TodayScreen.tsx",
+    "src/ui/components.tsx",
+    "src/ui/copy.ts",
+    "src/ui/ui.css",
+    "src/vite-env.d.ts",
+    "tests/browser-mock/settings.spec.ts",
+    "tsconfig.test.json",
+    "vite.config.ts",
+    "vitest.config.ts"
+  ],
+  "gate": {
+    "mode": "--full",
+    "result": "PASS"
+  },
+  "extra_checks": [
+    {
+      "name": "vitest unit",
+      "result": "PASS 272/272"
+    },
+    {
+      "name": "contract",
+      "result": "PASS 59/59"
+    },
+    {
+      "name": "test:browser (production, mock incl. F30/F31 settings spec, onboarding, time, archive; Chromium+WebKit; 320px/200%)",
+      "result": "PASS 36/36"
+    }
+  ],
+  "decisions": [
+    "Q1: delete result unconfirmed -> CPY-F21-019/020, CPY-F23-011/012, CPY-F31-027~029; check-later closes the dialog, tracking kept; lock only while working",
+    "Q2: F22 REVISION_CONFLICT -> re-edit on the latest base (CPY-F22-034/035); old input as other-base draft read-only copy/discard (CPY-F22-036~038)",
+    "Q3: stale-draft general UI copy and F20 no-excerpt copy deferred to the next copy pass",
+    "CPY-F31-030 registered for the 06 §9.3 compatibility refusal",
+    "same-generation ACTIVE and DELETION_RECOVERY share one owner (mode change alone discards nothing)",
+    "purge order: records first, then A/B root exclusion (avoids unenumerable orphans)",
+    "fence refuses new write/edit/delete/nickname before keep/send (COMMAND_ALREADY_PENDING path); PREPARED never auto-executed; OP-015 explicit only",
+    "F30 profile load failure reuses CPY-F20-022 + CPY-F30-022; unconfirmed nickname reuses CPY-F11-044",
+    "user chose one spec confirmation review after retry budget was used"
+  ],
+  "open_questions": [
+    "non-blocking: an unconfirmed nickname tracker is replaced by a different new value (new key); earlier request drops out of the 06 §9.3 compatibility check",
+    "non-blocking: MS-STORAGE-006 lower-root-copy return has no dedicated test (queue barrier case only)",
+    "non-blocking: F22 old-draft discard failure has no copy (keeps panel, focus back) -> next copy pass",
+    "non-blocking: repeated ack failure reuses cleanupFailed view with CPY-F31-016",
+    "carried: delete success leaves F20,F21,F20 history"
+  ],
+  "external_evidence": [
+    {
+      "status": "BLOCKED",
+      "ref": "08 real device: screen reader announcements (CPY-F30-019, CPY-F31-016/017/030 after dialog close, CPY-F31-019 on F01), Android Back on F31 working/recovery gate, IME on F30, Safe Area, external policy/support return"
+    },
+    {
+      "status": "NOT_RUN",
+      "ref": "08 real server: OP-013/007/008/009/015 ALL_DATA_DELETE, DELETION_RECOVERY and recentDeletion lifetime, COMMAND_ALREADY_PENDING fence, server atomicity/retention/backup evidence; OP-002/004 F30"
+    },
+    {
+      "status": "NOT_RUN",
+      "ref": "08 real device: SDK Storage.clearItems scope"
+    }
+  ],
+  "commit": null,
+  "ts": "2026-09-27T16:24:05.963Z"
+}

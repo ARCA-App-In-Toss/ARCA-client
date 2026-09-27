@@ -205,7 +205,7 @@
     },
     {
       "id": "step-7-settings-delete",
-      "status": "TODO",
+      "status": "COMPLETED",
       "phase_file": ".claude/resource/phases/step-7-settings-delete.md",
       "scope": [
         "F30",
@@ -217,7 +217,25 @@
         "spec",
         "architecture",
         "experience"
-      ]
+      ],
+      "work": {
+        "goal": "F30 settings/nickname, policy/support external return, F31 two-step all delete (OP-013, OP-007~009, OP-015), old generation cleanup",
+        "done": [
+          "Q1 F23 delete unconfirmed: CPY-F23-011/012, CPY-F21-019/020 (04 §6.10/6.12/7.7/7.8); check-later closes dialog, tracking kept, lock only while working; auto-reopen once per mount",
+          "Q2 F22 conflict re-edit on latest base (CPY-F22-034/035), old input as other-base draft read-only copy/discard (CPY-F22-036~038); F20 markStale on edit/delete REVISION_CONFLICT",
+          "F30 settings: /settings, F10/F20 settings entry (CPY-F10-002), profile OP-002 on entry, inline nickname edit OP-004 (null clear, same-key resend, unsent/rejected/unconfirmed), policies/support external return, app version (define), danger zone -> F31",
+          "F31 all delete: OP-013/007/008/009/015 api+mock (fence 409 QUERY_COMMAND, DELETION_RECOVERY, recentDeletion); journal seal barrier + purgeGeneration (clearItems or old-area only) + A/B root receipt; AllDataDeleteCoordinator (compat check, generation lock, prepare/execute/confirm, finalize order 06 §9.4, cleanupFailed retry, ack-loop guard); bootstrap deletion gate; F31 screen (2-step, unconfirmed later-check CPY-F31-027~029, blocked CPY-F31-030, prepared close); F01 success notice; MS-ALLDEL-001~005 tests; browser settings spec"
+        ],
+        "next": [
+          "await user approval for step 8"
+        ],
+        "deferred": [
+          "nickname unconfirmed tracker replaced by a different value (non-blocking)",
+          "MS-STORAGE-006 lower-copy test",
+          "F22 stale discard failure copy (next copy pass)",
+          "real device/server evidence (step 8)"
+        ]
+      }
     },
     {
       "id": "step-8-integration",
@@ -258,6 +276,10 @@
     "step-5-recovery": {
       "ts": "2026-09-27T14:05:47.381Z",
       "evidence": "사용자: 새 컨텍스트에서 6단계 진행 지시 (5단계 커밋 후)"
+    },
+    "step-6-archive-management": {
+      "ts": "2026-09-27T15:28:18.667Z",
+      "evidence": "사용자: 새 컨텍스트에서 7단계 진행 지시 (6단계 커밋, push 후)"
     }
   },
   "log": [
@@ -368,6 +390,46 @@
     {
       "ts": "2026-09-27T15:03:37.172Z",
       "msg": "step-6-archive-management COMPLETED: full gate PASS, unit 247, contract 59, browser 30 PASS, reviews spec/architecture/experience PASS; awaiting user approval"
+    },
+    {
+      "ts": "2026-09-27T15:28:18.667Z",
+      "msg": "step-6 approved; step-7-settings-delete started"
+    },
+    {
+      "ts": "2026-09-27T15:33:06.884Z",
+      "msg": "step-6 open questions answered: Q1 add delete-unconfirmed copy ID + later-check, keep tracking, F21/F31 notice (first slice; F31 same pattern); Q2 conflict -> re-edit on new base, old input as stale draft (copy/discard) + copy; Q3 stale draft UI / F20 no-excerpt copy at next copy pass"
+    },
+    {
+      "ts": "2026-09-27T15:39:35.084Z",
+      "msg": "step-7 slices Q1/Q2 done; unit 248 PASS"
+    },
+    {
+      "ts": "2026-09-27T15:44:53.782Z",
+      "msg": "step-7 slice F30 done; settings tests 6 PASS"
+    },
+    {
+      "ts": "2026-09-27T16:08:11.110Z",
+      "msg": "step-7 completion candidate: all slices done; unit 269, contract 59, browser 36 PASS; round-1 reviews started"
+    },
+    {
+      "ts": "2026-09-27T16:11:50.365Z",
+      "msg": "step-7 round-1: spec FAIL(2, partial), architecture FAIL(1, partial), experience FAIL(1, partial); fix attempt 1"
+    },
+    {
+      "ts": "2026-09-27T16:18:04.039Z",
+      "msg": "step-7 round-2: architecture PASS, experience PASS, spec FAIL(1 new blocking, partial); fix attempt 2 applied; unit 272, browser 36 PASS; manual-review"
+    },
+    {
+      "ts": "2026-09-27T16:22:16.822Z",
+      "msg": "step-7 manual-review resolved: user chose one spec confirmation review round (fix attempt 2 + spec unseen scope); new defects go back to the user"
+    },
+    {
+      "ts": "2026-09-27T16:24:05.963Z",
+      "msg": "step-7 spec confirmation review PASS; retry cleared"
+    },
+    {
+      "ts": "2026-09-27T16:24:05.963Z",
+      "msg": "step-7-settings-delete COMPLETED: full gate PASS, unit 272, contract 59, browser 36 PASS, reviews spec/architecture/experience PASS; awaiting user approval"
     }
   ]
 }

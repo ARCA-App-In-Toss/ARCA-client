@@ -96,6 +96,6 @@
       "ref": "08 real server: OP-010 keyset cursor/CURSOR_INVALID, OP-006 UPDATE, OP-012/007/008/015 answer delete, ALREADY_ABSENT, REVISION_CONFLICT"
     }
   ],
-  "commit": null,
+  "commit": "6773578, e6f3662, a8a3853",
   "ts": "2026-09-27T15:03:37.172Z"
 }
