@@ -1,0 +1,49 @@
+{
+  "id": "step-2-minimum-boundary",
+  "reviewers": { "spec": "PASS", "architecture": "PASS", "experience": "PASS" },
+  "methods": { "spec": "agent", "architecture": "agent", "experience": "local" },
+  "review_rounds": { "architecture": "round 1 FAIL (5 findings) -> fixed -> round 2 PASS", "spec": "round 1 PASS (2 notes fixed)" },
+  "files": [
+    "src/platform/ports.ts", "src/platform/appsInTossPlatform.ts",
+    "src/data/failures.ts", "src/data/api/transport.ts", "src/data/api/errorEnvelope.ts", "src/data/api/models.ts", "src/data/api/arcaApi.ts",
+    "src/data/query/keys.ts", "src/data/storage/codec.ts", "src/data/storage/journal.ts",
+    "src/domain/session/sessionController.ts",
+    "src/app/composition.ts", "src/app/AppServices.tsx", "src/app/routes.tsx", "src/app/App.tsx", "src/main.tsx", "src/vite-env.d.ts",
+    "src/app/bootstrap/bootstrap.ts", "src/app/bootstrap/StartScreen.tsx", "src/screens/error/StartErrorScreen.tsx",
+    "src/screens/onboarding/IntroScreen.tsx", "src/screens/today/TodayScreen.tsx",
+    "src/ui/tokens.css", "src/ui/ui.css", "src/ui/components.tsx", "src/ui/copy.ts",
+    "src/mocks/world.ts", "src/mocks/handlers.ts", "src/mocks/platform.ts", "src/mocks/scenarios.ts", "src/mocks/dev.ts",
+    "vite.config.ts",
+    "src/data/api/arcaApi.test.ts", "src/domain/session/sessionController.test.ts", "src/data/storage/journal.test.ts", "src/app/bootstrap/bootstrap.test.tsx",
+    "tests/browser/smoke.spec.ts",
+    "src/app/App.test.tsx (deleted)"
+  ],
+  "gate": { "mode": "--full", "result": "PASS" },
+  "extra_checks": [
+    { "name": "vitest unit", "result": "PASS 63/63" },
+    { "name": "test:browser Chromium+WebKit (production start without Toss bridge -> F90, zero /v1 requests; 320px reflow)", "result": "PASS 4/4" },
+    { "name": "dist scan for mock/synthetic strings", "result": "PASS clean" }
+  ],
+  "coverage": {
+    "MS-SES-001": "covered", "MS-SES-002": "covered (adapter empty/timeout mapping needs real SDK)",
+    "MS-SES-003": "covered at controller level", "MS-SES-004": "covered (controller + cold start + mid-visit reconcile)",
+    "MS-STORAGE-001": "covered", "MS-STORAGE-002": "covered", "MS-STORAGE-003": "covered",
+    "MS-STORAGE-004": "partial: metadata concurrency covered; slow write + new editVersion belongs to DraftRepository (step 3)"
+  },
+  "deferred": [
+    "DELETION_RECOVERY gate -> step 7 (currently F90 general, no private screen)",
+    "history.state routeEpoch tagging -> step 3 with sub-routes",
+    "Neo둥근모 self-hosted font file absent -> system fallback",
+    "pixel UI CMP adoption and stepped corners -> step 3",
+    "bundle 493 KB min / 149 KB gzip (react-dom 174, react-router 90, zod 87, SDK semver 24) -> 08 §10"
+  ],
+  "external_evidence": [
+    { "status": "BLOCKED", "ref": "08 §3.2 MS-SES real anonymous key / session recovery on iOS+Android" },
+    { "status": "BLOCKED", "ref": "08 §6 real SDK Storage set/read-back/restart persistence" },
+    { "status": "BLOCKED", "ref": "08 §7 Android Back, VoiceOver/TalkBack on F00/F90" },
+    { "status": "BLOCKED", "ref": "06 §14 customer-center capability/URL (F90 문의하기 reports unavailable)" },
+    { "status": "NOT_RUN", "ref": "08 §11 CI remote run" }
+  ],
+  "commit": null,
+  "ts": "2026-09-27T09:28:15Z"
+}

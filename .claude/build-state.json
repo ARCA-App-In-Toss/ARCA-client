@@ -17,7 +17,7 @@
     },
     {
       "id": "step-2-minimum-boundary",
-      "status": "TODO",
+      "status": "COMPLETED",
       "phase_file": ".claude/resource/phases/step-2-minimum-boundary.md",
       "scope": ["F00", "F90", "session", "generation", "journal", "routes"],
       "required_reviewers": ["spec", "architecture", "experience"]
@@ -67,7 +67,12 @@
   ],
   "retry": {},
   "manual_review": [],
-  "approvals": {},
+  "approvals": {
+    "step-1-intake": {
+      "ts": "2026-09-27T09:04:46.108Z",
+      "evidence": "사용자: \"오키 굳굳 2단계 들어가자\" (1단계 결과 검토 후 2단계 진행 지시)"
+    }
+  },
   "log": [
     {
       "ts": "2026-09-27T07:23:54.961Z",
@@ -76,6 +81,18 @@
     {
       "ts": "2026-09-27T07:47:06.733Z",
       "msg": "step-1-intake COMPLETED: toolchain pinned, scripts wired, full gate PASS, browser PASS; awaiting user approval"
+    },
+    {
+      "ts": "2026-09-27T09:04:46.108Z",
+      "msg": "step-1-intake approved; step-2-minimum-boundary started"
+    },
+    {
+      "ts": "2026-09-27T09:28:15.899Z",
+      "msg": "step-2 architecture findings fixed (retry 1 of 2 used), round 2 PASS; retry entry cleared"
+    },
+    {
+      "ts": "2026-09-27T09:28:15.899Z",
+      "msg": "step-2-minimum-boundary COMPLETED: full gate PASS, browser PASS, reviews spec/architecture/experience PASS; awaiting user approval"
     }
   ]
 }
