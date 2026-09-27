@@ -89,7 +89,7 @@
     },
     {
       "id": "step-4-onboarding",
-      "status": "TODO",
+      "status": "COMPLETED",
       "phase_file": ".claude/resource/phases/step-4-onboarding.md",
       "scope": [
         "F01",
@@ -102,7 +102,27 @@
         "spec",
         "architecture",
         "experience"
-      ]
+      ],
+      "work": {
+        "goal": "F01 intro/consent -> OP-003 passenger create -> F02/F03 nickname -> ACTIVE handoff",
+        "done": [
+          "F01 intro: 3 scenes, progress, skip, story expand/collapse (IX-030, MS-ONB-003 component test); /join route placeholder",
+          "F02 consent + OP-003 (PRE tracker+owner verifier, lost-response re-exchange, version change) + ACTIVE handoff to F03 (boarded target, PRE area cleared); MS-ONB-001/002 tests",
+          "F03 nickname + OP-004 (tracker, same-key resend, IX-035 skip only on definite/unsent); MS-NICK-001/002 tests",
+          "prod mock block: dist marker scan test + mock-env prod build scan 0; browser onboarding project (Chromium+WebKit, 320px/200%)"
+        ],
+        "next": [
+          "await user approval for step 5"
+        ],
+        "deferred": [
+          "F01 OP-014 analytics (no analytics layer yet)",
+          "AST-004 scene art -> static placeholder",
+          "cold start with PRE tracker + ACTIVE -> F10 without F03 (no receipt replay)",
+          "privacy policy ID unconfirmed: unknown policy IDs fall back to server title (launch input)",
+          "nickname unknown tracker stays in generation area after leaving F03 (step 5 recovery)",
+          "F03 real-device IME/keyboard/Safe Area BLOCKED"
+        ]
+      }
     },
     {
       "id": "step-5-recovery",
@@ -182,6 +202,10 @@
     "step-2-minimum-boundary": {
       "ts": "2026-09-27T09:51:45.325Z",
       "evidence": "사용자: \"이어서 해줘\" (2단계 커밋 후 다음 단계 진행 지시)"
+    },
+    "step-3-core-experience": {
+      "ts": "2026-09-27T11:40:15.682Z",
+      "evidence": "사용자: 다음 컨텍스트에서 4단계 진행 지시 (3단계 커밋, push 후)"
     }
   },
   "log": [
@@ -236,6 +260,34 @@
     {
       "ts": "2026-09-27T11:35:44.024Z",
       "msg": "step-3-core-experience COMPLETED: full gate PASS, reviews spec/architecture/experience PASS; awaiting user approval"
+    },
+    {
+      "ts": "2026-09-27T11:40:15.682Z",
+      "msg": "step-3 approved; step-4-onboarding started"
+    },
+    {
+      "ts": "2026-09-27T11:43:06.699Z",
+      "msg": "step-4 slice F01 intro done; lint/typecheck/unit PASS"
+    },
+    {
+      "ts": "2026-09-27T12:06:12.759Z",
+      "msg": "step-4 slice F02/OP-003/handoff done; unit 139 + contract PASS"
+    },
+    {
+      "ts": "2026-09-27T12:13:49.859Z",
+      "msg": "step-4 completion candidate: all slices done; unit 163, contract 59, browser 18 PASS; round-1 reviews started"
+    },
+    {
+      "ts": "2026-09-27T12:15:25.657Z",
+      "msg": "step-4 round-1: architecture PASS (2 notes), experience FAIL (unconfirmed copy), spec pending; fix attempt 1"
+    },
+    {
+      "ts": "2026-09-27T12:18:43.476Z",
+      "msg": "step-4 round-2: spec/architecture/experience PASS after fix attempt 1; retry cleared; review record written"
+    },
+    {
+      "ts": "2026-09-27T12:19:34.831Z",
+      "msg": "step-4-onboarding COMPLETED: full gate PASS, browser 18 PASS, reviews spec/architecture/experience PASS; awaiting user approval"
     }
   ]
 }

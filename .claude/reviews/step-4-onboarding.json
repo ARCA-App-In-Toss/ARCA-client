@@ -1,0 +1,110 @@
+{
+  "id": "step-4-onboarding",
+  "reviewers": {
+    "spec": "PASS",
+    "architecture": "PASS",
+    "experience": "PASS"
+  },
+  "methods": {
+    "spec": "agent+local",
+    "architecture": "agent",
+    "experience": "agent"
+  },
+  "review_rounds": {
+    "spec": "round 1 FAIL (expired key as rejected; post-send errors mapped to rejected; null-verifier tracker overwrite) -> fix attempt 1 -> round 2 PASS; round-1 unread areas checked locally: CPY F01~F03 + F11-044 exact match 47/47 vs 04 §7, routes vs 06 §5.1, nickname rules by unit tests, prod mock by browser scan",
+    "architecture": "round 1 PASS (2 non-blocking notes) -> notes applied in fix attempt 1 -> round 2 PASS",
+    "experience": "round 1 FAIL (CPY-F03-015 shown for unconfirmed OP-004; Back lock during save not found) -> fix attempt 1 -> round 2 PASS"
+  },
+  "files": [
+    "playwright.config.ts",
+    "src/app/AppServices.tsx",
+    "src/app/bootstrap/bootstrap.ts",
+    "src/app/composition.ts",
+    "src/app/navigation.ts",
+    "src/app/routes.tsx",
+    "src/data/api/arcaApi.ts",
+    "src/data/api/models.ts",
+    "src/data/query/keys.ts",
+    "src/domain/onboarding/boardingCoordinator.ts",
+    "src/domain/onboarding/nicknameCoordinator.ts",
+    "src/domain/session/ownerVerifier.ts",
+    "src/domain/session/sessionController.ts",
+    "src/domain/session/sessionController.test.ts",
+    "src/domain/text/nickname.ts",
+    "src/domain/text/nickname.test.ts",
+    "src/mocks/handlers.ts",
+    "src/mocks/platform.ts",
+    "src/mocks/world.ts",
+    "src/platform/appsInTossPlatform.ts",
+    "src/platform/ports.ts",
+    "src/screens/onboarding/IntroScreen.tsx",
+    "src/screens/onboarding/IntroScreen.test.tsx",
+    "src/screens/onboarding/BoardingScreen.tsx",
+    "src/screens/onboarding/BoardingScreen.test.tsx",
+    "src/screens/onboarding/BoardedScreen.tsx",
+    "src/screens/onboarding/BoardedScreen.test.tsx",
+    "src/ui/components.tsx",
+    "src/ui/copy.ts",
+    "src/ui/ui.css",
+    "tests/browser/production-bundle.spec.ts",
+    "tests/browser-onboarding/onboarding.spec.ts"
+  ],
+  "gate": {
+    "mode": "--full",
+    "result": "PASS"
+  },
+  "extra_checks": [
+    {
+      "name": "vitest unit (after fix attempt 1)",
+      "result": "PASS 166/166 (full gate after fix attempt 1); Back-lock test fails without the lock"
+    },
+    {
+      "name": "test:contract",
+      "result": "PASS (full gate after fix attempt 1)"
+    },
+    {
+      "name": "test:browser: production (F90 smoke + dist mock-marker scan), mock core, onboarding F01->F02->F03->F10 and 320px/200% (Chromium+WebKit)",
+      "result": "PASS 18/18 after fix attempt 1"
+    },
+    {
+      "name": "production build with VITE_ARCA_MOCK_SCENARIO=MS-SES-001-active scanned for mock markers",
+      "result": "PASS 0 markers"
+    }
+  ],
+  "decisions": [
+    "POLICY_VERSION_CHANGED: consent kept per policyId+version, so only the changed policy is unchecked (spec reviewer PASS)",
+    "Unknown policy IDs fall back to the server title; only terms-of-service/privacy-policy map to CPY-F02 copy (spec reviewer PASS; real IDs are a launch input)",
+    "F03 unconfirmed/expired nickname result reuses adopted CPY-F11-044 (neutral, no skip); user approved keeping it for now, F03-specific ID in 04 §7 at next copy revision"
+  ],
+  "known_issues": [
+    "cold start with PRE tracker while server is ACTIVE goes to F10 without F03 (no OP-003 receipt replay at start)",
+    "nickname tracker with unknown outcome stays in the generation area after leaving F03 (step 5 recovery)",
+    "useBlocker covers in-app route changes only; native Back/gesture lock needs device evidence",
+    "BoardedScreen imports useBlocker from react-router directly (same as WriteScreen; no boundary data)"
+  ],
+  "deferred_ref": ".claude/build-state.json checklist[step-4-onboarding].work.deferred",
+  "external_evidence": [
+    {
+      "status": "NOT_RUN",
+      "ref": "03 §4.3 / 05 OP-001 real policy IDs, versions and URLs (legal launch input)"
+    },
+    {
+      "status": "BLOCKED",
+      "ref": "08 §7 real WebView Web Crypto support for PRE owner verifier (06 §14)"
+    },
+    {
+      "status": "BLOCKED",
+      "ref": "08 §7 Device.openURL external policy open and return (F02 selection/scroll/focus)"
+    },
+    {
+      "status": "BLOCKED",
+      "ref": "08 §7 real-device IME/keyboard/Safe Area/native Back on F03"
+    },
+    {
+      "status": "NOT_RUN",
+      "ref": "08 §11 CI remote run"
+    }
+  ],
+  "commit": null,
+  "ts": "2026-09-27T12:19:34.829Z"
+}
