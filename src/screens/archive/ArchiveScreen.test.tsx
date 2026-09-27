@@ -2,11 +2,12 @@ import { act, fireEvent, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import axe from 'axe-core';
 import { setupServer } from 'msw/node';
-import { afterAll, afterEach, beforeAll, describe, expect, test } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 import { paths } from '../../app/navigation.ts';
-import { createMockWorld, SYNTHETIC_KEYS } from '../../mocks/world.ts';
-import { bootApp, findTitle } from '../../test/boot.tsx';
-import { copy, rootTabLabels } from '../../ui/copy.ts';
+import { mockErrors } from '../../mocks/handlers.ts';
+import { createMockWorld, type MockWorld, SYNTHETIC_KEYS } from '../../mocks/world.ts';
+import { bootApp, findTitle, opCount } from '../../test/boot.tsx';
+import { copy, fill, rootTabLabels } from '../../ui/copy.ts';
 
 const server = setupServer();
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
@@ -85,5 +86,250 @@ describe('F20 first page (03 §6.1, 04 §6.9)', () => {
     await findTitle(copy['CPY-F20-001']);
     const list = await screen.findByRole('list');
     expect(within(list).getByText('목록에 보일 합성')).toBeInTheDocument();
+  });
+});
+
+/** Seeds `n` answers one day apart, newest first from `newest` (KST dates cross months/years). */
+function seedMany(world: MockWorld, n: number, newest = '2026-09-27') {
+  const start = Date.parse(`${newest}T01:00:00Z`);
+  const seeded = [];
+  for (let i = 0; i < n; i += 1) {
+    const at = new Date(start - i * 86_400_000).toISOString();
+    seeded.push(
+      world.seedAnswer(SYNTHETIC_KEYS.registered, `합성 기록 ${i + 1}`, {
+        dailySemaId: `d-${i}`,
+        createdAt: at,
+        createdDateKst: at.slice(0, 10),
+      }),
+    );
+  }
+  return seeded;
+}
+
+const rowTexts = () =>
+  screen
+    .queryAllByRole('button')
+    .filter((b) => b.classList.contains('arca-memory-row'))
+    .map((r) => r.querySelector('.arca-user-text')?.textContent);
+const liveText = () => document.querySelector('.arca-visually-hidden[role="status"]')?.textContent ?? '';
+const setScrollY = (value: number) => Object.defineProperty(window, 'scrollY', { value, configurable: true });
+
+describe('F20 page chain (06 §6.3, IX-023·IX-042)', () => {
+  beforeEach(() => {
+    window.scrollTo = vi.fn() as unknown as typeof window.scrollTo;
+    setScrollY(0);
+  });
+
+  test('MS-LIST-001/002: 1, 2 and exactly 20 rows show no "more" action and no end message', async () => {
+    for (const n of [1, 2, 20]) {
+      const world = createMockWorld('server.activeUnanswered');
+      seedMany(world, n);
+      const { view } = await openArchive(world);
+      await vi.waitFor(() => expect(rowTexts()).toHaveLength(n));
+      expect(screen.queryByRole('button', { name: copy['CPY-F20-016'] })).toBeNull();
+      expect(screen.queryByText(copy['CPY-F20-021'])).toBeNull();
+      view.unmount();
+    }
+  });
+
+  test('MS-LIST-003/004: 21 rows = 20 + 1 on request, one heading per KST year-month across the page edge', async () => {
+    const world = createMockWorld('server.activeUnanswered');
+    // 21 days back from 2027-01-10 crosses the year boundary; the page edge falls inside December.
+    seedMany(world, 21, '2027-01-10');
+    await openArchive(world);
+    await vi.waitFor(() => expect(rowTexts()).toHaveLength(20));
+    expect(screen.queryByText(copy['CPY-F20-021'])).toBeNull();
+    const more = screen.getByRole('button', { name: copy['CPY-F20-016'] });
+    more.focus();
+    await userEvent.click(more);
+
+    await vi.waitFor(() => expect(rowTexts()).toHaveLength(21));
+    expect(rowTexts()).toEqual(Array.from({ length: 21 }, (_, i) => `합성 기록 ${i + 1}`));
+    const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
+    expect(headings).toEqual(['2027년 1월', '2026년 12월']);
+    expect(screen.getByText(copy['CPY-F20-021'])).toBeInTheDocument();
+    expect(liveText()).toBe(fill(copy['CPY-F20-018'], { loadedCount: '1' }));
+    // The "more" action is gone; focus stays at the list end instead of falling to the page.
+    expect(document.activeElement).toBe(screen.getByText(copy['CPY-F20-021']));
+    expect(opCount(world, 'OP-010')).toBe(2);
+  });
+
+  test('extra page failure keeps rows and retries at the same place', async () => {
+    const world = createMockWorld('server.activeUnanswered');
+    seedMany(world, 21);
+    await openArchive(world);
+    await vi.waitFor(() => expect(rowTexts()).toHaveLength(20));
+    world.addFault('OP-010', { kind: 'network' }, { kind: 'network' });
+    await userEvent.click(screen.getByRole('button', { name: copy['CPY-F20-016'] }));
+    expect(await screen.findByText(copy['CPY-F20-019'], { selector: 'p' })).toBeInTheDocument();
+    expect(rowTexts()).toHaveLength(20);
+    await userEvent.click(screen.getByRole('button', { name: copy['CPY-F20-020'] }));
+    await vi.waitFor(() => expect(rowTexts()).toHaveLength(21));
+    expect(screen.queryByText(copy['CPY-F20-019'], { selector: 'p' })).toBeNull();
+  });
+
+  test('MS-LIST-005: other-device create/delete between pages: no insertion, no gap, no duplicate', async () => {
+    const world = createMockWorld('server.activeUnanswered');
+    const seeded = seedMany(world, 22);
+    await openArchive(world);
+    await vi.waitFor(() => expect(rowTexts()).toHaveLength(20));
+    // Another device: a new answer (newest) and a deletion on the second page.
+    world.seedAnswer(SYNTHETIC_KEYS.registered, '다른 기기 새 합성', {
+      dailySemaId: 'd-new',
+      createdAt: '2026-09-28T01:00:00Z',
+      createdDateKst: '2026-09-28',
+    });
+    world.answers.delete(seeded[20]?.answerId ?? '');
+    await userEvent.click(screen.getByRole('button', { name: copy['CPY-F20-016'] }));
+    await vi.waitFor(() => expect(rowTexts()).toHaveLength(21));
+    const texts = rowTexts();
+    expect(texts).not.toContain('다른 기기 새 합성');
+    expect(texts).not.toContain('합성 기록 21');
+    expect(texts.at(-1)).toBe('합성 기록 22');
+    expect(new Set(texts).size).toBe(texts.length);
+  });
+
+  test('MS-LIST-005: CURSOR_INVALID keeps the rows and offers a fresh first page', async () => {
+    const world = createMockWorld('server.activeUnanswered');
+    seedMany(world, 21);
+    await openArchive(world);
+    await vi.waitFor(() => expect(rowTexts()).toHaveLength(20));
+    world.addFault('OP-010', mockErrors.cursorInvalid);
+    await userEvent.click(screen.getByRole('button', { name: copy['CPY-F20-016'] }));
+    expect(await screen.findByText(copy['CPY-F20-019'], { selector: 'p' })).toBeInTheDocument();
+    expect(rowTexts()).toHaveLength(20);
+    expect(screen.queryByRole('button', { name: copy['CPY-F20-016'] })).toBeNull();
+    world.seedAnswer(SYNTHETIC_KEYS.registered, '새 첫 page 합성', {
+      dailySemaId: 'd-new',
+      createdAt: '2026-09-28T01:00:00Z',
+      createdDateKst: '2026-09-28',
+    });
+    await userEvent.click(screen.getByRole('button', { name: copy['CPY-F20-024'] }));
+    await vi.waitFor(() => expect(rowTexts()[0]).toBe('새 첫 page 합성'));
+    expect(rowTexts()).toHaveLength(20);
+    expect(document.activeElement).toBe(
+      screen.getAllByRole('button').find((b) => b.classList.contains('arca-memory-row')),
+    );
+  });
+
+  test('MS-LIST-006: a deep reader gets a held candidate; rows stay until the user applies it', async () => {
+    const world = createMockWorld('server.activeUnanswered');
+    seedMany(world, 2);
+    await openArchive(world);
+    await vi.waitFor(() => expect(rowTexts()).toHaveLength(2));
+    setScrollY(600);
+    await userEvent.click(screen.getByRole('button', { name: rootTabLabels.today }));
+    await findTitle(copy['CPY-F10-001']);
+
+    // Same first page on re-entry: no notice.
+    await userEvent.click(screen.getByRole('button', { name: rootTabLabels.archive }));
+    await findTitle(copy['CPY-F20-001']);
+    await vi.waitFor(() => expect(opCount(world, 'OP-010')).toBe(2));
+    expect(screen.queryByText(copy['CPY-F20-023'], { selector: 'p' })).toBeNull();
+
+    await userEvent.click(screen.getByRole('button', { name: rootTabLabels.today }));
+    await findTitle(copy['CPY-F10-001']);
+    world.seedAnswer(SYNTHETIC_KEYS.registered, '후보 합성', {
+      dailySemaId: 'd-new',
+      createdAt: '2026-09-28T01:00:00Z',
+      createdDateKst: '2026-09-28',
+    });
+    await userEvent.click(screen.getByRole('button', { name: rootTabLabels.archive }));
+    await findTitle(copy['CPY-F20-001']);
+    expect(await screen.findByText(copy['CPY-F20-023'], { selector: 'p' })).toBeInTheDocument();
+    expect(liveText()).toBe(copy['CPY-F20-023']);
+    expect(rowTexts()).toEqual(['합성 기록 1', '합성 기록 2']);
+
+    await userEvent.click(screen.getByRole('button', { name: copy['CPY-F20-024'] }));
+    await vi.waitFor(() => expect(rowTexts()[0]).toBe('후보 합성'));
+    expect(screen.queryByText(copy['CPY-F20-023'], { selector: 'p' })).toBeNull();
+    expect(window.scrollTo).toHaveBeenCalledWith(0, 0);
+    expect(document.activeElement?.classList.contains('arca-memory-row')).toBe(true);
+  });
+
+  test('MS-LIST-006: returning to the top applies the candidate without moving focus; a failed refresh shows no candidate', async () => {
+    const world = createMockWorld('server.activeUnanswered');
+    seedMany(world, 2);
+    await openArchive(world);
+    await vi.waitFor(() => expect(rowTexts()).toHaveLength(2));
+    setScrollY(600);
+    await userEvent.click(screen.getByRole('button', { name: rootTabLabels.today }));
+    await findTitle(copy['CPY-F10-001']);
+    world.seedAnswer(SYNTHETIC_KEYS.registered, '후보 합성', {
+      dailySemaId: 'd-new',
+      createdAt: '2026-09-28T01:00:00Z',
+      createdDateKst: '2026-09-28',
+    });
+    await userEvent.click(screen.getByRole('button', { name: rootTabLabels.archive }));
+    await screen.findByText(copy['CPY-F20-023'], { selector: 'p' });
+    const focused = document.activeElement;
+    setScrollY(0);
+    fireEvent.scroll(window);
+    await vi.waitFor(() => expect(rowTexts()[0]).toBe('후보 합성'));
+    expect(document.activeElement).toBe(focused);
+
+    // Refresh failure: rows stay, no candidate notice, the refresh failure is stated.
+    setScrollY(600);
+    await userEvent.click(screen.getByRole('button', { name: rootTabLabels.today }));
+    await findTitle(copy['CPY-F10-001']);
+    world.addFault('OP-010', { kind: 'network' }, { kind: 'network' });
+    await userEvent.click(screen.getByRole('button', { name: rootTabLabels.archive }));
+    expect(await screen.findByText(copy['CPY-F20-022'], { selector: 'p' })).toBeInTheDocument();
+    expect(screen.queryByText(copy['CPY-F20-023'], { selector: 'p' })).toBeNull();
+    expect(rowTexts()).toHaveLength(3);
+  });
+
+  test('MS-LIST-007: list and count fail independently; the count is never taken from rows', async () => {
+    const world = createMockWorld('server.activeUnanswered');
+    seedMany(world, 3);
+    await openArchive(world);
+    await vi.waitFor(() => expect(rowTexts()).toHaveLength(3));
+    expect(screen.getByText('기억 조각 3개')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: rootTabLabels.today }));
+    await findTitle(copy['CPY-F10-001']);
+    world.seedAnswer(SYNTHETIC_KEYS.registered, '네 번째 합성', {
+      dailySemaId: 'd-new',
+      createdAt: '2026-09-28T01:00:00Z',
+      createdDateKst: '2026-09-28',
+    });
+    // Count re-read fails while the list succeeds: 4 rows, the count stays the last server value.
+    world.addFault('OP-005', { kind: 'network' }, { kind: 'network' });
+    await userEvent.click(screen.getByRole('button', { name: rootTabLabels.archive }));
+    await vi.waitFor(() => expect(rowTexts()).toHaveLength(4));
+    expect(screen.queryByText('기억 조각 4개')).toBeNull();
+
+    // List refresh fails while the count succeeds: rows kept, count updated from OP-005.
+    await userEvent.click(screen.getByRole('button', { name: rootTabLabels.today }));
+    await findTitle(copy['CPY-F10-001']);
+    world.addFault('OP-010', { kind: 'network' }, { kind: 'network' });
+    await userEvent.click(screen.getByRole('button', { name: rootTabLabels.archive }));
+    expect(await screen.findByText(copy['CPY-F20-022'], { selector: 'p' })).toBeInTheDocument();
+    expect(await screen.findByText('기억 조각 4개')).toBeInTheDocument();
+    expect(rowTexts()).toHaveLength(4);
+  });
+
+  test('MS-NAV-001: F21 → Back restores the kept chain and anchor without a refresh; a tab entry refreshes', async () => {
+    const world = createMockWorld('server.activeUnanswered');
+    seedMany(world, 21);
+    const { router } = await openArchive(world);
+    await vi.waitFor(() => expect(rowTexts()).toHaveLength(20));
+    await userEvent.click(screen.getByRole('button', { name: copy['CPY-F20-016'] }));
+    await vi.waitFor(() => expect(rowTexts()).toHaveLength(21));
+    const before = opCount(world, 'OP-010');
+
+    const rows = screen.getAllByRole('button').filter((b) => b.classList.contains('arca-memory-row'));
+    await userEvent.click(rows[20] as HTMLElement);
+    await findTitle(copy['CPY-F21-001']);
+    await act(() => router.navigate(-1));
+    await findTitle(copy['CPY-F20-001']);
+    expect(rowTexts()).toHaveLength(21);
+    expect(window.scrollTo).toHaveBeenCalled();
+    expect(opCount(world, 'OP-010')).toBe(before);
+
+    await userEvent.click(screen.getByRole('button', { name: rootTabLabels.today }));
+    await findTitle(copy['CPY-F10-001']);
+    await userEvent.click(screen.getByRole('button', { name: rootTabLabels.archive }));
+    await vi.waitFor(() => expect(opCount(world, 'OP-010')).toBe(before + 1));
   });
 });

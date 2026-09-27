@@ -51,8 +51,8 @@ async function setup() {
     now: () => Date.now(),
     fence: () => (fenceOverride.value === undefined ? fence : fenceOverride.value),
     newOperationId: () => `66d9e9af-2026-4000-8000-00000000000${++opSeq}`,
-    syncCurrentResources: async (answerId) => {
-      synced.push(answerId);
+    syncCurrentResources: async (event) => {
+      synced.push(event.answerId);
     },
   });
   const input: PrepareAnswerCreate = {
@@ -332,6 +332,22 @@ describe('owner fence (06 §4.2)', () => {
     await saving;
     expect(view(coordinator).kind).toBe('idle');
     expect(ops('OP-007')).toBe(0);
+  });
+
+  test('generation change (same owner) + reset: a new save starts fresh instead of joining the abandoned run', async () => {
+    const { world, coordinator, save, ops } = await setup();
+    let release!: () => void;
+    world.addFault('OP-006', { kind: 'hold', release: new Promise<void>((r) => (release = r)) });
+    const first = save('세대 바뀜 합성');
+    await vi.waitFor(() => expect(ops('OP-006')).toBe(1));
+    fenceOverride.value = { ownerScope: 'owner-a', generation: 'gen-synthetic-2' };
+    coordinator.reset();
+    const second = save('세대 바뀐 뒤 합성');
+    release();
+    await Promise.all([first, second]);
+    // The second save ran on its own: it sent its own OP-006 and ended in a view of its own.
+    expect(ops('OP-006')).toBe(2);
+    expect(view(coordinator).kind).not.toBe('idle');
   });
 
   test('an unreadable tracker reports a local failure (no silent rejection, nothing sent)', async () => {

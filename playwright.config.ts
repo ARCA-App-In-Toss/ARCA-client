@@ -4,6 +4,7 @@ const port = 4173;
 const mockPort = 5174;
 const onboardingPort = 5175;
 const timePort = 5176;
+const archivePort = 5177;
 
 export default defineConfig({
   forbidOnly: true,
@@ -50,6 +51,17 @@ export default defineConfig({
       testDir: 'tests/browser-time',
       use: { ...devices['iPhone 15'], baseURL: `http://localhost:${timePort}` },
     },
+    // Same dev mock, 21 records across a month boundary (MS-LIST-003/004, F21~F23).
+    {
+      name: 'archive-chromium',
+      testDir: 'tests/browser-archive',
+      use: { ...devices['Pixel 7'], baseURL: `http://localhost:${archivePort}` },
+    },
+    {
+      name: 'archive-webkit',
+      testDir: 'tests/browser-archive',
+      use: { ...devices['iPhone 15'], baseURL: `http://localhost:${archivePort}` },
+    },
   ],
   webServer: [
     {
@@ -77,6 +89,13 @@ export default defineConfig({
       command: `node node_modules/vite/bin/vite.js --host localhost --port ${timePort} --strictPort`,
       url: `http://localhost:${timePort}`,
       env: { VITE_ARCA_MOCK_SCENARIO: 'MS-TIME-002' },
+      reuseExistingServer: false,
+      timeout: 120_000,
+    },
+    {
+      command: `node node_modules/vite/bin/vite.js --host localhost --port ${archivePort} --strictPort`,
+      url: `http://localhost:${archivePort}`,
+      env: { VITE_ARCA_MOCK_SCENARIO: 'MS-LIST-003' },
       reuseExistingServer: false,
       timeout: 120_000,
     },
