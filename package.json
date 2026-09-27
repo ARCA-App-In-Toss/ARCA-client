@@ -1,0 +1,51 @@
+{
+  "name": "arca",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "packageManager": "pnpm@12.6.0",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build && ait build",
+    "preview": "vite preview",
+    "deploy": "ait deploy",
+    "lint": "biome check .",
+    "format": "biome check --write .",
+    "typecheck": "tsc -b",
+    "test": "vitest run --project unit",
+    "test:contract": "node scripts/api-generate.mjs --check && vitest run --project contract",
+    "test:browser": "vite build && playwright test",
+    "api:generate": "node scripts/api-generate.mjs"
+  },
+  "dependencies": {
+    "@apps-in-toss/web-framework": "3.5.0",
+    "@tanstack/react-query": "5.104.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "react-router": "8.4.0",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@apps-in-toss/devtools": "3.5.0",
+    "@biomejs/biome": "2.5.14",
+    "@hey-api/openapi-ts": "0.99.0",
+    "@playwright/test": "1.63.0",
+    "@testing-library/dom": "10.4.2",
+    "@testing-library/jest-dom": "7.0.1",
+    "@testing-library/react": "16.3.3",
+    "@testing-library/user-event": "14.6.7",
+    "@types/node": "24.13.3",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.4",
+    "@vitejs/plugin-react": "6.1.1",
+    "axe-core": "4.13.0",
+    "jsdom": "30.1.1",
+    "msw": "2.15.0",
+    "typescript": "6.0.3",
+    "vite": "8.3.1",
+    "vitest": "5.0.2"
+  }
+}

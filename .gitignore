@@ -58,3 +58,6 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+
+# Apps in Toss bundle
+*.ait
