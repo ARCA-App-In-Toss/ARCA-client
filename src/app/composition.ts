@@ -12,6 +12,7 @@ import {
   TRANSPORT_MAX_MS,
 } from '../domain/commands/answerWriteCoordinator.ts';
 import { AnswerWriteStore } from '../domain/commands/answerWriteStore.ts';
+import { AllDataDeleteCoordinator } from '../domain/deletion/allDataDeleteCoordinator.ts';
 import { DraftRepository } from '../domain/drafts/draftRepository.ts';
 import { BoardingCoordinator } from '../domain/onboarding/boardingCoordinator.ts';
 import { NicknameCoordinator } from '../domain/onboarding/nicknameCoordinator.ts';
@@ -42,6 +43,10 @@ export interface AppServices {
   archive: ArchiveChains;
   boarding: BoardingCoordinator;
   nickname: NicknameCoordinator;
+  /** F31 all-data delete and the DELETION_RECOVERY gate (06 §9.3–9.4). */
+  deletion: AllDataDeleteCoordinator;
+  /** True once on the F01 entry right after a confirmed full deletion (IX-029, one notice). */
+  takeAllDeletedNotice(): boolean;
   /** Visit-bound F12 completion models (memory only). */
   completions: Map<string, Completion>;
   /** Opaque route ref → answer id, memory only, cleared on owner change. */
@@ -55,6 +60,11 @@ export interface AppServices {
   start(): Promise<BootstrapState>;
   /** F03 left for F10: the boarding continuation is over and the safe root is today again. */
   finishBoarding(): void;
+  /**
+   * The user left F31 on purpose while still ACTIVE: other screens open again (reading, settings),
+   * the deletion stays tracked and fenced (06 §4.3). The recovery gate itself is never released here.
+   */
+  leaveDeletion(): void;
 }
 
 export interface AppServicesConfig {
@@ -85,6 +95,9 @@ export function createAppServices(config: AppServicesConfig): AppServices {
   };
 
   const boarding = new BoardingCoordinator({ session, journal });
+  // `generation:*` lock (06 §4.3): set from the deletion's compatibility check until a terminal result.
+  let deletionFenced = false;
+  let allDeletedNotice = false;
   const nickname = new NicknameCoordinator({
     session,
     api,
@@ -96,6 +109,7 @@ export function createAppServices(config: AppServicesConfig): AppServices {
       if (!owner?.generation) return;
       await queryClient.invalidateQueries({ queryKey: queryKeys.passenger(owner.ownerScope, owner.generation) });
     },
+    deletionFenced: () => deletionFenced,
   });
 
   let running: Promise<BootstrapState> | null = null;
@@ -130,6 +144,7 @@ export function createAppServices(config: AppServicesConfig): AppServices {
       if (!owner?.generation) return;
       await queryClient.invalidateQueries({ queryKey: queryKeys.owner(owner.ownerScope) });
     },
+    deletionFenced: () => deletionFenced,
   });
   const answers = new AnswerWriteCoordinator({
     session,
@@ -139,6 +154,50 @@ export function createAppServices(config: AppServicesConfig): AppServices {
     now: () => drafts.now(),
     fence: commandFence,
     syncCurrentResources: (event) => syncAnswer(event),
+    deletionFenced: () => deletionFenced,
+  });
+
+  const dropGenerationMemory = () => {
+    currentArea = null;
+    queryClient.clear();
+    completions.clear();
+    answerRefs.clear();
+    draftRefs.clear();
+    writes.reset();
+    answers.reset();
+    archive.reset();
+  };
+  const deletion = new AllDataDeleteCoordinator({
+    session,
+    api,
+    journal,
+    network: platform.network,
+    area: () => currentArea,
+    hasUnresolvedCommands: async () =>
+      (await writes.hasUnresolved()) || (await answers.hasUnresolved()) || (await nickname.hasUnresolved()),
+    recheckCommands: async () => {
+      // One bounded check with the fence momentarily open, so kept commands can settle (06 §9.3).
+      deletionFenced = false;
+      try {
+        await writes.recheckAll();
+        await answers.recheckAll();
+        await nickname.resume();
+      } finally {
+        deletionFenced = true;
+      }
+    },
+    setFence: (active) => {
+      deletionFenced = active;
+    },
+    discardMemory: dropGenerationMemory,
+    finish: () => {
+      allDeletedNotice = true;
+      // The restricted token goes; OP-001 then decides F01 (or the gate again) (06 §9.4).
+      session.discard();
+    },
+    restart: () => {
+      void runStart();
+    },
   });
 
   const archive = new ArchiveChains({
@@ -225,14 +284,17 @@ export function createAppServices(config: AppServicesConfig): AppServices {
           queryClient,
           network: platform.network,
           resumeCreation: () => boarding.resumeAsActive(),
+          hasPendingDeletion: (area) => deletion.hasPending(area),
         },
         reuse,
         handoff,
       );
       currentArea = outcome.area;
       const result = outcome.state;
+      // The gate or a kept deletion request holds the fence before any background work (06 §4.3).
+      if (result.phase === 'ready' && result.target === 'deletion') deletionFenced = true;
       // Expiry sweep after the area is confirmed; it never delays routing (06 §5.3, §7.4, §8.6).
-      if (outcome.area && result.phase === 'ready') {
+      if (outcome.area && result.phase === 'ready' && result.target !== 'deletion') {
         todaySeeded = true;
         queueMicrotask(() => {
           void (async () => {
@@ -298,6 +360,17 @@ export function createAppServices(config: AppServicesConfig): AppServices {
     // Owner/permission/generation change discards private memory (06 §5.4, MS-SES-004).
     if (event.ownerChanged) queryClient.clear();
     const { ownerScope, mode, epoch, generation } = event.summary;
+    // Execution acceptance moved this owner into the restricted gate mid-visit: F31 stays where it is
+    // and no reconcile runs; the device area is untouched until the result is known (06 §9.3).
+    if (mode === 'DELETION_RECOVERY' && wasReady && !event.ownerChanged) {
+      deletionFenced = true;
+      const current = snapshot.bootstrap;
+      publish({
+        bootstrap: current.phase === 'ready' ? { ...current, target: 'deletion' } : current,
+        session: { ownerScope, mode, epoch, generation },
+      });
+      return;
+    }
     // Mid-visit owner/mode change: reconcile the local area and route again, reusing this session.
     const reconcile = wasReady && (event.ownerChanged || previousMode !== mode);
     publish({
@@ -351,6 +424,12 @@ export function createAppServices(config: AppServicesConfig): AppServices {
     archive,
     boarding,
     nickname,
+    deletion,
+    takeAllDeletedNotice() {
+      const shown = allDeletedNotice;
+      allDeletedNotice = false;
+      return shown;
+    },
     completions,
     answerRefs,
     draftRefs,
@@ -365,6 +444,12 @@ export function createAppServices(config: AppServicesConfig): AppServices {
       return () => listeners.delete(listener);
     },
     start: () => runStart(),
+    leaveDeletion() {
+      const current = snapshot.bootstrap;
+      if (current.phase === 'ready' && current.target === 'deletion' && snapshot.session?.mode === 'ACTIVE') {
+        publish({ ...snapshot, bootstrap: { ...current, target: 'today' } });
+      }
+    },
     finishBoarding() {
       const current = snapshot.bootstrap;
       if (current.phase === 'ready' && current.target === 'boarded') {

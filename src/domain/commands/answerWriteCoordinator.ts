@@ -113,6 +113,11 @@ export interface AnswerWriteCoordinatorDeps {
   newOperationId?: () => string;
   /** Current-resource sync after a result or reconciliation (today/archive caches); must be repeat-safe. */
   syncCurrentResources(event: SyncEvent): Promise<void>;
+  /**
+   * Full-deletion fence (06 §4.3 `generation:*`): while true no PREPARED command is executed and no
+   * background recheck runs; safe result queries stay allowed.
+   */
+  deletionFenced?: () => boolean;
 }
 
 const realTimers: Timers = {
@@ -209,6 +214,7 @@ export class AnswerWriteCoordinator {
    * single-flight (06 §5.3 #7, §8.5 #6). Never OP-015, never a new operation, never polling.
    */
   async recheckAll(options: { except?: string | null; concurrency?: number } = {}): Promise<void> {
+    if (this.deps.deletionFenced?.()) return;
     let targets: string[];
     try {
       targets = (await this.deps.store.listTargets()).filter((t) => t !== options.except);
@@ -232,6 +238,22 @@ export class AnswerWriteCoordinator {
     if (view.kind !== 'working') this.setView(dailySemaId, IDLE_VIEW);
   }
 
+  /**
+   * Any kept tracker whose server outcome is still unknown (06 §9.3: a full deletion is not prepared
+   * over one). Unreadable storage counts as unresolved; finishing-only trackers do not.
+   */
+  async hasUnresolved(): Promise<boolean> {
+    try {
+      for (const target of await this.deps.store.listTargets()) {
+        const tracker = await this.deps.store.getTracker(target);
+        if (tracker && tracker.outcome === null) return true;
+      }
+      return false;
+    } catch {
+      return true;
+    }
+  }
+
   /** Unresolved save (blocks new writes, 04 IX-036 #5) or unfinished local finishing, if any. */
   async unfinished(dailySemaId: string): Promise<Unfinished> {
     const tracker = await this.deps.store.getTracker(dailySemaId);
@@ -248,6 +270,7 @@ export class AnswerWriteCoordinator {
     const target = targetOf(request.input);
     const running = this.inFlight.get(target);
     if (running) return running;
+    if (this.refuseBehindDeletion(target)) return Promise.resolve();
     // Lock the text before the first await so nothing typed can diverge from the kept payload.
     this.setView(target, { kind: 'working', stage: 'keeping', trackerKept: false });
     return this.singleFlight(target, async (run) => {
@@ -306,6 +329,7 @@ export class AnswerWriteCoordinator {
     const target = request.input.answerId;
     const running = this.inFlight.get(target);
     if (running) return running;
+    if (this.refuseBehindDeletion(target)) return Promise.resolve();
     this.setView(target, { kind: 'working', stage: 'keeping', trackerKept: false });
     return this.singleFlight(target, async (run) => {
       let existing: AnswerWriteTracker | null;
@@ -508,6 +532,8 @@ export class AnswerWriteCoordinator {
     /** 'unexecutable': the exact payload or the intent is gone; the prepared request waits for a close. */
     const isDelete = settledFrom.kind === 'ANSWER_DELETE';
     const execute = async (): Promise<CommandResult | 'unexecutable' | null> => {
+      // Behind the deletion fence nothing prepared runs; the result is only queried (06 §9.3).
+      if (this.deps.deletionFenced?.()) return null;
       if (isDelete) {
         // A delete has no body: only the kept intent may run it (06 §9.2 #2).
         if (!settledFrom.executeIntent) return 'unexecutable';
@@ -768,6 +794,17 @@ export class AnswerWriteCoordinator {
 
   private payloadExpired(lastModifiedAt: number): boolean {
     return this.deps.now() >= lastModifiedAt + PAYLOAD_TTL_MS;
+  }
+
+  /**
+   * `generation:*` lock (06 §4.3, §9.3): while a full deletion is pending no new write, edit or
+   * delete is prepared. Nothing is sent or kept; the screen keeps the input, as for the server's own
+   * COMMAND_ALREADY_PENDING refusal of the same request.
+   */
+  private refuseBehindDeletion(target: string): boolean {
+    if (!this.deps.deletionFenced?.()) return false;
+    this.setView(target, { kind: 'rejected', code: 'COMMAND_ALREADY_PENDING' });
+    return true;
   }
 
   private sleep(ms: number): Promise<void> {

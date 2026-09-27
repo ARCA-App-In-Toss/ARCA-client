@@ -14,6 +14,8 @@ export interface KeyValueStoragePort {
   getItem(key: string): Promise<string | null>;
   setItem(key: string, value: string): Promise<void>;
   removeItem(key: string): Promise<void>;
+  /** Wipes every key of this app; only for a confirmed full deletion with no newer area (06 §9.4). */
+  clearItems(): Promise<void>;
 }
 
 export interface ClockPort {

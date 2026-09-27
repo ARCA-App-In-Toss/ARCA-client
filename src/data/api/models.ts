@@ -6,7 +6,8 @@ export type SessionMode = 'PRE_PASSENGER' | 'ACTIVE' | 'DELETION_RECOVERY';
 export type SessionContext =
   | { mode: 'PRE_PASSENGER' }
   | { mode: 'ACTIVE'; dataGeneration: string }
-  | { mode: 'DELETION_RECOVERY'; dataGeneration: string };
+  /** Restricted: only this deletion ticket's OP-007 resend/008/009/015 (05 §6.1 #4). */
+  | { mode: 'DELETION_RECOVERY'; dataGeneration: string; deletionTicketId: string };
 
 export interface ConsentPolicy {
   policyId: string;
@@ -17,6 +18,7 @@ export interface ConsentPolicy {
 }
 
 export interface RecentDeletion {
+  ticketId: string;
   deletedGeneration: string;
   resultExpiresAt: string;
 }
@@ -199,4 +201,23 @@ export type AnswerDeleteResult =
 
 export type AnswerDeleteClosure =
   | Extract<AnswerDeleteResult, { state: 'SUCCEEDED' | 'NOT_APPLIED' | 'EXECUTING' }>
+  | { state: 'CLOSED_OUTCOME_UNAVAILABLE'; ticketId: string; operationId: string; reconciliation: Reconciliation };
+
+/** Full-deletion receipt: times only, no content or profile (05 §5.5, §10.3). */
+export interface AllDataDeleteProof {
+  deletedAt: string;
+  consentEvidenceRetainedUntil: string;
+  backupsExpireBy: string;
+}
+
+/** OP-013/007/008 all-data-delete result (05 §6.6). Nothing but SUCCEEDED means data was deleted. */
+export type AllDataDeleteResult =
+  | { state: 'PREPARED'; ticketId: string; operationId: string }
+  | { state: 'EXECUTING'; ticketId: string; operationId: string }
+  | { state: 'SUCCEEDED'; ticketId: string; operationId: string; resultExpiresAt: string; proof: AllDataDeleteProof }
+  | { state: 'NOT_APPLIED'; ticketId: string; operationId: string; error: { code: string; category: string } }
+  | { state: 'CLOSED_OUTCOME_UNAVAILABLE'; ticketId: string; operationId: string };
+
+export type AllDataDeleteClosure =
+  | Extract<AllDataDeleteResult, { state: 'SUCCEEDED' | 'NOT_APPLIED' | 'EXECUTING' }>
   | { state: 'CLOSED_OUTCOME_UNAVAILABLE'; ticketId: string; operationId: string; reconciliation: Reconciliation };

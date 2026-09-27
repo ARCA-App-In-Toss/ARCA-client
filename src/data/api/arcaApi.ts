@@ -2,6 +2,11 @@ import { z } from 'zod';
 import { ProtocolFailure, TransportFailure } from '../failures.ts';
 import { toDomainFailure } from './errorEnvelope.ts';
 import {
+  zAllDataDeleteClosedOutcomeUnavailableReconciled,
+  zAllDataDeleteCommandResult,
+  zAllDataDeleteExecuting,
+  zAllDataDeleteNotApplied,
+  zAllDataDeleteSucceeded,
   zAnswerDeleteClosedOutcomeUnavailableReconciled,
   zAnswerDeleteCommandResult,
   zAnswerDeleteExecuting,
@@ -21,6 +26,8 @@ import {
   zTodayReadModel,
 } from './generated/zod.gen.ts';
 import type {
+  AllDataDeleteClosure,
+  AllDataDeleteResult,
   AnswerDeleteClosure,
   AnswerDeleteResult,
   AnswerDetail,
@@ -119,6 +126,14 @@ export interface ArcaApi {
   getAnswerDeleteResult(auth: Bearer, ticketId: string, timeoutMs: number): Promise<AnswerDeleteResult>;
   /** OP-015 for an answer-delete ticket; explicit user action only (05 §6.10). */
   closeAnswerDelete(auth: Bearer, ticketId: string, timeoutMs: number): Promise<AnswerDeleteClosure>;
+  /** OP-013. Sets the server deletion fence only; nothing is deleted until OP-007 (05 §6.6). */
+  prepareAllDataDelete(auth: Bearer, operationId: string, timeoutMs: number): Promise<AllDataDeleteResult>;
+  /** OP-007 for the all-data-delete ticket. Acceptance ends the normal session on the server. */
+  executeAllDataDelete(auth: Bearer, ticketId: string, timeoutMs: number): Promise<AllDataDeleteResult>;
+  /** OP-008 for the all-data-delete ticket (ACTIVE, its DELETION_RECOVERY or recentDeletion session). */
+  getAllDataDeleteResult(auth: Bearer, ticketId: string, timeoutMs: number): Promise<AllDataDeleteResult>;
+  /** OP-015 for the all-data-delete ticket; explicit user action only (05 §6.10). */
+  closeAllDataDelete(auth: Bearer, ticketId: string, timeoutMs: number): Promise<AllDataDeleteClosure>;
 }
 
 async function send<S extends z.ZodType>(
@@ -160,7 +175,11 @@ function toSessionContext(context: z.output<typeof zEstablishSessionResponse>['c
     case 'ACTIVE':
       return { mode: 'ACTIVE', dataGeneration: context.dataGeneration };
     case 'DELETION_RECOVERY':
-      return { mode: 'DELETION_RECOVERY', dataGeneration: context.dataGeneration };
+      return {
+        mode: 'DELETION_RECOVERY',
+        dataGeneration: context.dataGeneration,
+        deletionTicketId: context.deletionTicketId,
+      };
   }
 }
 
@@ -283,6 +302,37 @@ function toAnswerDeleteResult(wire: z.output<typeof zAnswerDeleteCommandResult>)
   }
 }
 
+function toAllDataDeleteResult(wire: z.output<typeof zAllDataDeleteCommandResult>): AllDataDeleteResult {
+  const base = { ticketId: wire.ticketId, operationId: wire.operationId };
+  switch (wire.state) {
+    case 'PREPARED':
+      return { state: 'PREPARED', ...base };
+    case 'EXECUTING':
+      return { state: 'EXECUTING', ...base };
+    case 'NOT_APPLIED':
+      return { state: 'NOT_APPLIED', ...base, error: { code: wire.error.code, category: wire.error.category } };
+    case 'CLOSED_OUTCOME_UNAVAILABLE':
+      return { state: 'CLOSED_OUTCOME_UNAVAILABLE', ...base };
+    case 'SUCCEEDED':
+      return {
+        state: 'SUCCEEDED',
+        ...base,
+        resultExpiresAt: wire.resultExpiresAt,
+        proof: {
+          deletedAt: wire.proof.deletedAt,
+          consentEvidenceRetainedUntil: wire.proof.consentEvidenceRetainedUntil,
+          backupsExpireBy: wire.proof.backupsExpireBy,
+        },
+      };
+  }
+}
+
+const zAllDataDeleteClosure = z.union([
+  zAllDataDeleteSucceeded,
+  zAllDataDeleteNotApplied,
+  zAllDataDeleteClosedOutcomeUnavailableReconciled,
+]);
+
 const zAnswerDeleteClosure = z.union([
   zAnswerDeleteSucceeded,
   zAnswerDeleteNotApplied,
@@ -319,6 +369,7 @@ export function createArcaApi(transport: HttpTransport): ArcaApi {
         consentPolicies: wire.consentPolicies.map((policy) => ({ ...policy })),
         recentDeletion: wire.recentDeletion
           ? {
+              ticketId: wire.recentDeletion.ticketId,
               deletedGeneration: wire.recentDeletion.deletedGeneration,
               resultExpiresAt: wire.recentDeletion.resultExpiresAt,
             }
@@ -349,6 +400,7 @@ export function createArcaApi(transport: HttpTransport): ArcaApi {
           consentPolicies: wire.consentPolicies.map((policy) => ({ ...policy })),
           recentDeletion: wire.recentDeletion
             ? {
+                ticketId: wire.recentDeletion.ticketId,
                 deletedGeneration: wire.recentDeletion.deletedGeneration,
                 resultExpiresAt: wire.recentDeletion.resultExpiresAt,
               }
@@ -571,6 +623,80 @@ export function createArcaApi(transport: HttpTransport): ArcaApi {
           };
         }
         return toAnswerDeleteResult(wire) as AnswerDeleteClosure;
+      }
+      if (response.status >= 400) throw toDomainFailure(response.body);
+      throw new ProtocolFailure('status');
+    },
+
+    async prepareAllDataDelete(auth, operationId, timeoutMs) {
+      const wire = await send(
+        transport,
+        {
+          method: 'POST',
+          path: '/data-deletion-commands',
+          bearer: auth.bearer,
+          idempotencyKey: operationId,
+          body: {},
+          timeoutMs,
+        },
+        [200, 201],
+        zAllDataDeleteCommandResult,
+      );
+      return toAllDataDeleteResult(wire);
+    },
+
+    async executeAllDataDelete(auth, ticketId, timeoutMs) {
+      const wire = await send(
+        transport,
+        {
+          method: 'PUT',
+          path: `/commands/${encodeURIComponent(ticketId)}/execution`,
+          bearer: auth.bearer,
+          body: { kind: 'ALL_DATA_DELETE' },
+          timeoutMs,
+        },
+        [200, 202],
+        zAllDataDeleteCommandResult,
+      );
+      return toAllDataDeleteResult(wire);
+    },
+
+    async getAllDataDeleteResult(auth, ticketId, timeoutMs) {
+      const wire = await send(
+        transport,
+        { method: 'GET', path: `/commands/${encodeURIComponent(ticketId)}`, bearer: auth.bearer, timeoutMs },
+        200,
+        zAllDataDeleteCommandResult,
+      );
+      return toAllDataDeleteResult(wire);
+    },
+
+    async closeAllDataDelete(auth, ticketId, timeoutMs) {
+      const response = await transport({
+        method: 'PUT',
+        path: `/commands/${encodeURIComponent(ticketId)}/closure`,
+        bearer: auth.bearer,
+        body: {},
+        timeoutMs,
+      });
+      if (response.status === 202) {
+        const parsed = zAllDataDeleteExecuting.safeParse(response.body);
+        if (!parsed.success) throw new ProtocolFailure('schema');
+        return { state: 'EXECUTING', ticketId: parsed.data.ticketId, operationId: parsed.data.operationId };
+      }
+      if (response.status === 200) {
+        const parsed = zAllDataDeleteClosure.safeParse(response.body);
+        if (!parsed.success) throw new ProtocolFailure('schema');
+        const wire = parsed.data;
+        if (wire.state === 'CLOSED_OUTCOME_UNAVAILABLE') {
+          return {
+            state: 'CLOSED_OUTCOME_UNAVAILABLE',
+            ticketId: wire.ticketId,
+            operationId: wire.operationId,
+            reconciliation: toReconciliation(wire.reconciliation),
+          };
+        }
+        return toAllDataDeleteResult(wire) as AllDataDeleteClosure;
       }
       if (response.status >= 400) throw toDomainFailure(response.body);
       throw new ProtocolFailure('status');

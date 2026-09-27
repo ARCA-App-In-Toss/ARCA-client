@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { type DraftContext, type DraftIdentity, draftName } from '../domain/drafts/draftRepository.ts';
 import { DraftWriter, type KeepStatus } from '../domain/drafts/draftWriter.ts';
 import { useAppServicesInternal } from './AppServices.tsx';
@@ -130,4 +130,53 @@ export function useDraftSession(
   );
 
   return { load, text, status, change, compositionEnd, flush, flushKept, discard };
+}
+
+export interface StaleEditDraft {
+  text: string;
+  remove(): Promise<boolean>;
+}
+
+/**
+ * The latest edit draft of this answer kept on another base revision (06 §7.1): shown read-only for
+ * copy/discard, never applied to the current edit. Null when there is none (or it cannot be read).
+ */
+export function useStaleEditDraft(answerId: string, currentRevision: string): StaleEditDraft | null {
+  const services = useAppServicesInternal();
+  const [found, setFound] = useState<{ identity: DraftIdentity; text: string } | null>(null);
+  const [version, setVersion] = useState(0);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `version` re-reads after a removal.
+  useEffect(() => {
+    let active = true;
+    services.drafts.listUpdateDrafts(answerId).then(
+      (drafts) => {
+        if (!active) return;
+        const stale = drafts.find((d) => d.identity.kind === 'update' && d.identity.baseRevision !== currentRevision);
+        setFound(stale ? { identity: stale.identity, text: stale.text } : null);
+      },
+      () => {
+        if (active) setFound(null);
+      },
+    );
+    return () => {
+      active = false;
+    };
+  }, [services.drafts, answerId, currentRevision, version]);
+
+  return useMemo(() => {
+    if (!found) return null;
+    return {
+      text: found.text,
+      remove: async () => {
+        try {
+          await services.drafts.remove(found.identity);
+          return true;
+        } catch {
+          return false;
+        } finally {
+          setVersion((v) => v + 1);
+        }
+      },
+    };
+  }, [found, services.drafts]);
 }

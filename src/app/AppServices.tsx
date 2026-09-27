@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useState,
   useSyncExternalStore,
 } from 'react';
 import type { AnswerDetail, PassengerProfile, Today } from '../data/api/models.ts';
@@ -235,7 +236,7 @@ export type NicknameSaveOutcome =
   | { kind: 'expired'; currentNickname: string | null };
 
 /**
- * F03 nickname save (IX-003·IX-035). The expected revision is the profile F03 shows. The coordinator
+ * F03/F30 nickname save (IX-003·IX-004·IX-035); `null` is the F30 explicit clear. The expected revision is the profile F03 shows. The coordinator
  * classifies its own outcomes; anything unexpected is treated as unconfirmed, never as skippable.
  */
 export function useNicknameSave() {
@@ -243,7 +244,7 @@ export function useNicknameSave() {
   const { session } = useAppSnapshot();
   const passenger = useBoardedPassenger();
   const revision = passenger.data?.revision ?? null;
-  return async (nickname: string): Promise<NicknameSaveOutcome> => {
+  return async (nickname: string | null): Promise<NicknameSaveOutcome> => {
     if (revision === null || !session?.generation) return { kind: 'unknown' };
     let kind: Awaited<ReturnType<typeof services.nickname.save>>;
     try {
@@ -257,4 +258,79 @@ export function useNicknameSave() {
     );
     return { kind, currentNickname: current?.nickname ?? null };
   };
+}
+
+/** F30 profile: the current OP-002 copy, re-read on entry; a receipt never stands in for it (05 §5.2). */
+export function usePassengerProfile() {
+  const services = useAppServices();
+  const { session } = useAppSnapshot();
+  const active = session?.mode === 'ACTIVE' && session.generation !== null;
+  return useQuery<PassengerProfile>({
+    queryKey: queryKeys.passenger(session?.ownerScope ?? '', session?.generation ?? ''),
+    enabled: active,
+    refetchOnMount: 'always',
+    queryFn: () => services.session.run('ACTIVE', (auth) => services.api.getPassenger(auth)),
+  });
+}
+
+export type SettingsLink = 'terms' | 'privacy' | 'support';
+
+const SETTINGS_POLICY_IDS = { terms: 'terms-of-service', privacy: 'privacy-policy' } as const;
+
+/**
+ * F30 external documents and support (03 §7.1). Policy URLs come from the latest OP-001 and stay in
+ * app/; F30 stays mounted, so returning keeps its scroll, edit state and focus (IX-018).
+ */
+export function useSettingsLinks() {
+  const services = useAppServices();
+  return useCallback(
+    (link: SettingsLink): Promise<ExternalOpenResult> => {
+      if (link === 'support') return services.platform.external.openSupport().catch(() => ({ kind: 'unavailable' }));
+      const policy = services.session.consentPolicies.find((p) => p.policyId === SETTINGS_POLICY_IDS[link]);
+      if (!policy) return Promise.resolve({ kind: 'unavailable' });
+      return services.platform.external.openPolicy(policy.url).catch(() => ({ kind: 'unavailable' }));
+    },
+    [services],
+  );
+}
+
+/** Build-time app version (package.json), shown on F30; never sent anywhere from here. */
+export const appVersion: string = __APP_VERSION__;
+
+/** F31 command handle (06 §9.3–9.4). The screen sees the view and explicit actions only. */
+export function useAllDataDelete() {
+  const services = useAppServices();
+  const { deletion } = services;
+  const view = useSyncExternalStore(deletion.subscribe, deletion.getView, deletion.getView);
+  const actions = useMemo(
+    () => ({
+      enter: () => void deletion.enter(),
+      start: () => void deletion.start(),
+      recheck: () => void deletion.recheck(),
+      retryRecovery: () => void deletion.recover({ userRetry: true }),
+      retryCleanup: () => void deletion.retryCleanup(),
+      executePrepared: () => void deletion.executePrepared(),
+      /** Explicit OP-015 only (04 IX-041). */
+      close: () => void deletion.close(),
+      acknowledge: () => deletion.acknowledge(),
+      /** Explicit exit from F31 in ACTIVE mode (Back / 취소). */
+      leave: () => {
+        deletion.acknowledge();
+        services.leaveDeletion();
+      },
+    }),
+    [deletion, services],
+  );
+  return useMemo(() => ({ view, ...actions }), [view, actions]);
+}
+
+/** F01 right after a confirmed full deletion: the success is announced once (IX-029). */
+export function useAllDeletedNotice(): string | null {
+  const services = useAppServices();
+  const [notice, setNotice] = useState<string | null>(null);
+  useEffect(() => {
+    // Taken in an effect, after the live region exists, so the one announcement is not lost.
+    if (services.takeAllDeletedNotice()) setNotice('deleted');
+  }, [services]);
+  return notice;
 }

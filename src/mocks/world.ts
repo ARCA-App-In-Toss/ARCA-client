@@ -21,6 +21,7 @@ export type MockOp =
   | 'OP-010'
   | 'OP-011'
   | 'OP-012'
+  | 'OP-013'
   | 'OP-015';
 
 /** One scripted fault, consumed once per matching request (07 §6). */
@@ -110,6 +111,21 @@ export interface MockNicknameReceipt {
 interface SessionRecord {
   anonymousKey: string;
   revoked: boolean;
+  /** DELETION_RECOVERY token: only this deletion ticket's OP-007/008/009/015 (05 §6.1 #4). */
+  deletionTicketId?: string;
+}
+
+/** OP-013 all-data-delete ticket (05 §6.6). The fence holds while PREPARED/EXECUTING. */
+export interface MockDeletion {
+  owner: string;
+  ticketId: string;
+  operationId: string;
+  generation: string;
+  state: 'PREPARED' | 'EXECUTING' | 'SUCCEEDED' | 'NOT_APPLIED';
+  error: { code: string; category: string } | null;
+  acknowledged: boolean;
+  /** Result retention ended (05 §9.3). */
+  resultExpired?: boolean;
 }
 
 export interface MockQuestion {
@@ -233,6 +249,11 @@ export interface MockWorld {
   sema: MockSema;
   answers: Map<string, MockAnswer>;
   tickets: Map<string, MockTicket>;
+  deletions: Map<string, MockDeletion>;
+  /** MS-ALLDEL-001: the next deletion commit fails and rolls back (ALL_DATA_DELETE_FAILED). */
+  deletionCommitFails: boolean;
+  /** The active deletion fence of this key, if any (05 §9.4). */
+  deletionFence(anonymousKey: string): MockDeletion | undefined;
   /** When true, OP-007 answers 202 EXECUTING and the effect waits for `completeExecuting`. */
   asyncExecution: boolean;
   /** When true, SUCCEEDED results carry presentation UNAVAILABLE (retryable). */
@@ -271,6 +292,7 @@ export function createMockWorld(base: ServerBase): MockWorld {
   const faults = new Map<MockOp, MockFault[]>();
   const answers = new Map<string, MockAnswer>();
   const tickets = new Map<string, MockTicket>();
+  const deletions = new Map<string, MockDeletion>();
   let tokenSeq = 0;
   let answerSeq = 0;
   let revisionSeq = 1;
@@ -284,10 +306,33 @@ export function createMockWorld(base: ServerBase): MockWorld {
     sema: SYNTHETIC_SEMA,
     answers,
     tickets,
+    deletions,
+    deletionCommitFails: false,
+    deletionFence(anonymousKey) {
+      return [...deletions.values()].find(
+        (d) => d.owner === anonymousKey && (d.state === 'PREPARED' || d.state === 'EXECUTING'),
+      );
+    },
     asyncExecution: false,
     presentationUnavailable: false,
     advanceDayOnFirstPrepare: false,
     completeExecuting() {
+      // One ACID commit per deletion: everything of that passenger goes, or nothing (05 §10.3).
+      for (const deletion of deletions.values()) {
+        if (deletion.state !== 'EXECUTING') continue;
+        if (world.deletionCommitFails) {
+          world.deletionCommitFails = false;
+          deletion.state = 'NOT_APPLIED';
+          deletion.error = { code: 'ALL_DATA_DELETE_FAILED', category: 'MAINTENANCE' };
+          continue;
+        }
+        const owner = deletion.owner;
+        passengers.delete(owner);
+        for (const answer of [...answers.values()]) if (answer.owner === owner) answers.delete(answer.answerId);
+        for (const ticket of [...tickets.values()]) if (ticket.owner === owner) tickets.delete(ticket.ticketId);
+        world.nicknameReceipts = world.nicknameReceipts.filter((r) => r.anonymousKey !== owner);
+        deletion.state = 'SUCCEEDED';
+      }
       for (const ticket of tickets.values()) {
         if (ticket.state !== 'EXECUTING') continue;
         const target = ticket.answerTarget;

@@ -35,7 +35,8 @@ export interface NicknameCoordinatorDeps {
   network: NetworkPort;
   area: () => ManifestScope | null;
   /** Current profile is re-read after a result; the receipt never overwrites it (05 §5.2). */
-  syncProfile: () => Promise<void>;
+  syncProfile: () => Promise<void> /** Full-deletion fence: no automatic resend while it holds (06 §4.3). */;
+  deletionFenced?: () => boolean;
 }
 
 function newOperationId(): string {
@@ -52,8 +53,10 @@ export class NicknameCoordinator {
     this.deps = deps;
   }
 
-  /** Single-flight; a second activation while saving joins the same request. */
-  save(nickname: string, expectedRevision: string): Promise<NicknameSaveResult> {
+  /** Single-flight; a second activation while saving joins the same request. `null` clears (F30 only). */
+  save(nickname: string | null, expectedRevision: string): Promise<NicknameSaveResult> {
+    // Behind the full-deletion fence nothing new is sent: a definite, input-keeping refusal (06 §9.3).
+    if (!this.inFlight && this.deps.deletionFenced?.()) return Promise.resolve('rejected');
     this.inFlight ??= this.run(nickname, expectedRevision).finally(() => {
       this.inFlight = null;
     });
@@ -66,7 +69,7 @@ export class NicknameCoordinator {
    * expected revision keeps a newer profile from being overwritten.
    */
   async resume(): Promise<void> {
-    if (this.inFlight) return;
+    if (this.inFlight || this.deps.deletionFenced?.()) return;
     const area = this.deps.area();
     if (!area) return;
     const stored = zTracker.safeParse(await this.deps.journal.getRecord(area, TRACKER).catch(() => null));
@@ -87,7 +90,19 @@ export class NicknameCoordinator {
     await this.inFlight;
   }
 
-  private async run(nickname: string, expectedRevision: string): Promise<NicknameSaveResult> {
+  /** A kept request whose outcome is not confirmed yet (06 §9.3 compatibility before a full deletion). */
+  async hasUnresolved(): Promise<boolean> {
+    if (this.inFlight) return true;
+    const area = this.deps.area();
+    if (!area) return false;
+    try {
+      return (await this.deps.journal.getRecord(area, TRACKER)) !== null;
+    } catch {
+      return true;
+    }
+  }
+
+  private async run(nickname: string | null, expectedRevision: string): Promise<NicknameSaveResult> {
     const area = this.deps.area();
     if (!area) return 'unknown';
     let tracker: Tracker;
@@ -129,7 +144,7 @@ export class NicknameCoordinator {
   }
 
   /** The same input resumes its stored key; a different input starts a new request. */
-  private async trackerFor(area: ManifestScope, nickname: string, expectedRevision: string): Promise<Tracker> {
+  private async trackerFor(area: ManifestScope, nickname: string | null, expectedRevision: string): Promise<Tracker> {
     const stored = zTracker.safeParse(await this.deps.journal.getRecord(area, TRACKER));
     if (stored.success && stored.data.nickname === nickname) return stored.data;
     const tracker: Tracker = { operationId: newOperationId(), nickname, expectedRevision };

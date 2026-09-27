@@ -4,6 +4,7 @@ import {
   excerptOf,
   MOCK_API_BASE,
   type MockAnswer,
+  type MockDeletion,
   type MockFault,
   type MockOp,
   type MockPolicy,
@@ -174,10 +175,83 @@ function activeOwner(world: MockWorld, bearer: string | null): string | Response
       { status: 401, headers: noStore },
     );
   }
-  if (!world.passengers.has(session.anonymousKey)) {
+  if (session.deletionTicketId || !world.passengers.has(session.anonymousKey)) {
     return HttpResponse.json(errorBody('SESSION_SCOPE_INSUFFICIENT', 'AUTH'), { status: 403, headers: noStore });
   }
   return session.anonymousKey;
+}
+
+/** 409 while the key's deletion fence holds: no new nickname/prepare/PREPARED execution (05 §9.4). */
+function fenceResponse(world: MockWorld, owner: string): Response | undefined {
+  const fence = world.deletionFence(owner);
+  if (!fence) return undefined;
+  return pendingResponse(fence.ticketId);
+}
+
+/** 409 COMMAND_ALREADY_PENDING with the contract's QUERY_COMMAND recovery (05 §8.2). */
+function pendingResponse(ticketId: string): Response {
+  return HttpResponse.json(
+    errorBody('COMMAND_ALREADY_PENDING', 'CONFLICT', { recovery: { kind: 'QUERY_COMMAND', ticketId } }),
+    { status: 409, headers: noStore },
+  );
+}
+
+/**
+ * Owner for a deletion-ticket call: a normal session of the owner (until execution revokes it), the
+ * ticket's DELETION_RECOVERY session, or a later session of the same key (recentDeletion receipt).
+ */
+function deletionOwner(world: MockWorld, bearer: string | null, deletion: MockDeletion): string | Response {
+  const session = bearer ? world.sessions.get(bearer) : undefined;
+  if (!session) return HttpResponse.json(errorBody('SESSION_INVALID', 'AUTH'), { status: 401, headers: noStore });
+  if (session.revoked) {
+    return HttpResponse.json(
+      errorBody('SESSION_RECOVERY_REQUIRED', 'AUTH', {
+        recovery: { kind: 'REESTABLISH_SESSION', recoveryAllowed: true },
+      }),
+      { status: 401, headers: noStore },
+    );
+  }
+  if (session.anonymousKey !== deletion.owner) {
+    return HttpResponse.json(errorBody('COMMAND_NOT_FOUND', 'VALIDATION'), { status: 404, headers: noStore });
+  }
+  if (session.deletionTicketId && session.deletionTicketId !== deletion.ticketId) {
+    return HttpResponse.json(errorBody('SESSION_SCOPE_INSUFFICIENT', 'AUTH'), { status: 403, headers: noStore });
+  }
+  return session.anonymousKey;
+}
+
+/** CommandResult wire shape of an all-data-delete ticket (05 §5.5, §6.6). */
+function deletionDto(world: MockWorld, deletion: MockDeletion) {
+  const base = {
+    ticketId: deletion.ticketId,
+    operationId: deletion.operationId,
+    kind: 'ALL_DATA_DELETE',
+    target: {},
+    acceptedAt: TICKET_TIMES.acceptedAt,
+    acceptedDateKst: world.sema.dateKst,
+    executeBy: TICKET_TIMES.executeBy,
+    state: deletion.state,
+  };
+  if (deletion.resultExpired) return { ...base, state: 'CLOSED_OUTCOME_UNAVAILABLE', executionSealed: true };
+  if (deletion.state === 'PREPARED' || deletion.state === 'EXECUTING') return base;
+  const settled = { ...base, completedAt: '2026-09-27T02:00:00Z', resultExpiresAt: TICKET_TIMES.resultExpiresAt };
+  if (deletion.state === 'NOT_APPLIED') return { ...settled, error: deletion.error };
+  return { ...settled, proof: DELETION_PROOF };
+}
+
+const DELETION_PROOF = {
+  effect: 'DELETED',
+  deletedAt: '2026-09-27T02:00:00Z',
+  consentEvidenceRetainedUntil: '2027-09-27T02:00:00Z',
+  backupsExpireBy: '2026-10-27T02:00:00Z',
+};
+
+/** The deletion that decides this key's OP-001 answer: running, or succeeded but not yet acked. */
+function recoveringDeletion(world: MockWorld, key: string): MockDeletion | undefined {
+  return [...world.deletions.values()].find(
+    (d) =>
+      d.owner === key && !d.resultExpired && (d.state === 'EXECUTING' || (d.state === 'SUCCEEDED' && !d.acknowledged)),
+  );
 }
 
 export function createHandlers(world: MockWorld, baseUrl = MOCK_API_BASE) {
@@ -191,10 +265,43 @@ export function createHandlers(world: MockWorld, baseUrl = MOCK_API_BASE) {
       if (typeof body.anonymousKey !== 'string' || body.anonymousKey.length === 0) {
         return HttpResponse.json(errorBody('INVALID_REQUEST', 'VALIDATION'), { status: 400, headers: noStore });
       }
+      const recovering = recoveringDeletion(world, body.anonymousKey);
+      const recent = [...world.deletions.values()].find(
+        (d) => d.owner === body.anonymousKey && d.state === 'SUCCEEDED' && d.acknowledged && !d.resultExpired,
+      );
+      if (recovering) {
+        const token = world.issueToken(body.anonymousKey);
+        const record = world.sessions.get(token);
+        if (record) record.deletionTicketId = recovering.ticketId;
+        return HttpResponse.json(
+          {
+            accessToken: token,
+            expiresAt: '2026-09-27T15:00:00Z',
+            context: {
+              mode: 'DELETION_RECOVERY',
+              passenger: null,
+              deletionTicketId: recovering.ticketId,
+              dataGeneration: recovering.generation,
+            },
+            consentPolicies: world.policies,
+          },
+          { status: 201, headers: noStore },
+        );
+      }
       const passenger = world.passengers.get(body.anonymousKey);
       const token = world.issueToken(body.anonymousKey);
       return HttpResponse.json(
         {
+          ...(recent
+            ? {
+                recentDeletion: {
+                  ticketId: recent.ticketId,
+                  deletedGeneration: recent.generation,
+                  resultExpiresAt: TICKET_TIMES.resultExpiresAt,
+                  proof: DELETION_PROOF,
+                },
+              }
+            : {}),
           accessToken: token,
           expiresAt: '2026-09-27T15:00:00Z',
           context: passenger
@@ -236,6 +343,8 @@ export function createHandlers(world: MockWorld, baseUrl = MOCK_API_BASE) {
       }
       const owner = activeOwner(world, bearer);
       if (owner instanceof Response) return owner;
+      const fenced = fenceResponse(world, owner);
+      if (fenced) return fenced;
       const operationId = request.headers.get('Idempotency-Key') ?? '';
       const body = (await request.json()) as { nickname: string | null; expectedRevision: string };
       const fingerprint = JSON.stringify([body.nickname, body.expectedRevision]);
@@ -406,6 +515,8 @@ export function createHandlers(world: MockWorld, baseUrl = MOCK_API_BASE) {
       }
       const owner = activeOwner(world, bearer);
       if (owner instanceof Response) return owner;
+      const fenced = fenceResponse(world, owner);
+      if (fenced) return fenced;
 
       const operationId = request.headers.get('Idempotency-Key') ?? '';
       const body = (await request.json()) as Record<string, unknown>;
@@ -474,6 +585,43 @@ export function createHandlers(world: MockWorld, baseUrl = MOCK_API_BASE) {
       return fault?.kind === 'lose-response' ? HttpResponse.error() : response;
     }),
 
+    // OP-013 (05 §6.6): the fence starts here; an EXECUTING change refuses the prepare.
+    http.post(`${baseUrl}/v1/data-deletion-commands`, async ({ request }) => {
+      const bearer = bearerOf(request);
+      world.requests.push({ op: 'OP-013', bearer });
+      const fault = world.takeFault('OP-013');
+      if (fault && fault.kind !== 'lose-response') {
+        const faulted = await respondWith(fault, 'OP-013');
+        if (faulted) return faulted;
+      }
+      const owner = activeOwner(world, bearer);
+      if (owner instanceof Response) return owner;
+      const operationId = request.headers.get('Idempotency-Key') ?? '';
+      const existing = [...world.deletions.values()].find((d) => d.owner === owner && d.operationId === operationId);
+      const pending =
+        world.deletionFence(owner)?.ticketId ??
+        [...world.tickets.values()].find((t) => t.owner === owner && t.state === 'EXECUTING')?.ticketId;
+      let response: Response;
+      if (existing) {
+        response = HttpResponse.json(deletionDto(world, existing), { status: 200, headers: noStore });
+      } else if (pending) {
+        response = pendingResponse(pending);
+      } else {
+        const deletion: MockDeletion = {
+          owner,
+          ticketId: `synthetic-deletion-${world.deletions.size + 1}`,
+          operationId,
+          generation: (world.passengers.get(owner) as Passenger).dataGeneration,
+          state: 'PREPARED',
+          error: null,
+          acknowledged: false,
+        };
+        world.deletions.set(deletion.ticketId, deletion);
+        response = HttpResponse.json(deletionDto(world, deletion), { status: 201, headers: noStore });
+      }
+      return fault?.kind === 'lose-response' ? HttpResponse.error() : response;
+    }),
+
     http.post(`${baseUrl}/v1/answer-delete-commands`, async ({ request }) => {
       const bearer = bearerOf(request);
       world.requests.push({ op: 'OP-012', bearer });
@@ -484,6 +632,8 @@ export function createHandlers(world: MockWorld, baseUrl = MOCK_API_BASE) {
       }
       const owner = activeOwner(world, bearer);
       if (owner instanceof Response) return owner;
+      const fenced = fenceResponse(world, owner);
+      if (fenced) return fenced;
       const operationId = request.headers.get('Idempotency-Key') ?? '';
       const body = (await request.json()) as Record<string, unknown>;
       const fingerprint = `delete:${JSON.stringify(body)}`;
@@ -515,11 +665,35 @@ export function createHandlers(world: MockWorld, baseUrl = MOCK_API_BASE) {
         const faulted = await respondWith(fault, 'OP-007');
         if (faulted) return faulted;
       }
+      const deletion = world.deletions.get(String(params.ticketId));
+      if (deletion) {
+        const deleter = deletionOwner(world, bearer, deletion);
+        if (deleter instanceof Response) return deleter;
+        const body = (await request.json()) as { kind?: unknown };
+        if (body.kind !== 'ALL_DATA_DELETE') {
+          return HttpResponse.json(errorBody('INVALID_REQUEST', 'VALIDATION'), { status: 400, headers: noStore });
+        }
+        if (deletion.state === 'PREPARED') {
+          // Acceptance ends every normal session of the key; OP-001 then answers DELETION_RECOVERY.
+          deletion.state = 'EXECUTING';
+          for (const record of world.sessions.values()) {
+            if (record.anonymousKey === deletion.owner && !record.deletionTicketId) record.revoked = true;
+          }
+          if (!world.asyncExecution) world.completeExecuting();
+        }
+        const status = deletion.state === 'EXECUTING' ? 202 : 200;
+        const response = HttpResponse.json(deletionDto(world, deletion), { status, headers: noStore });
+        return fault?.kind === 'lose-response' ? HttpResponse.error() : response;
+      }
       const owner = activeOwner(world, bearer);
       if (owner instanceof Response) return owner;
       const ticket = world.tickets.get(String(params.ticketId));
       if (!ticket || ticket.owner !== owner) {
         return HttpResponse.json(errorBody('COMMAND_NOT_FOUND', 'VALIDATION'), { status: 404, headers: noStore });
+      }
+      if (ticket.state === 'PREPARED') {
+        const fenced = fenceResponse(world, owner);
+        if (fenced) return fenced;
       }
       const body = (await request.json()) as { kind?: unknown; content?: unknown };
       const isDelete = ticket.answerTarget?.kind === 'DELETE';
@@ -571,6 +745,12 @@ export function createHandlers(world: MockWorld, baseUrl = MOCK_API_BASE) {
       world.requests.push({ op: 'OP-008', bearer });
       const faulted = await applyFault(world, 'OP-008');
       if (faulted) return faulted;
+      const deletion = world.deletions.get(String(params.ticketId));
+      if (deletion) {
+        const deleter = deletionOwner(world, bearer, deletion);
+        if (deleter instanceof Response) return deleter;
+        return HttpResponse.json(deletionDto(world, deletion), { headers: noStore });
+      }
       const owner = activeOwner(world, bearer);
       if (owner instanceof Response) return owner;
       const ticket = world.tickets.get(String(params.ticketId));
@@ -586,6 +766,16 @@ export function createHandlers(world: MockWorld, baseUrl = MOCK_API_BASE) {
       world.requests.push({ op: 'OP-009', bearer });
       const faulted = await applyFault(world, 'OP-009');
       if (faulted) return faulted;
+      const deletion = world.deletions.get(String(params.ticketId));
+      if (deletion) {
+        const deleter = deletionOwner(world, bearer, deletion);
+        if (deleter instanceof Response) return deleter;
+        if (deletion.state !== 'SUCCEEDED' && deletion.state !== 'NOT_APPLIED') {
+          return HttpResponse.json(errorBody('COMMAND_NOT_TERMINAL', 'CONFLICT'), { status: 409, headers: noStore });
+        }
+        deletion.acknowledged = true;
+        return new HttpResponse(null, { status: 204 });
+      }
       const owner = activeOwner(world, bearer);
       if (owner instanceof Response) return owner;
       const ticket = world.tickets.get(String(params.ticketId));
@@ -606,6 +796,18 @@ export function createHandlers(world: MockWorld, baseUrl = MOCK_API_BASE) {
       if (fault && fault.kind !== 'lose-response') {
         const faulted = await respondWith(fault, 'OP-015');
         if (faulted) return faulted;
+      }
+      const deletion = world.deletions.get(String(params.ticketId));
+      if (deletion) {
+        const deleter = deletionOwner(world, bearer, deletion);
+        if (deleter instanceof Response) return deleter;
+        if (deletion.state === 'PREPARED') {
+          deletion.state = 'NOT_APPLIED';
+          deletion.error = { code: 'COMMAND_CLOSED', category: 'CONFLICT' };
+        }
+        const status = deletion.state === 'EXECUTING' ? 202 : 200;
+        const response = HttpResponse.json(deletionDto(world, deletion), { status, headers: noStore });
+        return fault?.kind === 'lose-response' ? HttpResponse.error() : response;
       }
       const owner = activeOwner(world, bearer);
       if (owner instanceof Response) return owner;

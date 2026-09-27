@@ -7,6 +7,9 @@ interface ImportMetaEnv {
   readonly VITE_ARCA_MOCK_SCENARIO?: string;
 }
 
+/** package.json version, injected by vite `define`. */
+declare const __APP_VERSION__: string;
+
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }

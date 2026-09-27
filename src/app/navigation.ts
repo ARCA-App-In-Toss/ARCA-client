@@ -19,6 +19,9 @@ export const paths = {
   /** F23: a logical modal over F21; the same F21 element stays mounted underneath (06 §5.1). */
   deleteAnswer: '/archive/detail/delete',
   edit: '/archive/edit',
+  settings: '/settings',
+  /** F31: the first-step explanation page; the second step is its AlertDialog (03 §7.2). */
+  deleteAll: '/settings/delete',
   startError: '/error/start',
 } as const;
 

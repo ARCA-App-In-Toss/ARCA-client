@@ -8,6 +8,8 @@ import { StartErrorScreen } from '../screens/error/StartErrorScreen.tsx';
 import { BoardedScreen } from '../screens/onboarding/BoardedScreen.tsx';
 import { BoardingScreen } from '../screens/onboarding/BoardingScreen.tsx';
 import { IntroScreen } from '../screens/onboarding/IntroScreen.tsx';
+import { DeleteAllScreen } from '../screens/settings/DeleteAllScreen.tsx';
+import { SettingsScreen } from '../screens/settings/SettingsScreen.tsx';
 import { PastDraftScreen } from '../screens/today/PastDraftScreen.tsx';
 import { SavedScreen } from '../screens/today/SavedScreen.tsx';
 import { TodayScreen } from '../screens/today/TodayScreen.tsx';
@@ -19,7 +21,12 @@ import { paths } from './navigation.ts';
 // Route table (06 §5.1). URLs and history state carry no IDs, tokens, nicknames or content.
 export { paths };
 
-const targetPath = { intro: paths.intro, today: paths.today, boarded: paths.joinComplete } as const;
+const targetPath = {
+  intro: paths.intro,
+  today: paths.today,
+  boarded: paths.joinComplete,
+  deletion: paths.deleteAll,
+} as const;
 
 /**
  * F00 is also the boundary in front of every route: a cold start on any URL shows F00 until
@@ -36,6 +43,10 @@ function BootstrapBoundary() {
   if (pathname === paths.startError || pathname === paths.start) {
     return <Navigate to={targetPath[bootstrap.target]} replace />;
   }
+  // A kept deletion request or the recovery gate comes before any plain screen (06 §5.3 #4–5).
+  if (bootstrap.target === 'deletion' && pathname !== paths.deleteAll) {
+    return <Navigate to={paths.deleteAll} replace />;
+  }
   return <Outlet />;
 }
 
@@ -47,6 +58,19 @@ function RequireMode({ mode, children }: { mode: SessionMode; children: ReactNod
   const { bootstrap, session } = useAppSnapshot();
   const { pathname } = useLocation();
   if (session?.mode === mode) return <>{children}</>;
+  const fallback = bootstrap.phase === 'ready' ? targetPath[bootstrap.target] : paths.start;
+  if (fallback === pathname) return <StartScreen />;
+  return <Navigate to={fallback} replace />;
+}
+
+/**
+ * F31 is the only screen of the DELETION_RECOVERY gate (06 §5.3 #4) and also an ACTIVE settings page.
+ * Every other route in the gate falls back here through RequireMode.
+ */
+function RequireDeletionAccess({ children }: { children: ReactNode }) {
+  const { bootstrap, session } = useAppSnapshot();
+  const { pathname } = useLocation();
+  if (session?.mode === 'ACTIVE' || session?.mode === 'DELETION_RECOVERY') return <>{children}</>;
   const fallback = bootstrap.phase === 'ready' ? targetPath[bootstrap.target] : paths.start;
   if (fallback === pathname) return <StartScreen />;
   return <Navigate to={fallback} replace />;
@@ -146,6 +170,22 @@ export const routes: RouteObject[] = [
           <RequireMode mode="ACTIVE">
             <EditScreen />
           </RequireMode>
+        ),
+      },
+      {
+        path: paths.settings,
+        element: (
+          <RequireMode mode="ACTIVE">
+            <SettingsScreen />
+          </RequireMode>
+        ),
+      },
+      {
+        path: paths.deleteAll,
+        element: (
+          <RequireDeletionAccess>
+            <DeleteAllScreen />
+          </RequireDeletionAccess>
         ),
       },
       { path: paths.startError, element: <StartErrorScreen /> },

@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, useState } from 'react';
+import { useAllDeletedNotice } from '../../app/AppServices.tsx';
 import { paths, useArcaNavigate } from '../../app/navigation.ts';
 import introStory from '../../content/introStory.txt?raw';
 import { PixelAppShell, PixelButton, PixelPlaceholder, ScenePanel, ScreenTitle } from '../../ui/components.tsx';
@@ -12,6 +13,8 @@ const totalScenes = String(scenes.length);
 
 export function IntroScreen() {
   const navigate = useArcaNavigate();
+  // After a full deletion F01 announces the success once after its title (IX-029, 04 §7.11).
+  const deletedNotice = useAllDeletedNotice();
   const [scene, setScene] = useState(0);
   const [storyOpen, setStoryOpen] = useState(false);
   /** Set only by a user action so the first render does not announce or move focus. */
@@ -65,7 +68,7 @@ export function IntroScreen() {
         <p className="arca-narrative">{scenes[scene]}</p>
       </ScenePanel>
       <div className="arca-visually-hidden" role="status" aria-live="polite">
-        {announce ? `${progressLabel}. ${scenes[scene]}` : ''}
+        {announce ? `${progressLabel}. ${scenes[scene]}` : deletedNotice ? copy['CPY-F31-019'] : ''}
       </div>
       <PixelButton ref={toggleRef} aria-expanded={storyOpen} onClick={storyOpen ? closeStory : openStory}>
         {storyOpen ? copy['CPY-F01-008'] : copy['CPY-F01-007']}

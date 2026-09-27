@@ -52,6 +52,10 @@ export function AnswerDetailScreen() {
   const deleteRunning = deleting || pendingMode === 'DELETE';
   const unresolved = view.kind === 'working' || view.kind === 'unconfirmed';
   const locked = pending === 'checking' || unresolved;
+  // An unresolved delete is tracked until the server settles it, even after "check later" (06 §8.5).
+  const deleteUnresolved = deleteRunning && unresolved;
+  const deleteUnconfirmed = deleteRunning && view.kind === 'unconfirmed';
+  const autoOpened = useRef(false);
 
   useEffect(() => {
     if (!(detail.error instanceof TransportFailure)) return;
@@ -64,9 +68,11 @@ export function AnswerDetailScreen() {
     };
   }, [detail.error, isOffline]);
 
-  // A delete left unresolved by a restart reopens its dialog: the server result comes first (IX-036 #5).
+  // A delete left unresolved by a restart reopens its dialog once: the server result comes first
+  // (IX-036 #5). After "check later" it stays closed; F21 keeps the unconfirmed notice.
   useEffect(() => {
-    if (pendingMode === 'DELETE' && !dialogRoute && routeState?.answerRef) {
+    if (pendingMode === 'DELETE' && !dialogRoute && routeState?.answerRef && !autoOpened.current) {
+      autoOpened.current = true;
       navigate(paths.deleteAnswer, { answerRef: routeState.answerRef });
     }
   }, [pendingMode, dialogRoute, routeState?.answerRef, navigate]);
@@ -78,8 +84,9 @@ export function AnswerDetailScreen() {
   latest.current = { closeDialog, refetch: detail.refetch };
 
   // Declared before the result effect so a settled result can close the dialog in the same commit.
-  // While a delete is unresolved, Back and dismiss stay locked (04 IX-025, 06 §5.1).
-  const blocker = useBlocker(() => dialogRoute && deleteRunning && unresolved);
+  // While a delete request or its check is running, Back and dismiss stay locked (04 IX-025, 06 §5.1).
+  // An unconfirmed result may be closed; the command keeps tracking it (04 §6.12).
+  const blocker = useBlocker(() => dialogRoute && deleteRunning && view.kind === 'working');
   useEffect(() => {
     if (blocker.state === 'blocked') blocker.reset();
   }, [blocker]);
@@ -116,7 +123,10 @@ export function AnswerDetailScreen() {
         }
         setNotice(code === 'COMMAND_CLOSED' ? 'deleteClosed' : 'deleteFailed');
         // A changed answer is never deleted; the latest detail is read (MS-DELETE-002).
-        if (code === 'REVISION_CONFLICT') void latest.current.refetch();
+        if (code === 'REVISION_CONFLICT') {
+          markStale();
+          void latest.current.refetch();
+        }
         return;
       }
       case 'reconciled':
@@ -172,6 +182,7 @@ export function AnswerDetailScreen() {
 
   let status: string | null = null;
   if (editUnresolved) status = copy['CPY-F21-017'];
+  else if (deleteUnresolved) status = copy['CPY-F21-019'];
   else if (notice === 'editSaved') status = copy['CPY-F21-014'];
   else if (notice === 'editNotSaved') status = copy['CPY-F22-032'];
   else if (notice === 'deleteFailed') status = copy['CPY-F21-015'];
@@ -180,7 +191,7 @@ export function AnswerDetailScreen() {
   let dialogStatus: string | null = null;
   let actionLabel: string = copy['CPY-F23-007'];
   if (deleteRunning && view.kind === 'working') dialogStatus = copy['CPY-F23-008'];
-  if (deleteRunning && view.kind === 'unconfirmed') {
+  if (deleteUnconfirmed) {
     // No success or failure is claimed; the same command is only checked again (06 §8.5).
     if (view.recovery === 'cleanUpExpired') {
       dialogStatus = copy['CPY-COM-028'];
@@ -188,7 +199,7 @@ export function AnswerDetailScreen() {
     } else if (view.recovery === 'closePrepared') {
       actionLabel = copy['CPY-COM-026'];
     } else {
-      dialogStatus = copy['CPY-F23-008'];
+      dialogStatus = copy['CPY-F23-011'];
       actionLabel = copy['CPY-COM-007'];
     }
   }
@@ -237,26 +248,30 @@ export function AnswerDetailScreen() {
         <PixelButton
           ref={deleteButtonRef}
           variant="danger"
-          disabled={locked || editUnresolved}
+          disabled={deleteUnresolved ? view.kind === 'working' : locked || editUnresolved}
           onClick={() => navigate(paths.deleteAnswer, { answerRef: routeState?.answerRef ?? '' })}
         >
-          {notice === 'deleteFailed' ? copy['CPY-F21-016'] : copy['CPY-F21-009']}
+          {deleteUnresolved
+            ? copy['CPY-F21-020']
+            : notice === 'deleteFailed'
+              ? copy['CPY-F21-016']
+              : copy['CPY-F21-009']}
         </PixelButton>
       </div>
       <PixelAlertDialog
         open={dialogRoute}
         title={copy['CPY-F23-001']}
         description={fill(copy['CPY-F23-002'], { dateKst: formatDateKst(createdDateKst) })}
-        cancelLabel={copy['CPY-F23-006']}
+        cancelLabel={deleteUnconfirmed ? copy['CPY-F23-012'] : copy['CPY-F23-006']}
         actionLabel={actionLabel}
-        danger={!(deleteRunning && view.kind === 'unconfirmed')}
-        locked={deleteRunning && unresolved}
+        danger={!deleteUnconfirmed}
+        locked={deleteRunning && view.kind === 'working'}
         busy={deleteRunning && view.kind === 'working'}
         status={dialogStatus}
         returnFocusRef={deleteButtonRef}
         onCancel={closeDialog}
         onAction={() => {
-          if (deleteRunning && view.kind === 'unconfirmed') {
+          if (deleteUnconfirmed) {
             if (view.recovery) command.close();
             else command.recheck();
             return;

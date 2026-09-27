@@ -15,13 +15,12 @@ import {
   PixelPlaceholder,
   RecordPanel,
   ScenePanel,
-  ScreenTitle,
   StatePanel,
 } from '../../ui/components.tsx';
 import { copy, fill } from '../../ui/copy.ts';
 import { formatCount, formatDateKst, formatInstantKst, isWhitespaceOnly } from '../../ui/format.ts';
 import { PixelSheet } from '../../ui/PixelSheet.tsx';
-import { RootTabs } from '../RootTabs.tsx';
+import { RootHeader, RootTabs } from '../RootTabs.tsx';
 
 /** F10 — today's SEMA (03 §5.1, 04 §6.5). Unanswered: question first; answered: own excerpt first. */
 export function TodayScreen() {
@@ -59,7 +58,7 @@ export function TodayScreen() {
   if (!today.data) {
     return (
       <PixelAppShell tabs={<RootTabs current="today" />}>
-        <ScreenTitle>{copy['CPY-F10-001']}</ScreenTitle>
+        <RootHeader title={copy['CPY-F10-001']} />
         {today.isError ? (
           <StatePanel>
             <p>{offline ? copy['CPY-F10-021'] : copy['CPY-F10-020']}</p>
@@ -95,7 +94,7 @@ export function TodayScreen() {
     announcement;
   return (
     <PixelAppShell tabs={<RootTabs current="today" />}>
-      <ScreenTitle>{copy['CPY-F10-001']}</ScreenTitle>
+      <RootHeader title={copy['CPY-F10-001']} />
       {data.answer.state === 'UNANSWERED' ? (
         <Unanswered today={data} onAnnounce={setAnnouncement} pendingQuestionId={pendingQuestionId} />
       ) : (

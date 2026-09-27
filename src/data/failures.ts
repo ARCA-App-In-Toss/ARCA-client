@@ -39,7 +39,8 @@ export class DomainFailure extends Error {
 
 export class LocalPersistenceFailure extends Error {
   override readonly name = 'LocalPersistenceFailure';
-  readonly reason: 'write' | 'read-back' | 'corrupt' | 'conflict' | 'unreadable';
+  /** `sealed`: a write to an area behind the full-deletion barrier (06 §8.2). */
+  readonly reason: 'write' | 'read-back' | 'corrupt' | 'conflict' | 'unreadable' | 'sealed';
   constructor(reason: LocalPersistenceFailure['reason']) {
     super(`local:${reason}`);
     this.reason = reason;

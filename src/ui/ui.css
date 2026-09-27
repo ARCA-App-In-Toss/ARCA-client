@@ -703,3 +703,37 @@ p {
   flex-direction: column;
   gap: var(--space-200);
 }
+
+/* F10/F20 title row: the settings icon wraps below the title at 200% text (03 §4 F10). */
+.arca-root-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-200);
+}
+
+/* F30 groups (03 §7.1): independent secondary rows; the danger zone is set apart, never a fixed CTA. */
+.arca-settings-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-300);
+}
+
+.arca-settings-pairs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-300);
+  margin: 0;
+}
+
+.arca-settings-pairs dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.arca-settings-danger {
+  margin-top: var(--space-1000);
+  padding-top: var(--space-600);
+  border-top: 2px solid var(--color-border-on-dark);
+}

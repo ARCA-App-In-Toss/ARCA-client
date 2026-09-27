@@ -105,9 +105,13 @@ function newOwnerScope(): string {
   return globalThis.crypto?.randomUUID?.() ?? `scope-${scopeSeq}-${Math.random().toString(36).slice(2)}`;
 }
 
+/**
+ * ACTIVE and its own DELETION_RECOVERY share one owner (same passenger and generation): moving into
+ * the restricted gate does not by itself discard memory or the device area (06 §9.3–9.4).
+ */
 function ownerIdentityOf(session: EstablishedSession): string {
   const { context } = session;
-  return context.mode === 'PRE_PASSENGER' ? 'PRE' : `${context.mode}:${context.dataGeneration}`;
+  return context.mode === 'PRE_PASSENGER' ? 'PRE' : `G:${context.dataGeneration}`;
 }
 
 export interface SessionControllerDeps {
@@ -129,6 +133,12 @@ export class SessionController {
 
   get summary(): SessionSummary | null {
     return this.current?.summary ?? null;
+  }
+
+  /** The deletion ticket a DELETION_RECOVERY session is limited to; null in any other mode. */
+  get deletionTicketId(): string | null {
+    const context = this.current?.session.context;
+    return context?.mode === 'DELETION_RECOVERY' ? context.deletionTicketId : null;
   }
 
   /** Policies from the latest OP-001, for onboarding only. */

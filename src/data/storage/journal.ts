@@ -21,6 +21,17 @@ export interface RootData {
   routeEpoch: number;
   /** Known generation areas and their local key refs; kept until cleanup is confirmed. */
   generations: { generation: string; ref: string }[];
+  /**
+   * Minimal full-deletion receipt (06 §8.1, §9.4): no content, profile or token. It is the tombstone
+   * that keeps a deleted generation from being restored; absent in roots written before step 7.
+   */
+  deletion?: DeletionReceipt | null | undefined;
+}
+
+export interface DeletionReceipt {
+  ticketId: string;
+  deletedGeneration: string;
+  resultExpiresAt: string;
 }
 
 export interface ManifestEntry {
@@ -36,6 +47,14 @@ const zRootData = z.object({
   currentGeneration: z.string().min(1).nullable(),
   routeEpoch: z.int().nonnegative(),
   generations: z.array(z.object({ generation: z.string().min(1), ref: z.string().min(1) })),
+  deletion: z
+    .object({
+      ticketId: z.string().min(1),
+      deletedGeneration: z.string().min(1),
+      resultExpiresAt: z.string().min(1),
+    })
+    .nullable()
+    .optional(),
 });
 
 const zManifestData = z.object({
@@ -98,6 +117,8 @@ export class StorageJournal {
   private readonly storage: KeyValueStoragePort;
   private readonly clock: ClockPort;
   private queue: Promise<unknown> = Promise.resolve();
+  /** Areas behind the full-deletion barrier: queued or later writes to them fail (06 §8.2). */
+  private readonly sealed = new Set<string>();
 
   constructor(storage: KeyValueStoragePort, clock: ClockPort) {
     this.storage = storage;
@@ -169,6 +190,7 @@ export class StorageJournal {
         writtenAt: this.clock.now(),
         data,
       };
+      this.assertOpen(scope);
       await this.writeExact(storageKeys.record(recordRef), JSON.stringify(envelope));
 
       await this.writeMeta(scope, zManifestData, (current) => {
@@ -223,7 +245,11 @@ export class StorageJournal {
    * that no copy references cannot be enumerated and are not claimed (06 §8.2).
    */
   clearArea(scope: ManifestScope): Promise<void> {
-    return this.enqueue(async () => {
+    return this.enqueue(() => this.clearAreaNow(scope));
+  }
+
+  private async clearAreaNow(scope: ManifestScope): Promise<void> {
+    {
       const refs = new Set<string>();
       for (const slot of SLOTS) {
         const read = await this.readSlot(scope, slot, zManifestData);
@@ -234,10 +260,90 @@ export class StorageJournal {
       }
       for (const ref of refs) await this.removeExact(storageKeys.record(ref));
       for (const slot of SLOTS) await this.removeExact(storageKeys.manifest(scope, slot));
+    }
+  }
+
+  // ---- full deletion ---------------------------------------------------------------------------
+
+  /**
+   * Queue barrier for a deleted generation (06 §8.2, §9.4): takes effect at once, so metadata or
+   * record writes already queued for that area fail instead of recreating it after the purge.
+   */
+  seal(scope: ManifestScope): void {
+    this.sealed.add(ownerOf(scope));
+  }
+
+  /**
+   * Removes a deleted generation's device data after a confirmed SUCCEEDED (06 §9.4). With no other
+   * known generation (or a root that cannot prove one) the whole app storage is wiped, which also
+   * reaches orphans; otherwise only that area and its root entry go, and newer areas are untouched.
+   * Resolves only when the removal is done; the caller keeps the recovery state on failure.
+   */
+  purgeGeneration(
+    scope: ManifestScope & { kind: 'generation' },
+    deletedGeneration: string,
+  ): Promise<{ routeEpoch: number }> {
+    this.seal(scope);
+    return this.enqueue(async () => {
+      let root: RootData | null;
+      try {
+        root = (await this.readMeta('root', zRootData)).latest?.envelope?.data ?? null;
+      } catch {
+        // A root that cannot prove a newer area: the targeted cleanup cannot be proven either.
+        await this.clearAll();
+        return { routeEpoch: 0 };
+      }
+      const others = (root?.generations ?? []).filter((g) => g.ref !== scope.ref && g.generation !== deletedGeneration);
+      const current = root?.currentGeneration ?? null;
+      if (others.length === 0 && (current === null || current === deletedGeneration)) {
+        await this.clearAll();
+        return { routeEpoch: (root?.routeEpoch ?? 0) + 1 };
+      }
+      // Records first, then the root exclusion: the reverse order could leave unreferenced records
+      // that can never be enumerated again (06 §8.2 orphans). A stop in between leaves a root entry
+      // without a manifest, which the next stale cleanup or recovery gate removes again.
+      await this.clearAreaNow(scope);
+      // Tombstone in both copies: a lower copy can never bring the deleted area back (06 §8.2).
+      const drop = (data: RootData | null): RootData => ({
+        ...(data ?? { currentGeneration: null, routeEpoch: 0, generations: [] }),
+        currentGeneration: data?.currentGeneration === deletedGeneration ? null : (data?.currentGeneration ?? null),
+        generations: (data?.generations ?? []).filter((g) => g.ref !== scope.ref),
+      });
+      const written = await this.writeMeta('root', zRootData, drop);
+      await this.writeMeta('root', zRootData, drop);
+      return { routeEpoch: written.routeEpoch };
     });
   }
 
+  /** Writes the minimal deletion receipt into both root copies; failure never undoes the deletion. */
+  recordDeletion(receipt: DeletionReceipt, routeEpoch: number): Promise<void> {
+    return this.enqueue(async () => {
+      const put = (data: RootData | null): RootData => ({
+        currentGeneration: data?.currentGeneration ?? null,
+        generations: data?.generations ?? [],
+        routeEpoch: Math.max(routeEpoch, data?.routeEpoch ?? 0),
+        deletion: receipt,
+      });
+      const first = await this.readMeta('root', zRootData);
+      await this.writeMeta('root', zRootData, put);
+      // A fresh root is initialized with two copies; an existing one needs the second write.
+      if (first.latest) await this.writeMeta('root', zRootData, put);
+    });
+  }
+
+  private async clearAll(): Promise<void> {
+    try {
+      await this.storage.clearItems();
+    } catch {
+      throw new LocalPersistenceFailure('write');
+    }
+  }
+
   // ---- internals -------------------------------------------------------------------------------
+
+  private assertOpen(scope: ManifestScope): void {
+    if (this.sealed.has(ownerOf(scope))) throw new LocalPersistenceFailure('sealed');
+  }
 
   private keyFor(scope: ManifestScope | 'root', slot: Slot): string {
     return scope === 'root' ? storageKeys.root(slot) : storageKeys.manifest(scope, slot);
@@ -288,6 +394,7 @@ export class StorageJournal {
     schema: z.ZodType<T>,
     mutate: (current: T | null) => T,
   ): Promise<T> {
+    if (scope !== 'root') this.assertOpen(scope);
     const read = await this.readMeta(scope, schema);
     const current = read.latest?.envelope ?? null;
     const data = schema.parse(mutate(current?.data ?? null));

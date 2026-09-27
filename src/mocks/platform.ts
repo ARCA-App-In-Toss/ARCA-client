@@ -10,6 +10,10 @@ export interface FakeStorage extends KeyValueStoragePort {
   /** Every write waits for the returned release function (slow Storage). */
   holdWrites(): () => void;
   readonly writeCount: number;
+  /** Successful `clearItems` calls. */
+  readonly clearCount: number;
+  /** The next `count` removals (removeItem or clearItems) are rejected. */
+  failNextRemovals(count: number): void;
 }
 
 export function createFakeStorage(initial?: Map<string, string>): FakeStorage {
@@ -18,6 +22,8 @@ export function createFakeStorage(initial?: Map<string, string>): FakeStorage {
   const writeCorruptions: { match: (key: string) => boolean; mutate: (value: string) => string }[] = [];
   let gate: Promise<void> | null = null;
   let writeCount = 0;
+  let removalFailures = 0;
+  let clearCount = 0;
   return {
     data,
     get writeCount() {
@@ -53,7 +59,25 @@ export function createFakeStorage(initial?: Map<string, string>): FakeStorage {
       data.set(key, value);
     },
     async removeItem(key) {
+      if (removalFailures > 0) {
+        removalFailures -= 1;
+        throw new Error('synthetic storage remove failure');
+      }
       data.delete(key);
+    },
+    async clearItems() {
+      if (removalFailures > 0) {
+        removalFailures -= 1;
+        throw new Error('synthetic storage clear failure');
+      }
+      clearCount += 1;
+      data.clear();
+    },
+    get clearCount() {
+      return clearCount;
+    },
+    failNextRemovals(count) {
+      removalFailures += count;
     },
     failNextWrite(match) {
       writeFailures.push(match);

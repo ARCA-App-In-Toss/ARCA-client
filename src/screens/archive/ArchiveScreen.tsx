@@ -13,12 +13,11 @@ import {
   PixelButton,
   PixelPlaceholder,
   RecordPanel,
-  ScreenTitle,
   StatePanel,
 } from '../../ui/components.tsx';
 import { copy, fill } from '../../ui/copy.ts';
 import { formatCount, formatDateKst } from '../../ui/format.ts';
-import { RootTabs } from '../RootTabs.tsx';
+import { RootHeader, RootTabs } from '../RootTabs.tsx';
 
 /** Question part for rows: 80 EGC / 2 logical lines, prefix only (04 §5.10 #6). */
 const QUESTION_PART = { maxGraphemes: 80, maxLogicalLines: 2 } as const;
@@ -166,7 +165,7 @@ export function ArchiveScreen() {
   return (
     <PixelAppShell tabs={tabs}>
       <div ref={containerRef} className="arca-stack">
-        <ScreenTitle>{copy['CPY-F20-001']}</ScreenTitle>
+        <RootHeader title={copy['CPY-F20-001']} />
         {count?.state === 'AVAILABLE' && (
           <MemoryCount text={fill(copy['CPY-F20-002'], { memoryCount: formatCount(count.value.count) })} />
         )}

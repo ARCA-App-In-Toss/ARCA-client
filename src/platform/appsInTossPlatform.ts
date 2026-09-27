@@ -62,6 +62,7 @@ export function createAppsInTossPlatform(): PlatformPort {
       getItem: (key) => Storage.getItem(key),
       setItem: (key, value) => Storage.setItem(key, value),
       removeItem: (key) => Storage.removeItem(key),
+      clearItems: () => Storage.clearItems(),
     },
     clock: { now: () => Date.now() },
     // The SDK's visibility event is for transparent service webs only; the WebView's standard

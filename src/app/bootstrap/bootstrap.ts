@@ -19,8 +19,11 @@ export interface StartError {
 
 export type BootstrapState =
   | { phase: 'starting' }
-  /** `boarded`: this visit's OP-003 handoff; F03 opens once, never from a cold start (06 §9.1). */
-  | { phase: 'ready'; target: 'intro' | 'today' | 'boarded'; routeEpoch: number }
+  /**
+   * `boarded`: this visit's OP-003 handoff; F03 opens once, never from a cold start (06 §9.1).
+   * `deletion`: the DELETION_RECOVERY gate or a kept all-data-delete request (06 §5.3 #4–5).
+   */
+  | { phase: 'ready'; target: 'intro' | 'today' | 'boarded' | 'deletion'; routeEpoch: number }
   | { phase: 'failed'; error: StartError; retry: 'idle' | 'running' | 'failed' };
 
 export const START_EXCERPT_PROFILE = 'EXPANDED' as const;
@@ -33,12 +36,8 @@ export interface BootstrapDeps {
   network: NetworkPort;
   /** Cold start as ACTIVE with a kept creation tracker: true only on the same ID's OP-003 receipt. */
   resumeCreation?: () => Promise<boolean>;
-}
-
-class DeletionRecoveryPendingFailure extends Error {
-  constructor() {
-    super('bootstrap:deletion-recovery');
-  }
+  /** A kept all-data-delete request in this generation area (F31 opens first). */
+  hasPendingDeletion?: (area: ManifestScope) => Promise<boolean>;
 }
 
 function newAreaRef(): string {
@@ -55,6 +54,7 @@ async function reconcileLocalArea(journal: StorageJournal, summary: SessionSumma
     // Create the manifest pair before the root points at it, so a known area is never missing.
     await journal.initArea({ kind: 'generation', ref });
     root = await journal.updateRoot((current) => ({
+      deletion: current?.deletion ?? null,
       currentGeneration: current?.currentGeneration ?? null,
       routeEpoch: current?.routeEpoch ?? 0,
       generations: [...(current?.generations ?? []), { generation: target, ref }],
@@ -62,16 +62,29 @@ async function reconcileLocalArea(journal: StorageJournal, summary: SessionSumma
   }
   if (!root || root.currentGeneration !== target) {
     root = await journal.updateRoot((current) => ({
+      deletion: current?.deletion ?? null,
       currentGeneration: target,
       routeEpoch: (current?.routeEpoch ?? 0) + (current ? 1 : 0),
       generations: current?.generations ?? [],
     }));
   }
 
+  // The minimal deletion receipt lives only while the server still reports it (05 §5.2 recentDeletion).
+  if (root.deletion && !summary.recentDeletion) {
+    root = await journal.updateRoot((current) => ({
+      currentGeneration: current?.currentGeneration ?? null,
+      routeEpoch: current?.routeEpoch ?? 0,
+      generations: current?.generations ?? [],
+      deletion: null,
+    }));
+  }
+
   // Old generation areas are removed before the first screen; failure blocks start (D-TECH-041).
+  // With recentDeletion this is the deleted generation; a newer boarding's area is the target and stays.
   for (const stale of root.generations.filter((g) => g.generation !== target)) {
     await journal.clearArea({ kind: 'generation', ref: stale.ref });
     root = await journal.updateRoot((current) => ({
+      deletion: current?.deletion ?? null,
       currentGeneration: current?.currentGeneration ?? null,
       routeEpoch: current?.routeEpoch ?? 0,
       generations: (current?.generations ?? []).filter((g) => g.ref !== stale.ref),
@@ -118,8 +131,16 @@ export async function runBootstrap(
 ): Promise<BootstrapOutcome> {
   try {
     const summary = reuse ?? (await deps.session.establish());
-    // Full-deletion recovery is an app-wide gate owned by step 7; until then no private screen opens.
-    if (summary.mode === 'DELETION_RECOVERY') throw new DeletionRecoveryPendingFailure();
+    // App-wide gate (06 §5.3 #4): no reconcile, no cleanup, no query before the deletion result is known.
+    // The old area is only located, so a confirmed success can remove exactly it.
+    if (summary.mode === 'DELETION_RECOVERY') {
+      const root = await deps.journal.readRoot().catch(() => null);
+      const ref = root?.generations.find((g) => g.generation === summary.generation)?.ref;
+      return {
+        state: { phase: 'ready', target: 'deletion', routeEpoch: root?.routeEpoch ?? 0 },
+        area: ref ? { kind: 'generation', ref } : null,
+      };
+    }
 
     // Before the PRE area is cleared: a creation whose response was lost continues to F03 only with
     // its own receipt; otherwise the normal ACTIVE start applies (06 §9.1 #4).
@@ -134,12 +155,16 @@ export async function runBootstrap(
     const areaRef = root.generations.find((g) => g.generation === summary.generation)?.ref;
     if (!areaRef) throw new LocalPersistenceFailure('corrupt');
 
+    const area: ManifestScope = { kind: 'generation', ref: areaRef };
+    if (!handoff && (await deps.hasPendingDeletion?.(area))) {
+      return { state: { phase: 'ready', target: 'deletion', routeEpoch: root.routeEpoch }, area };
+    }
     const today = await deps.session.run('ACTIVE', (auth) => deps.api.getToday(auth, START_EXCERPT_PROFILE));
     const generation = summary.generation ?? '';
     deps.queryClient.setQueryData(queryKeys.today(summary.ownerScope, generation, START_EXCERPT_PROFILE), today);
     return {
       state: { phase: 'ready', target: handoff ?? 'today', routeEpoch: root.routeEpoch },
-      area: { kind: 'generation', ref: areaRef },
+      area,
     };
   } catch (error) {
     return { state: { phase: 'failed', error: await classify(error, deps.network), retry: 'idle' }, area: null };

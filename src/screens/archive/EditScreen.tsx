@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { Navigate, useBlocker, useNavigate } from 'react-router';
-import { useAnswer } from '../../app/AppServices.tsx';
+import { useAnswer, useArchive } from '../../app/AppServices.tsx';
 import { useAnswerCommand, usePendingAnswer } from '../../app/answers.ts';
-import { useDraftSession } from '../../app/drafts.ts';
+import { useDraftSession, useStaleEditDraft } from '../../app/drafts.ts';
 import { paths, useAnswerRefs, useRouteState } from '../../app/navigation.ts';
 import { useCopyText } from '../../app/writes.ts';
 import type { AnswerDetail } from '../../data/api/models.ts';
+import { DomainFailure } from '../../data/failures.ts';
 import type { UpdateDraftIdentity } from '../../domain/drafts/draftRepository.ts';
 import type { KeepStatus } from '../../domain/drafts/draftWriter.ts';
 import { measureAnswer } from '../../domain/text/graphemes.ts';
@@ -47,6 +48,9 @@ function withinMs<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
 
 type CopyResult = 'copied' | 'failed' | null;
 
+/** Result of reading the latest detail to edit on it after REVISION_CONFLICT. */
+type RebaseResult = 'rebased' | 'gone' | 'failed';
+
 /**
  * F22 — edit an existing answer (03 §6.3, 04 §6.11). The edit draft is keyed by answer + base
  * revision; the server copy stays until a confirmed success, and there is no F12 or motion (IX-029).
@@ -57,12 +61,23 @@ export function EditScreen() {
   const answerId = refs.resolve(routeState?.answerRef);
   const detail = useAnswer(answerId);
   // The version this visit edits stays fixed; a later OP-011 never swaps the base under the text.
+  // Only the explicit re-edit after a conflict moves it, and the old input stays on its old base.
   const pinned = useRef<AnswerDetail | null>(null);
   pinned.current ??= detail.data ?? null;
+  const [, setRebased] = useState(0);
   const base = pinned.current;
   if (!answerId) return <Navigate to={paths.archive} replace />;
   if (!base) return <EditLoading />;
-  return <EditForm answerId={answerId} base={base} />;
+  const rebase = async (): Promise<RebaseResult> => {
+    const result = await detail.refetch();
+    if (result.error instanceof DomainFailure && result.error.code === 'ANSWER_NOT_FOUND') return 'gone';
+    if (!result.data || result.isError) return 'failed';
+    pinned.current = result.data;
+    setRebased((n) => n + 1);
+    return 'rebased';
+  };
+  // A new base revision is a new edit identity: the form starts over from the latest server text.
+  return <EditForm key={base.revision} answerId={answerId} base={base} onRebase={rebase} />;
 }
 
 function EditLoading() {
@@ -78,11 +93,25 @@ function EditLoading() {
   );
 }
 
-function EditForm({ answerId, base }: { answerId: string; base: AnswerDetail }) {
+function EditForm({
+  answerId,
+  base,
+  onRebase,
+}: {
+  answerId: string;
+  base: AnswerDetail;
+  onRebase: () => Promise<RebaseResult>;
+}) {
   const routerNavigate = useNavigate();
   const copyText = useCopyText();
   const identity = useRef<UpdateDraftIdentity>({ kind: 'update', answerId, baseRevision: base.revision }).current;
   const draft = useDraftSession(identity, undefined, base.content);
+  const stale = useStaleEditDraft(answerId, base.revision);
+  const { markStale } = useArchive();
+  const [rebaseState, setRebaseState] = useState<'idle' | 'running' | 'failed' | 'unkept'>('idle');
+  const [staleDialog, setStaleDialog] = useState(false);
+  const [staleCopy, setStaleCopy] = useState<CopyResult>(null);
+  const staleDiscardRef = useRef<HTMLButtonElement | null>(null);
   const command = useAnswerCommand(answerId);
   const pendingOnEntry = usePendingAnswer(answerId);
   const { view } = command;
@@ -184,6 +213,33 @@ function EditForm({ answerId, base }: { answerId: string; base: AnswerDetail }) 
   const baseGone =
     (view.kind === 'notApplied' || view.kind === 'rejected') &&
     (view.code === 'REVISION_CONFLICT' || view.code === 'ANSWER_NOT_FOUND');
+  // Changed elsewhere: the latest detail becomes the next base on request; the texts never mix (MS-EDIT-002).
+  const conflict = (view.kind === 'notApplied' || view.kind === 'rejected') && view.code === 'REVISION_CONFLICT';
+  useEffect(() => {
+    if (conflict) markStale();
+  }, [conflict, markStale]);
+
+  const onReEdit = async () => {
+    // The old input stays as the old base's draft; without a confirmed keep, warn once first.
+    if (rebaseState !== 'unkept' && !(await draft.flush())) {
+      setRebaseState('unkept');
+      return;
+    }
+    setRebaseState('running');
+    const result = await onRebase();
+    if (result === 'rebased') {
+      allowLeaveRef.current = true;
+      command.consume();
+      return;
+    }
+    if (result === 'gone') {
+      allowLeaveRef.current = true;
+      command.consume();
+      routerNavigate(-1);
+      return;
+    }
+    setRebaseState('failed');
+  };
   const statusParts: string[] = [];
   if (loading) statusParts.push(copy['CPY-F22-009']);
   switch (view.kind) {
@@ -205,6 +261,12 @@ function EditForm({ answerId, base }: { answerId: string; base: AnswerDetail }) 
       break;
     case 'notApplied':
     case 'rejected':
+      if (conflict) {
+        statusParts.push(copy['CPY-F22-034']);
+        if (rebaseState === 'failed') statusParts.push(copy['CPY-F21-011']);
+        if (rebaseState === 'unkept') statusParts.push(copy['CPY-COM-008']);
+        break;
+      }
       statusParts.push(closedByUser ? copy['CPY-COM-021'] : copy['CPY-F22-016']);
       if (keepFailed) statusParts.push(copy['CPY-F22-012']);
       else if (keepUnsettled) statusParts.push(copy['CPY-COM-008']);
@@ -225,7 +287,13 @@ function EditForm({ answerId, base }: { answerId: string; base: AnswerDetail }) 
   if (copyResult === 'copied') statusParts.push(copy['CPY-F13-014']);
   if (copyResult === 'failed') statusParts.push(copy['CPY-F13-015']);
   const status = statusParts.length > 0 ? statusParts.join(' ') : null;
-  const dangerStatus = saveProblem || keepFailed || copyResult === 'failed' || view.kind === 'localFailure';
+  const dangerStatus =
+    (saveProblem && !conflict) ||
+    rebaseState === 'failed' ||
+    rebaseState === 'unkept' ||
+    keepFailed ||
+    copyResult === 'failed' ||
+    view.kind === 'localFailure';
   const showCopy = pending || keepFailed || saveProblem;
   const textLocked = pending || view.kind === 'reconciled';
   const helpId = 'f22-help';
@@ -289,6 +357,29 @@ function EditForm({ answerId, base }: { answerId: string; base: AnswerDetail }) 
         )}
       </RecordPanel>
       <InlineStatus message={status} tone={dangerStatus ? 'danger' : 'neutral'} />
+      {stale && !pending && (
+        <RecordPanel labelledBy="f22-stale-label">
+          <p className="arca-text-secondary" id="f22-stale-label">
+            {copy['CPY-F22-036']}
+          </p>
+          <p className="arca-user-text">{stale.text}</p>
+          <InlineStatus
+            message={staleCopy === 'copied' ? copy['CPY-F13-014'] : staleCopy === 'failed' ? copy['CPY-F13-015'] : null}
+            tone={staleCopy === 'failed' ? 'danger' : 'neutral'}
+          />
+          <div className="arca-actions">
+            <PixelButton
+              variant="ghost"
+              onClick={() => void copyText(stale.text).then((result) => setStaleCopy(result.kind))}
+            >
+              {copy['CPY-F22-037']}
+            </PixelButton>
+            <PixelButton ref={staleDiscardRef} variant="ghost" onClick={() => setStaleDialog(true)}>
+              {copy['CPY-F22-038']}
+            </PixelButton>
+          </div>
+        </RecordPanel>
+      )}
       <div className="arca-actions">
         {view.kind === 'unconfirmed' && view.recovery ? (
           <PixelButton variant="primary" onClick={() => command.close()}>
@@ -297,6 +388,10 @@ function EditForm({ answerId, base }: { answerId: string; base: AnswerDetail }) 
         ) : view.kind === 'unconfirmed' ? (
           <PixelButton variant="primary" onClick={() => command.recheck()}>
             {copy['CPY-F22-021']}
+          </PixelButton>
+        ) : conflict ? (
+          <PixelButton variant="primary" loading={rebaseState === 'running'} onClick={() => void onReEdit()}>
+            {copy['CPY-F22-035']}
           </PixelButton>
         ) : view.kind === 'reconciled' ? (
           <PixelButton
@@ -356,6 +451,23 @@ function EditForm({ answerId, base }: { answerId: string; base: AnswerDetail }) 
             allowLeaveRef.current = true;
             routerNavigate(-1);
           });
+        }}
+      />
+      <PixelAlertDialog
+        open={staleDialog}
+        title={copy['CPY-F22-025']}
+        description={copy['CPY-F22-026']}
+        cancelLabel={copy['CPY-F22-027']}
+        actionLabel={copy['CPY-F22-038']}
+        danger
+        returnFocusRef={staleDiscardRef}
+        onCancel={() => setStaleDialog(false)}
+        onAction={() => {
+          setStaleDialog(false);
+          setStaleCopy(null);
+          // Only the other-base draft goes; the current input and the saved answer stay.
+          // Removed: back to the input. Not removed: the panel stays and focus returns to its action.
+          void stale?.remove().then((removed) => (removed ? textareaRef : staleDiscardRef).current?.focus());
         }}
       />
       <PixelAlertDialog

@@ -247,6 +247,7 @@ export function PixelTextField({
   describedBy,
   invalid,
   value,
+  inputRef,
   ...rest
 }: {
   id: string;
@@ -254,6 +255,7 @@ export function PixelTextField({
   describedBy: string;
   invalid: boolean;
   value: string;
+  inputRef?: Ref<HTMLInputElement>;
 } & Omit<InputHTMLAttributes<HTMLInputElement>, 'id' | 'value' | 'type' | 'aria-describedby' | 'aria-invalid'>) {
   return (
     <div className="arca-field">
@@ -262,6 +264,7 @@ export function PixelTextField({
       </label>
       <input
         {...rest}
+        ref={inputRef}
         id={id}
         type="text"
         value={value}

@@ -21,6 +21,11 @@ function mswDevWorker(): Plugin {
 }
 
 // https://vite.dev/config/
+const { version } = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf-8')) as {
+  version: string;
+};
+
 export default defineConfig({
   plugins: [aitDevtools.vite(), react(), mswDevWorker()],
+  define: { __APP_VERSION__: JSON.stringify(version) },
 });
