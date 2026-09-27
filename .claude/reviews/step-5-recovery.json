@@ -1,0 +1,116 @@
+{
+  "id": "step-5-recovery",
+  "reviewers": {
+    "spec": "PASS",
+    "architecture": "PASS",
+    "experience": "PASS"
+  },
+  "methods": {
+    "spec": "agent",
+    "architecture": "agent",
+    "experience": "agent"
+  },
+  "review_rounds": {
+    "spec": "round 1 partial (turn limit, 1 candidate: live day-change handoff during IME) -> candidate fixed (settledText guard) -> continuation of round 1 PASS",
+    "architecture": "round 1 FAIL (nickname resume sends without fence re-check; expiry sweep could remove a newer payload) -> fix attempt 1 -> round 2 PASS",
+    "experience": "round 1 FAIL (IX-012 keep-unconfirmed dropped the main problem; Sheet platform Back) -> fix attempt 1 -> round 2 PASS"
+  },
+  "files": [
+    "claude/build-state.json",
+    ".claude/spec/06_FRONTEND_SPEC.md",
+    "package.json",
+    "playwright.config.ts",
+    "pnpm-lock.yaml",
+    "src/app/AppServices.tsx",
+    "src/app/bootstrap/bootstrap.ts",
+    "src/app/composition.ts",
+    "src/app/drafts.ts",
+    "src/app/navigation.ts",
+    "src/app/routes.tsx",
+    "src/app/writes.ts",
+    "src/data/api/arcaApi.test.ts",
+    "src/data/api/arcaApi.ts",
+    "src/data/api/models.ts",
+    "src/domain/commands/answerWriteCoordinator.test.ts",
+    "src/domain/commands/answerWriteCoordinator.ts",
+    "src/domain/commands/answerWriteStore.ts",
+    "src/domain/drafts/draftRepository.ts",
+    "src/domain/drafts/draftWriter.ts",
+    "src/domain/onboarding/boardingCoordinator.ts",
+    "src/domain/onboarding/nicknameCoordinator.ts",
+    "src/domain/session/sessionController.test.ts",
+    "src/domain/session/sessionController.ts",
+    "src/mocks/handlers.ts",
+    "src/mocks/platform.ts",
+    "src/mocks/scenarios.ts",
+    "src/mocks/world.ts",
+    "src/platform/appsInTossPlatform.ts",
+    "src/platform/ports.ts",
+    "src/screens/onboarding/BoardedScreen.test.tsx",
+    "src/screens/onboarding/BoardingScreen.test.tsx",
+    "src/screens/onboarding/IntroScreen.test.tsx",
+    "src/screens/onboarding/IntroScreen.tsx",
+    "src/screens/today/TodayScreen.tsx",
+    "src/screens/today/WriteScreen.test.tsx",
+    "src/screens/today/WriteScreen.tsx",
+    "src/test/boot.tsx",
+    "src/ui/copy.ts",
+    "src/ui/format.ts",
+    "src/ui/ui.css",
+    "src/app/pastDrafts.ts",
+    "src/content/introStory.test.ts",
+    "src/content/introStory.txt",
+    "src/domain/drafts/draftRepository.test.ts",
+    "src/domain/onboarding/nicknameCoordinator.test.ts",
+    "src/screens/today/PastDraftScreen.test.tsx",
+    "src/screens/today/PastDraftScreen.tsx",
+    "src/ui/PixelSheet.tsx",
+    "tests/browser-time/date-change.spec.ts"
+  ],
+  "gate": {
+    "mode": "--full",
+    "result": "PASS"
+  },
+  "extra_checks": [
+    {
+      "name": "vitest unit",
+      "result": "PASS 214/214"
+    },
+    {
+      "name": "test:browser: production, mock core, onboarding, time (MS-TIME-002 F13/Sheet/320px 200%) Chromium+WebKit",
+      "result": "PASS 22/22"
+    },
+    {
+      "name": "CI-like checkout without gitignored files (unit/contract/build)",
+      "result": "PASS"
+    }
+  ],
+  "decisions": [
+    "docs/ is gitignored: shipped F01 story copied to src/content/introStory.txt with a byte-equality test that runs where docs/ exists",
+    "F11 live day change (server returns a new dailySemaId) hands the text to F13 per 03 §2 날짜 변경 row; waits for IME composition end",
+    "Cold start ACTIVE + PRE tracker: same-ID OP-003 replay under ACTIVE (05 OP-003 same-owner re-request); only its receipt continues to F03",
+    "Unresolved nickname tracker resent once with the same key at start/foreground; removed only on a definite answer",
+    "lifecycle uses WebView visibilitychange (SDK visibility event is transparent-service-web only); real-device evidence pending",
+    "@radix-ui/react-dialog 1.1.23 pinned for CMP-018 PixelSheet; 06 §2.2 row updated",
+    "IX-012 with keep unconfirmed: interim CPY-F11-020 + CPY-COM-008 until 04 adds a SEMA-stopped server-state-only string"
+  ],
+  "open_questions": [
+    "06 §4.2: without reset, a generation-only change lets new save/close/recheck join the previous run promise (ends as AbandonedRun); reset on generation change or fence-keyed inFlight?",
+    "IX-011 offline pre-send block vs 06 §2.3 (network status never a save gate)",
+    "04 §7: SEMA-stopped server-state-only copy ID for keep-unconfirmed",
+    "06 §5.4 long-background token discard threshold",
+    "past-day unresolved save has no UI entry (background recheck only)"
+  ],
+  "external_evidence": [
+    {
+      "status": "BLOCKED",
+      "ref": "08 §6 real device: visibilitychange lifecycle, Android Back on Sheet, IME, Safe Area, clipboard long-press"
+    },
+    {
+      "status": "NOT_RUN",
+      "ref": "08 §6 real server: OP-015 closure/reconciliation, DATE_CHANGED/SEMA_REPLACED, result retention expiry"
+    }
+  ],
+  "commit": null,
+  "ts": "2026-09-27T13:30:41.955Z"
+}

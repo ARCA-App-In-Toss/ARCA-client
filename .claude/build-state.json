@@ -126,7 +126,7 @@
     },
     {
       "id": "step-5-recovery",
-      "status": "TODO",
+      "status": "COMPLETED",
       "phase_file": ".claude/resource/phases/step-5-recovery.md",
       "scope": [
         "F13",
@@ -138,7 +138,30 @@
         "spec",
         "architecture",
         "experience"
-      ]
+      ],
+      "work": {
+        "goal": "F13/OP-015 close, session refresh, date/SEMA change, 7-day expiry, restart/foreground recovery",
+        "done": [
+          "IX-041 close PREPARED w/o payload (OP-015 api+mock, closePrepared, CPY-COM-020/021); tracker networkAllowed (never-sent dropped); dropUnsent fence",
+          "CLOSED_OUTCOME_UNAVAILABLE + OP-015 reconciliation (CPY-COM-022~025): REVIEW->F21, CREATE->unlock, RETURN_*->F13",
+          "F13 screen + F11 DATE_CHANGED/live day change handoff + F10 past-draft Sheet (CMP-018 PixelSheet, radix dialog 1.1.23) + draft date/question context",
+          "IX-012 SEMA replaced (CPY-F11-033~035)",
+          "7-day draft purge + payload expiry sweep at bootstrap; expired payload -> no auto-exec",
+          "lifecycle port; foreground: session proactive refresh, today re-query, recheckAll(<=2); background suspends result-check timers; KST boundary hint; F10 entry re-query",
+          "carry-overs: cold start PRE tracker+ACTIVE -> OP-003 receipt replay -> F03; nickname tracker resume; duplicate success notice suppressed",
+          "CI fix: intro story moved to src/content (docs/ is gitignored)",
+          "browser: MS-TIME-002 project (F13, Sheet, 320px/200%) chromium+webkit"
+        ],
+        "next": [
+          "await user approval for step 6"
+        ],
+        "deferred": [
+          "IX-011 offline pre-send block: conflicts with 06 §2.3 (network status not a save gate) -> user decision",
+          "past-day unresolved save has no UI entry (background recheck only)",
+          "long-background token discard: threshold unspecified (06 §5.4)",
+          "real-device lifecycle/visibilitychange, IME, Sheet Back BLOCKED"
+        ]
+      }
     },
     {
       "id": "step-6-archive-management",
@@ -206,29 +229,13 @@
     "step-3-core-experience": {
       "ts": "2026-09-27T11:40:15.682Z",
       "evidence": "사용자: 다음 컨텍스트에서 4단계 진행 지시 (3단계 커밋, push 후)"
+    },
+    "step-4-onboarding": {
+      "ts": "2026-09-27T12:47:54.150Z",
+      "evidence": "사용자: 다음 컨텍스트에서 5단계 진행 지시 (4단계 커밋, push 후)"
     }
   },
   "log": [
-    {
-      "ts": "2026-09-27T07:23:54.961Z",
-      "msg": "step-1-intake started by user build request"
-    },
-    {
-      "ts": "2026-09-27T07:47:06.733Z",
-      "msg": "step-1-intake COMPLETED: toolchain pinned, scripts wired, full gate PASS, browser PASS; awaiting user approval"
-    },
-    {
-      "ts": "2026-09-27T09:04:46.108Z",
-      "msg": "step-1-intake approved; step-2-minimum-boundary started"
-    },
-    {
-      "ts": "2026-09-27T09:28:15.899Z",
-      "msg": "step-2 architecture findings fixed (retry 1 of 2 used), round 2 PASS; retry entry cleared"
-    },
-    {
-      "ts": "2026-09-27T09:28:15.899Z",
-      "msg": "step-2-minimum-boundary COMPLETED: full gate PASS, browser PASS, reviews spec/architecture/experience PASS; awaiting user approval"
-    },
     {
       "ts": "2026-09-27T09:51:45.325Z",
       "msg": "step-2 approved; step-3-core-experience started"
@@ -288,6 +295,26 @@
     {
       "ts": "2026-09-27T12:19:34.831Z",
       "msg": "step-4-onboarding COMPLETED: full gate PASS, browser 18 PASS, reviews spec/architecture/experience PASS; awaiting user approval"
+    },
+    {
+      "ts": "2026-09-27T12:47:54.150Z",
+      "msg": "step-4 approved; step-5-recovery started"
+    },
+    {
+      "ts": "2026-09-27T12:54:20.175Z",
+      "msg": "step-5 slice IX-041 close done; lint/typecheck/unit 180 PASS"
+    },
+    {
+      "ts": "2026-09-27T13:23:13.682Z",
+      "msg": "step-5 completion candidate: all slices done; unit 212, browser 22 PASS; reviews started"
+    },
+    {
+      "ts": "2026-09-27T13:29:43.546Z",
+      "msg": "step-5 round-1: spec PASS (after continuation), architecture FAIL (2), experience FAIL (1 + sheet Back); fix attempt 1 applied; unit 214, browser 22 PASS; architecture round-2 PASS"
+    },
+    {
+      "ts": "2026-09-27T13:30:41.955Z",
+      "msg": "step-5-recovery COMPLETED: full gate PASS, unit 214, browser 22 PASS, reviews spec/architecture/experience PASS; awaiting user approval"
     }
   ]
 }
