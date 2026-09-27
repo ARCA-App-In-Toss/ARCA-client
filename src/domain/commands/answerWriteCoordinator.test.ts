@@ -51,7 +51,7 @@ async function setup() {
     now: () => Date.now(),
     fence: () => (fenceOverride.value === undefined ? fence : fenceOverride.value),
     newOperationId: () => `66d9e9af-2026-4000-8000-00000000000${++opSeq}`,
-    syncAfterSuccess: async (answerId) => {
+    syncCurrentResources: async (answerId) => {
       synced.push(answerId);
     },
   });
@@ -257,6 +257,7 @@ describe('finishing stages are ordered, confirmed and resumable (06 §8.7)', () 
       operationId: '66d9e9af-2026-4000-8000-000000000009',
       prepareInput: input,
       executeIntent: true,
+      networkAllowed: true,
       ticketId: 'synthetic-ticket-9',
       outcome: { state: 'SUCCEEDED', answerId: answer.answerId, revision: 'a-r1' },
       createdAt: Date.now(),
@@ -309,7 +310,10 @@ describe('finishing stages are ordered, confirmed and resumable (06 §8.7)', () 
     expect(calls).toBeGreaterThan(0);
 
     spy.mockRestore();
-    await coordinator.recheck(input.dailySemaId, { quiet: true });
+    coordinator.acknowledgeView(input.dailySemaId);
+    // Re-entry without the proof is a non-quiet check, yet the success already shown is not repeated.
+    await coordinator.recheck(input.dailySemaId);
+    expect(view(coordinator).kind).toBe('idle');
     expect(ops('OP-009')).toBe(1);
     expect(await store.getTracker(input.dailySemaId)).toBeNull();
   });
@@ -387,5 +391,413 @@ describe('abandoned run never leaves a lock behind', () => {
     expect(view(coordinator).kind).toBe('idle');
     // Unknown outcome: never treated as not applied; the kept tracker is resumed on re-entry.
     expect(await store.getTracker(input.dailySemaId)).not.toBeNull();
+  });
+});
+
+describe('IX-041 explicit close of a prepared request (MS-CMD-004)', () => {
+  const OPERATION = '66d9e9af-2026-4000-8000-000000000008';
+
+  /** Server holds a ticket; the device kept the tracker but not the payload (lost or expired). */
+  async function preparedWithoutPayload(state: 'PREPARED' | 'EXECUTING' | 'SUCCEEDED' = 'PREPARED') {
+    const ctx = await setup();
+    const { world, store, input } = ctx;
+    const answer = state === 'SUCCEEDED' ? world.seedAnswer(SYNTHETIC_KEYS.registered, '다른 경로 성공 합성') : null;
+    world.tickets.set('synthetic-ticket-8', {
+      owner: SYNTHETIC_KEYS.registered,
+      ticketId: 'synthetic-ticket-8',
+      operationId: OPERATION,
+      fingerprint: JSON.stringify(input),
+      dailySemaId: input.dailySemaId,
+      question: world.sema.primaryQuestion,
+      state,
+      contentDigest: state === 'PREPARED' ? null : 'd:x',
+      pendingContent: state === 'EXECUTING' ? '실행 중 합성' : null,
+      answerId: answer?.answerId ?? null,
+      error: null,
+      completedAt: answer ? '2026-09-27T02:00:00Z' : null,
+      acknowledged: false,
+    });
+    await store.putTracker(input.dailySemaId, {
+      recordType: 'command',
+      kind: 'ANSWER_WRITE',
+      operationId: OPERATION,
+      prepareInput: input,
+      executeIntent: true,
+      networkAllowed: true,
+      ticketId: 'synthetic-ticket-8',
+      outcome: null,
+      createdAt: Date.now(),
+    });
+    return ctx;
+  }
+
+  test('re-entry with no exact payload: no OP-007, no polling loop, close offered; nothing closed yet', async () => {
+    const { coordinator, store, input, ops } = await preparedWithoutPayload();
+    await coordinator.recheck(input.dailySemaId);
+    expect(view(coordinator)).toEqual({ kind: 'unconfirmed', trackerKept: true, recovery: 'closePrepared' });
+    expect(ops('OP-007')).toBe(0);
+    expect(ops('OP-008')).toBe(1);
+    // OP-015 only ever follows the user's action (05 §6.10).
+    expect(ops('OP-015')).toBe(0);
+    expect(await store.getTracker(input.dailySemaId)).not.toBeNull();
+  });
+
+  test('close → NOT_APPLIED/COMMAND_CLOSED: tracker gone, draft kept, acked; a new save uses a new operation', async () => {
+    const { coordinator, store, drafts, draftIdentity, input, world, ops, save } = await preparedWithoutPayload();
+    await drafts.save(draftIdentity, '남겨 둘 합성 입력', Date.now());
+    await coordinator.recheck(input.dailySemaId);
+    await coordinator.close(input.dailySemaId);
+
+    expect(view(coordinator)).toEqual({ kind: 'notApplied', code: 'COMMAND_CLOSED' });
+    expect(world.tickets.get('synthetic-ticket-8')?.state).toBe('NOT_APPLIED');
+    expect(ops('OP-015')).toBe(1);
+    expect(ops('OP-009')).toBe(1);
+    expect(await store.getTracker(input.dailySemaId)).toBeNull();
+    expect((await drafts.load(draftIdentity))?.text).toBe('남겨 둘 합성 입력');
+
+    coordinator.acknowledgeView(input.dailySemaId);
+    await save('새 요청 합성');
+    expect(view(coordinator).kind).toBe('succeeded');
+    const tickets = [...world.tickets.values()];
+    expect(tickets).toHaveLength(2);
+    expect(tickets[1]?.operationId).not.toBe(OPERATION);
+  });
+
+  test('execute already accepted (EXECUTING): close keeps checking, never force-closes', async () => {
+    const { coordinator, store, input, world } = await preparedWithoutPayload('EXECUTING');
+    await coordinator.close(input.dailySemaId);
+    expect(view(coordinator)).toEqual({ kind: 'unconfirmed', trackerKept: true });
+    expect(world.tickets.get('synthetic-ticket-8')?.state).toBe('EXECUTING');
+    expect(await store.getTracker(input.dailySemaId)).not.toBeNull();
+  });
+
+  test('execute won the race (SUCCEEDED): the close returns the success and it settles normally', async () => {
+    const { coordinator, store, input, synced } = await preparedWithoutPayload('SUCCEEDED');
+    await coordinator.close(input.dailySemaId);
+    expect(view(coordinator).kind).toBe('succeeded');
+    expect(synced).toHaveLength(1);
+    expect(await store.getTracker(input.dailySemaId)).toBeNull();
+  });
+
+  test.each([
+    [
+      'lost response (the close did apply)',
+      { kind: 'lose-response' } as const,
+      { kind: 'notApplied', code: 'COMMAND_CLOSED' },
+    ],
+    [
+      '404 COMMAND_NOT_FOUND',
+      { kind: 'error', status: 404, body: { code: 'COMMAND_NOT_FOUND', category: 'VALIDATION' } } as const,
+      { kind: 'unconfirmed', trackerKept: true, recovery: 'closePrepared' },
+    ],
+  ])('%s: never read as "not applied" locally; tracker kept until the server says so', async (_, fault, later) => {
+    const { coordinator, store, input, world } = await preparedWithoutPayload();
+    world.addFault('OP-015', fault);
+    await coordinator.close(input.dailySemaId);
+    expect(view(coordinator)).toEqual({ kind: 'unconfirmed', trackerKept: true });
+    expect(await store.getTracker(input.dailySemaId)).not.toBeNull();
+    // The next explicit check reads the server state: closed, or still prepared and closable.
+    await coordinator.recheck(input.dailySemaId);
+    expect(view(coordinator)).toEqual(later);
+  });
+});
+
+describe('tracker kept before its payload (06 §8.3 #4)', () => {
+  async function neverSentTracker() {
+    const ctx = await setup();
+    await ctx.store.putTracker(ctx.input.dailySemaId, {
+      recordType: 'command',
+      kind: 'ANSWER_WRITE',
+      operationId: '66d9e9af-2026-4000-8000-000000000007',
+      prepareInput: ctx.input,
+      executeIntent: true,
+      networkAllowed: false,
+      ticketId: null,
+      outcome: null,
+      createdAt: Date.now(),
+    });
+    return ctx;
+  }
+
+  test('re-entry drops it without any request; the screen is not locked', async () => {
+    const { coordinator, store, input, ops } = await neverSentTracker();
+    await coordinator.recheck(input.dailySemaId);
+    expect(view(coordinator).kind).toBe('idle');
+    expect(ops('OP-006')).toBe(0);
+    expect(await store.getTracker(input.dailySemaId)).toBeNull();
+  });
+
+  test('a user save replaces it with a new operation', async () => {
+    const { coordinator, world, save } = await neverSentTracker();
+    await save('새로 저장 합성');
+    expect(view(coordinator).kind).toBe('succeeded');
+    expect([...world.tickets.values()][0]?.operationId).not.toBe('66d9e9af-2026-4000-8000-000000000007');
+  });
+
+  test('payload write fails: the tracker is not network-allowed and nothing is sent', async () => {
+    const { coordinator, store, input, ops, save } = await setup();
+    vi.spyOn(store, 'putPayload').mockRejectedValueOnce(new Error('synthetic payload failure'));
+    await save('선보관 실패 합성');
+    expect(view(coordinator).kind).toBe('localFailure');
+    expect(ops('OP-006')).toBe(0);
+    const left = await store.getTracker(input.dailySemaId);
+    expect(left === null || left.networkAllowed === false).toBe(true);
+  });
+
+  test('owner changes while dropping: the records are left for the next owner check', async () => {
+    const { coordinator, store, input, ops } = await neverSentTracker();
+    vi.spyOn(store, 'removePayload').mockImplementationOnce(async () => {
+      fenceOverride.value = null;
+    });
+    await coordinator.recheck(input.dailySemaId);
+    expect(ops('OP-006')).toBe(0);
+    expect(await store.getTracker(input.dailySemaId)).not.toBeNull();
+  });
+});
+
+describe('IX-041 past result no longer retained (CLOSED_OUTCOME_UNAVAILABLE)', () => {
+  const OPERATION = '66d9e9af-2026-4000-8000-000000000006';
+
+  async function expiredTicket(options: { answered: boolean }) {
+    const ctx = await setup();
+    const { world, store, input } = ctx;
+    const answer = options.answered ? world.seedAnswer(SYNTHETIC_KEYS.registered, '다른 경로 기록 합성') : null;
+    world.tickets.set('synthetic-ticket-6', {
+      owner: SYNTHETIC_KEYS.registered,
+      ticketId: 'synthetic-ticket-6',
+      operationId: OPERATION,
+      fingerprint: JSON.stringify(input),
+      dailySemaId: input.dailySemaId,
+      question: world.sema.primaryQuestion,
+      state: 'EXECUTING',
+      contentDigest: 'd:x',
+      pendingContent: null,
+      answerId: null,
+      error: null,
+      completedAt: null,
+      acknowledged: false,
+      resultExpired: true,
+    });
+    await store.putTracker(input.dailySemaId, {
+      recordType: 'command',
+      kind: 'ANSWER_WRITE',
+      operationId: OPERATION,
+      prepareInput: input,
+      executeIntent: true,
+      networkAllowed: true,
+      ticketId: 'synthetic-ticket-6',
+      outcome: null,
+      createdAt: Date.now(),
+    });
+    return { ...ctx, answer };
+  }
+
+  test('a check claims neither success nor failure and offers the cleanup; no OP-015 yet', async () => {
+    const { coordinator, store, input, ops } = await expiredTicket({ answered: false });
+    await coordinator.recheck(input.dailySemaId);
+    expect(view(coordinator)).toEqual({ kind: 'unconfirmed', trackerKept: true, recovery: 'cleanUpExpired' });
+    expect(ops('OP-008')).toBe(1);
+    expect(ops('OP-015')).toBe(0);
+    expect(await store.getTracker(input.dailySemaId)).not.toBeNull();
+  });
+
+  test('cleanup with a current answer: tracker gone, current answer synced, no ack, no success', async () => {
+    const { coordinator, store, input, ops, synced, answer } = await expiredTicket({ answered: true });
+    await coordinator.recheck(input.dailySemaId);
+    await coordinator.close(input.dailySemaId);
+    expect(view(coordinator)).toEqual({
+      kind: 'reconciled',
+      reconciliation: {
+        checkedAt: '2026-09-27T02:00:00Z',
+        nextAction: 'REVIEW_CURRENT_ANSWER',
+        answerId: answer?.answerId,
+        revision: 'a-r1',
+      },
+    });
+    expect(synced).toEqual([answer?.answerId]);
+    expect(ops('OP-009')).toBe(0);
+    expect(await store.getTracker(input.dailySemaId)).toBeNull();
+  });
+
+  test('cleanup with no answer today: create again is allowed, drafts kept', async () => {
+    const { coordinator, store, drafts, draftIdentity, input } = await expiredTicket({ answered: false });
+    await drafts.save(draftIdentity, '남은 입력 합성', Date.now());
+    await coordinator.close(input.dailySemaId);
+    const v = view(coordinator);
+    expect(v.kind === 'reconciled' && v.reconciliation.nextAction).toBe('CREATE_CURRENT_DAY');
+    expect(await store.getTracker(input.dailySemaId)).toBeNull();
+    expect((await drafts.load(draftIdentity))?.text).toBe('남은 입력 합성');
+  });
+
+  test('cleanup request fails: tracker kept, never read as not applied', async () => {
+    const { coordinator, store, input, world } = await expiredTicket({ answered: false });
+    world.addFault('OP-015', { kind: 'network' });
+    await coordinator.close(input.dailySemaId);
+    expect(view(coordinator)).toEqual({ kind: 'unconfirmed', trackerKept: true });
+    expect(await store.getTracker(input.dailySemaId)).not.toBeNull();
+  });
+});
+
+describe('7-day payload expiry (06 §8.6)', () => {
+  const OPERATION = '66d9e9af-2026-4000-8000-000000000005';
+  const DAY = 24 * 60 * 60 * 1_000;
+
+  async function preparedWithPayload(editedAgo: number) {
+    const ctx = await setup();
+    const { world, store, input } = ctx;
+    world.tickets.set('synthetic-ticket-5', {
+      owner: SYNTHETIC_KEYS.registered,
+      ticketId: 'synthetic-ticket-5',
+      operationId: OPERATION,
+      fingerprint: JSON.stringify(input),
+      dailySemaId: input.dailySemaId,
+      question: world.sema.primaryQuestion,
+      state: 'PREPARED',
+      contentDigest: null,
+      pendingContent: null,
+      answerId: null,
+      error: null,
+      completedAt: null,
+      acknowledged: false,
+    });
+    await store.putTracker(input.dailySemaId, {
+      recordType: 'command',
+      kind: 'ANSWER_WRITE',
+      operationId: OPERATION,
+      prepareInput: input,
+      executeIntent: true,
+      networkAllowed: true,
+      ticketId: 'synthetic-ticket-5',
+      outcome: null,
+      createdAt: Date.now() - editedAgo,
+    });
+    await store.putPayload(input.dailySemaId, {
+      recordType: 'command-payload',
+      operationId: OPERATION,
+      content: '오래된 합성 본문',
+      lastModifiedAt: Date.now() - editedAgo,
+    });
+    return ctx;
+  }
+
+  test('expired payload: removed, no auto-execution, close offered; the tracker stays', async () => {
+    const { coordinator, store, input, ops } = await preparedWithPayload(7 * DAY + 1);
+    await coordinator.recheck(input.dailySemaId);
+    expect(view(coordinator)).toEqual({ kind: 'unconfirmed', trackerKept: true, recovery: 'closePrepared' });
+    expect(ops('OP-007')).toBe(0);
+    expect(await store.getPayload(input.dailySemaId, OPERATION)).toBeNull();
+    expect(await store.getTracker(input.dailySemaId)).not.toBeNull();
+  });
+
+  test('within 7 days the same ticket runs with the exact kept payload', async () => {
+    const { coordinator, input, ops, world } = await preparedWithPayload(7 * DAY - 60_000);
+    await coordinator.recheck(input.dailySemaId);
+    expect(view(coordinator).kind).toBe('succeeded');
+    expect(ops('OP-007')).toBe(1);
+    expect(world.answersOf(SYNTHETIC_KEYS.registered)[0]?.content).toBe('오래된 합성 본문');
+  });
+
+  test('startup sweep removes only expired payloads and sends nothing', async () => {
+    const { coordinator, store, input, world } = await preparedWithPayload(8 * DAY);
+    const before = world.requests.length;
+    await coordinator.expirePayloads();
+    expect(await store.getPayload(input.dailySemaId, OPERATION)).toBeNull();
+    expect(await store.getTracker(input.dailySemaId)).not.toBeNull();
+    expect(world.requests.length).toBe(before);
+  });
+});
+
+describe('background / foreground (06 §8.5 #6)', () => {
+  test('background stops the result-check cycle as unknown; foreground checks once and confirms', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    const { world, coordinator, save, ops, input } = await setup();
+    world.asyncExecution = true;
+    const saving = save('백그라운드 합성');
+    await vi.advanceTimersByTimeAsync(1_200);
+    const checksBefore = ops('OP-008');
+    coordinator.suspend();
+    await saving;
+    expect(view(coordinator)).toEqual({ kind: 'unconfirmed', trackerKept: true });
+    await vi.advanceTimersByTimeAsync(20_000);
+    expect(ops('OP-008')).toBe(checksBefore);
+    expect(ops('OP-007')).toBe(1);
+
+    world.completeExecuting();
+    coordinator.resume();
+    await coordinator.recheckAll();
+    expect(view(coordinator, input.dailySemaId).kind).toBe('succeeded');
+    expect(ops('OP-007')).toBe(1);
+  });
+
+  test('recheckAll skips the excluded target and runs at most two at a time', async () => {
+    const { coordinator, store, input, api } = await setup();
+    const tracker = (dailySemaId: string) => ({
+      recordType: 'command' as const,
+      kind: 'ANSWER_WRITE' as const,
+      operationId: `66d9e9af-2026-4000-8000-0000000001${dailySemaId.slice(-2)}`,
+      prepareInput: { ...input, dailySemaId },
+      executeIntent: true,
+      networkAllowed: true,
+      ticketId: `synthetic-ticket-x${dailySemaId}`,
+      outcome: null,
+      createdAt: Date.now(),
+    });
+    for (const id of ['past-01', 'past-02', 'past-03', 'past-04']) await store.putTracker(id, tracker(id));
+    let running = 0;
+    let peak = 0;
+    const seen: string[] = [];
+    vi.spyOn(api, 'getAnswerWriteResult').mockImplementation(async (_auth, ticketId) => {
+      running += 1;
+      peak = Math.max(peak, running);
+      seen.push(ticketId);
+      await new Promise((r) => setTimeout(r, 5));
+      running -= 1;
+      return {
+        state: 'NOT_APPLIED',
+        ticketId,
+        operationId: 'x',
+        error: { code: 'COMMAND_EXPIRED', category: 'CONFLICT' },
+      };
+    });
+    await coordinator.recheckAll({ except: 'past-04' });
+    expect(peak).toBeLessThanOrEqual(2);
+    expect(new Set(seen.map((s) => s.slice(-7)))).toEqual(new Set(['past-01', 'past-02', 'past-03']));
+  });
+});
+
+describe('expiry sweep never removes a newer payload (architecture round 1)', () => {
+  test('a save replacing the operation during the sweep keeps its own payload', async () => {
+    const { coordinator, store, input, world, save } = await setup();
+    const DAY = 24 * 60 * 60 * 1_000;
+    await store.putTracker(input.dailySemaId, {
+      recordType: 'command',
+      kind: 'ANSWER_WRITE',
+      operationId: '66d9e9af-2026-4000-8000-000000000004',
+      prepareInput: input,
+      executeIntent: true,
+      networkAllowed: false,
+      ticketId: null,
+      outcome: null,
+      createdAt: Date.now() - 8 * DAY,
+    });
+    await store.putPayload(input.dailySemaId, {
+      recordType: 'command-payload',
+      operationId: '66d9e9af-2026-4000-8000-000000000004',
+      content: '오래된 합성',
+      lastModifiedAt: Date.now() - 8 * DAY,
+    });
+    const original = store.getPayload.bind(store);
+    let saving: Promise<void> | null = null;
+    vi.spyOn(store, 'getPayload').mockImplementationOnce(async (...args) => {
+      const found = await original(...args);
+      saving = save('새 요청 합성'); // the user saves while the sweep is reading
+      return found;
+    });
+    await coordinator.expirePayloads();
+    await saving;
+    const tracker = await store.getTracker(input.dailySemaId);
+    expect(tracker?.operationId).not.toBe('66d9e9af-2026-4000-8000-000000000004');
+    expect(world.tickets.size).toBe(1);
+    expect(world.requests.filter((r) => r.op === 'OP-007')).toHaveLength(1);
   });
 });

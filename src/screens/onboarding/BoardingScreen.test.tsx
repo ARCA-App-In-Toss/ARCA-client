@@ -3,7 +3,8 @@ import userEvent from '@testing-library/user-event';
 import { setupServer } from 'msw/node';
 import { afterAll, afterEach, beforeAll, describe, expect, test } from 'vitest';
 import { paths } from '../../app/navigation.ts';
-import { SYNTHETIC_KEYS } from '../../mocks/world.ts';
+import { createFakeStorage } from '../../mocks/platform.ts';
+import { createMockWorld, SYNTHETIC_KEYS } from '../../mocks/world.ts';
 import { bootApp, findTitle, opCount } from '../../test/boot.tsx';
 import { copy } from '../../ui/copy.ts';
 
@@ -12,8 +13,8 @@ beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 
-async function bootBoarding() {
-  const booted = bootApp(server, { base: 'server.prePassenger', initialPath: paths.join });
+async function bootBoarding(options: Parameters<typeof bootApp>[1] = {}) {
+  const booted = bootApp(server, { base: 'server.prePassenger', initialPath: paths.join, ...options });
   await act(() => booted.started);
   await findTitle(copy['CPY-F02-001']);
   return booted;
@@ -137,5 +138,41 @@ describe('F02 boarding (IX-031, MS-ONB-001/002)', () => {
     platform.setExternalFails(true);
     await userEvent.click(screen.getByRole('button', { name: copy['CPY-F02-008'] }));
     expect(await screen.findByText(copy['CPY-F02-014'])).toBeInTheDocument();
+  });
+});
+
+describe('cold start after a lost creation response (06 §9.1 #4, step-4 carry-over)', () => {
+  async function closedAfterLostCreation() {
+    const storage = createFakeStorage();
+    const world = createMockWorld('server.prePassenger');
+    const first = await bootBoarding({ world, storage });
+    world.addFault('OP-003', { kind: 'lose-response' }, { kind: 'network' });
+    await agreeBoth();
+    await userEvent.click(boardButton());
+    await screen.findByText(copy['CPY-F02-012']);
+    first.view.unmount(); // the app is closed with the creation applied but unconfirmed
+    return { storage, world };
+  }
+
+  test('server already ACTIVE: the same ID replays its receipt and F03 continues (one passenger)', async () => {
+    const { storage, world } = await closedAfterLostCreation();
+    const before = opCount(world, 'OP-003');
+    const booted = bootApp(server, { world, storage });
+    await act(() => booted.started);
+    await findTitle(copy['CPY-F03-001']);
+    expect(booted.router.state.location.pathname).toBe(paths.joinComplete);
+    expect(opCount(world, 'OP-003')).toBe(before + 1);
+    expect(world.creations).toHaveLength(1);
+    expect(world.passengers.size).toBe(1);
+  });
+
+  test('no receipt for that ID (replay fails): normal ACTIVE start on F10, never a creation success', async () => {
+    const { storage, world } = await closedAfterLostCreation();
+    world.addFault('OP-003', { kind: 'network' });
+    const booted = bootApp(server, { world, storage });
+    await act(() => booted.started);
+    await findTitle(copy['CPY-F10-001']);
+    expect(booted.router.state.location.pathname).toBe(paths.today);
+    expect(world.creations).toHaveLength(1);
   });
 });

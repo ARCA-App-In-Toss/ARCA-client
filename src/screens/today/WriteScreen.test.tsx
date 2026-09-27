@@ -2,15 +2,19 @@ import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import axe from 'axe-core';
 import { setupServer } from 'msw/node';
-import { afterAll, afterEach, beforeAll, describe, expect, test } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, test, vi } from 'vitest';
 import { paths } from '../../app/navigation.ts';
+import { AnswerWriteStore } from '../../domain/commands/answerWriteStore.ts';
 import { createFakeStorage } from '../../mocks/platform.ts';
 import { bootApp, findTitle } from '../../test/boot.tsx';
 import { copy } from '../../ui/copy.ts';
 
 const server = setupServer();
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
-afterEach(() => server.resetHandlers());
+afterEach(() => {
+  server.resetHandlers();
+  vi.restoreAllMocks();
+});
 afterAll(() => server.close());
 
 async function openWrite(options: Parameters<typeof bootApp>[1] = {}) {
@@ -218,6 +222,80 @@ describe('IX-036 unconfirmed result and safe exit', () => {
     const status = screen.getByRole('status');
     expect(status).toHaveTextContent(copy['CPY-F11-026']);
     expect(status).toHaveTextContent(copy['CPY-F13-015']);
+  });
+});
+
+describe('IX-041 closing a request this device can no longer execute', () => {
+  test('payload gone: close offered instead of recheck; closing keeps the text and unlocks it; no answer', async () => {
+    const { world, textarea } = await openWrite();
+    world.addFault('OP-006', { kind: 'lose-response' });
+    world.addFault('OP-008', { kind: 'network' }, { kind: 'network' }, { kind: 'network' }, { kind: 'network' });
+    fireEvent.change(textarea, { target: { value: '끝낼 요청 합성' } });
+    await userEvent.click(screen.getByRole('button', { name: copy['CPY-F11-018'] }));
+    await screen.findByRole('button', { name: copy['CPY-F11-028'] });
+
+    // The fixed payload is lost (e.g. expired); the server still holds the prepared request.
+    vi.spyOn(AnswerWriteStore.prototype, 'getPayload').mockResolvedValue(null);
+    await userEvent.click(screen.getByRole('button', { name: copy['CPY-F11-028'] }));
+    const close = await screen.findByRole('button', { name: copy['CPY-COM-020'] });
+    expect(screen.queryByRole('button', { name: copy['CPY-F11-028'] })).toBeNull();
+    expect(screen.getAllByRole('status').some((s) => s.textContent === copy['CPY-F11-026'])).toBe(true);
+    expect(textarea).toHaveAttribute('readonly');
+    expect(world.requests.filter((r) => r.op === 'OP-007')).toHaveLength(0);
+    expect(world.requests.filter((r) => r.op === 'OP-015')).toHaveLength(0);
+
+    await userEvent.click(close);
+    await waitFor(() =>
+      expect(screen.getAllByRole('status').some((s) => s.textContent === copy['CPY-COM-021'])).toBe(true),
+    );
+    expect(textarea).toHaveValue('끝낼 요청 합성');
+    expect(textarea).not.toHaveAttribute('readonly');
+    expect(screen.getByRole('button', { name: copy['CPY-F11-021'] })).toBeEnabled();
+    expect(world.answersOf('synthetic-anon-key-registered')).toHaveLength(0);
+  });
+});
+
+describe('IX-041 past result no longer retained', () => {
+  async function unconfirmedThenExpired(answered: boolean) {
+    const booted = await openWrite();
+    const { world, textarea } = booted;
+    world.addFault('OP-006', { kind: 'lose-response' });
+    fireEvent.change(textarea, { target: { value: '만료된 결과 합성' } });
+    await userEvent.click(screen.getByRole('button', { name: copy['CPY-F11-018'] }));
+    await screen.findByRole('button', { name: copy['CPY-F11-028'] });
+    for (const ticket of world.tickets.values()) ticket.resultExpired = true;
+    if (answered) world.seedAnswer('synthetic-anon-key-registered', '다른 기기 합성 기록');
+    await userEvent.click(screen.getByRole('button', { name: copy['CPY-F11-028'] }));
+    await screen.findByRole('button', { name: copy['CPY-COM-023'] });
+    expect(screen.getAllByRole('status').some((s) => s.textContent === copy['CPY-COM-022'])).toBe(true);
+    expect(textarea).toHaveAttribute('readonly');
+    expect(world.requests.filter((r) => r.op === 'OP-015')).toHaveLength(0);
+    return booted;
+  }
+
+  test('current answer exists: cleanup → "현재 기록 보기" → F21; no success scene, no overwrite', async () => {
+    const { router, world } = await unconfirmedThenExpired(true);
+    await userEvent.click(screen.getByRole('button', { name: copy['CPY-COM-023'] }));
+    const review = await screen.findByRole('button', { name: copy['CPY-COM-024'] });
+    expect(router.state.location.pathname).toBe(paths.write);
+    await userEvent.click(review);
+    await waitFor(() => expect(router.state.location.pathname).toBe(paths.detail));
+    expect(await screen.findByText('다른 기기 합성 기록')).toBeInTheDocument();
+    expect(world.answersOf('synthetic-anon-key-registered')).toHaveLength(1);
+  });
+
+  test('no answer today: cleanup → CPY-COM-025, text kept and editable, a new save uses a new request', async () => {
+    const { textarea, world } = await unconfirmedThenExpired(false);
+    await userEvent.click(screen.getByRole('button', { name: copy['CPY-COM-023'] }));
+    await waitFor(() =>
+      expect(screen.getAllByRole('status').some((s) => s.textContent === copy['CPY-COM-025'])).toBe(true),
+    );
+    expect(textarea).toHaveValue('만료된 결과 합성');
+    expect(textarea).not.toHaveAttribute('readonly');
+    expect(world.answers.size).toBe(0);
+    await userEvent.click(screen.getByRole('button', { name: copy['CPY-F11-018'] }));
+    await screen.findByRole('heading', { level: 2, name: copy['CPY-F12-004'] });
+    expect(world.tickets.size).toBe(2);
   });
 });
 

@@ -3,6 +3,7 @@ import { defineConfig, devices } from '@playwright/test';
 const port = 4173;
 const mockPort = 5174;
 const onboardingPort = 5175;
+const timePort = 5176;
 
 export default defineConfig({
   forbidOnly: true,
@@ -38,6 +39,17 @@ export default defineConfig({
       testDir: 'tests/browser-onboarding',
       use: { ...devices['iPhone 15'], baseURL: `http://localhost:${onboardingPort}` },
     },
+    // Same dev mock, the server day moves on before the first save (MS-TIME-002 → F13, Sheet).
+    {
+      name: 'time-chromium',
+      testDir: 'tests/browser-time',
+      use: { ...devices['Pixel 7'], baseURL: `http://localhost:${timePort}` },
+    },
+    {
+      name: 'time-webkit',
+      testDir: 'tests/browser-time',
+      use: { ...devices['iPhone 15'], baseURL: `http://localhost:${timePort}` },
+    },
   ],
   webServer: [
     {
@@ -58,6 +70,13 @@ export default defineConfig({
       command: `node node_modules/vite/bin/vite.js --host localhost --port ${onboardingPort} --strictPort`,
       url: `http://localhost:${onboardingPort}`,
       env: { VITE_ARCA_MOCK_SCENARIO: 'MS-SES-001-pre' },
+      reuseExistingServer: false,
+      timeout: 120_000,
+    },
+    {
+      command: `node node_modules/vite/bin/vite.js --host localhost --port ${timePort} --strictPort`,
+      url: `http://localhost:${timePort}`,
+      env: { VITE_ARCA_MOCK_SCENARIO: 'MS-TIME-002' },
       reuseExistingServer: false,
       timeout: 120_000,
     },

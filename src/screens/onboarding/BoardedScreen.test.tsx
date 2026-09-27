@@ -3,7 +3,8 @@ import userEvent from '@testing-library/user-event';
 import { setupServer } from 'msw/node';
 import { afterAll, afterEach, beforeAll, describe, expect, test, vi } from 'vitest';
 import { paths } from '../../app/navigation.ts';
-import { SYNTHETIC_KEYS } from '../../mocks/world.ts';
+import { createFakeStorage } from '../../mocks/platform.ts';
+import { createMockWorld, SYNTHETIC_KEYS } from '../../mocks/world.ts';
 import { bootApp, findTitle, opCount } from '../../test/boot.tsx';
 import { copy } from '../../ui/copy.ts';
 
@@ -12,8 +13,8 @@ beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 
-async function bootBoarded() {
-  const booted = bootApp(server, { base: 'server.prePassenger', initialPath: paths.join });
+async function bootBoarded(options: Parameters<typeof bootApp>[1] = {}) {
+  const booted = bootApp(server, { base: 'server.prePassenger', initialPath: paths.join, ...options });
   await act(() => booted.started);
   await findTitle(copy['CPY-F02-001']);
   await userEvent.click(screen.getByRole('checkbox', { name: copy['CPY-F02-015'] }));
@@ -205,5 +206,28 @@ describe('F03 nickname (IX-003·IX-035, MS-NICK-001/002)', () => {
 
     release();
     await findTitle(copy['CPY-F10-001']);
+  });
+});
+
+describe('nickname request left unresolved after F03 (step-4 carry-over)', () => {
+  test('next start restores the receipt with the same key and removes the tracker; no second change', async () => {
+    const storage = createFakeStorage();
+    const world = createMockWorld('server.prePassenger');
+    const first = await bootBoarded({ world, storage });
+    world.faults.set('OP-004', [{ kind: 'lose-response' }, { kind: 'lose-response' }]);
+    type('항해자');
+    await userEvent.click(primary());
+    await screen.findByText(copy['CPY-F11-044']);
+    const tracked = () => [...storage.data.values()].some((v) => v.includes('"expectedRevision"'));
+    expect(tracked()).toBe(true);
+    first.view.unmount();
+
+    const booted = bootApp(server, { world, storage });
+    await act(() => booted.started);
+    await findTitle(copy['CPY-F10-001']);
+    await vi.waitFor(() => expect(tracked()).toBe(false));
+    expect(opCount(world, 'OP-004')).toBe(3);
+    expect(world.nicknameReceipts).toHaveLength(1);
+    expect(nickname(world)).toBe('항해자');
   });
 });

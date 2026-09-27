@@ -15,6 +15,8 @@ export interface BootOptions {
   storage?: FakeStorage;
   initialPath?: string;
   world?: MockWorld;
+  /** Device clock (06 §7.4 expiry); defaults to the real clock. */
+  now?: () => number;
 }
 
 /** Full app on a memory router against the MSW mock world (component + MSW layer, 08 §3.2). */
@@ -24,6 +26,7 @@ export function bootApp(server: SetupServer, options: BootOptions = {}) {
   const platform = createFakePlatform({
     anonymousKey: options.key ?? { kind: 'ok', key: SYNTHETIC_KEYS.registered },
     ...(options.storage ? { storage: options.storage } : {}),
+    ...(options.now ? { now: options.now } : {}),
   });
   const services = createAppServices({ platform, apiBase: MOCK_API_BASE });
   const router = createMemoryRouter(routes, { initialEntries: [options.initialPath ?? paths.start] });

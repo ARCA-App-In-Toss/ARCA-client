@@ -146,3 +146,69 @@ describe('transport budget covers the body (06 §6.2)', () => {
     expect(calls).toBe(0);
   });
 });
+
+describe('OP-015 closeAnswerWrite', () => {
+  const sealed = {
+    ticketId: 'synthetic-ticket-1',
+    operationId: '66d9e9af-2026-4000-8000-000000000001',
+    kind: 'ANSWER_WRITE',
+    target: { mode: 'CREATE', dailySemaId: 'synthetic-day' },
+    acceptedAt: '2026-09-20T01:59:00Z',
+    acceptedDateKst: '2026-09-20',
+    executeBy: '2026-09-20T14:59:59Z',
+    state: 'CLOSED_OUTCOME_UNAVAILABLE',
+    executionSealed: true,
+    reconciliation: {
+      checkedAt: '2026-09-27T02:00:00Z',
+      nextAction: 'REVIEW_CURRENT_ANSWER',
+      answerId: 'synthetic-answer-1',
+      revision: 'a-r1',
+    },
+  };
+  const replying = (status: number, body: unknown) =>
+    createArcaApi(
+      createHttpTransport({
+        baseUrl: MOCK_API_BASE,
+        fetch: async () =>
+          new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } }),
+      }),
+    );
+
+  test('sealed past command maps its reconciliation', async () => {
+    const result = await replying(200, sealed).closeAnswerWrite({ bearer: 't' }, 'synthetic-ticket-1', 1_000);
+    expect(result).toEqual({
+      state: 'CLOSED_OUTCOME_UNAVAILABLE',
+      ticketId: 'synthetic-ticket-1',
+      operationId: sealed.operationId,
+      reconciliation: sealed.reconciliation,
+    });
+  });
+
+  test('a status/body pairing outside the contract is a ProtocolFailure', async () => {
+    const prepared = { ...sealed, state: 'PREPARED', executionSealed: undefined, reconciliation: undefined };
+    await expect(replying(200, prepared).closeAnswerWrite({ bearer: 't' }, 'x', 1_000)).rejects.toBeInstanceOf(
+      ProtocolFailure,
+    );
+    await expect(replying(202, sealed).closeAnswerWrite({ bearer: 't' }, 'x', 1_000)).rejects.toBeInstanceOf(
+      ProtocolFailure,
+    );
+  });
+
+  test('PREPARED closes as NOT_APPLIED/COMMAND_CLOSED; a repeat returns the same result', async () => {
+    const { world, api } = setup();
+    const auth = await activeBearer(world);
+    const input = {
+      mode: 'CREATE' as const,
+      dailySemaId: world.sema.dailySemaId,
+      semaId: world.sema.semaId,
+      semaVersion: world.sema.version,
+      questionId: world.sema.primaryQuestion.questionId,
+      questionVersion: world.sema.primaryQuestion.version,
+    };
+    const prepared = await api.prepareAnswerWrite(auth, '66d9e9af-2026-4000-8000-000000000002', input, 1_000);
+    const first = await api.closeAnswerWrite(auth, prepared.ticketId, 1_000);
+    const again = await api.closeAnswerWrite(auth, prepared.ticketId, 1_000);
+    expect(first).toMatchObject({ state: 'NOT_APPLIED', error: { code: 'COMMAND_CLOSED' } });
+    expect(again).toEqual(first);
+  });
+});

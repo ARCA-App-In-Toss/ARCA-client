@@ -156,6 +156,20 @@ describe('proactive refresh', () => {
     await getToday();
     expect(op001Count(world)).toBe(2);
   });
+
+  test('foreground entry refreshes only inside the margin; a normal refresh keeps the owner (epoch only)', async () => {
+    let now = Date.parse('2026-09-27T14:00:00Z');
+    const { session, world, events } = setup({ now: () => now });
+    const first = await session.establish();
+    await session.refreshOnForeground();
+    expect(op001Count(world)).toBe(1);
+    now = Date.parse('2026-09-27T14:59:30Z');
+    await session.refreshOnForeground();
+    expect(op001Count(world)).toBe(2);
+    const last = events.at(-1);
+    expect(last?.kind === 'established' && last.ownerChanged).toBe(false);
+    expect(last?.kind === 'established' && last.summary.epoch).toBeGreaterThan(first.epoch);
+  });
 });
 
 describe('fence on every re-establishment path', () => {
