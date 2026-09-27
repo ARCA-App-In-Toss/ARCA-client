@@ -1,0 +1,101 @@
+{
+  "id": "step-6-archive-management",
+  "reviewers": {
+    "spec": "PASS",
+    "architecture": "PASS",
+    "experience": "PASS"
+  },
+  "methods": {
+    "spec": "agent",
+    "architecture": "agent",
+    "experience": "agent"
+  },
+  "review_rounds": {
+    "spec": "round 1 FAIL (no OP-010 re-read after edit/delete; 06 §6.3-6.4) -> fix attempt 1 (refreshDue, markStale) -> round 2 PASS (also covered 05 error mapping, 07 MS rows, 04 §7.7-7.8/7.12 copy)",
+    "architecture": "round 1 PASS (3 non-blocking; 2 applied: syncAnswer fence, generation-change ref clear) -> round 2 narrow PASS",
+    "experience": "round 1 FAIL (CPY-F22-013 condition; discard dialog focus return) -> fix attempt 1 -> round 2 PASS"
+  },
+  "files": [
+    "claude/build-state.json",
+    "playwright.config.ts",
+    "src/app/AppServices.tsx",
+    "src/app/composition.ts",
+    "src/app/drafts.ts",
+    "src/app/navigation.ts",
+    "src/app/routes.tsx",
+    "src/app/writes.ts",
+    "src/data/api/arcaApi.ts",
+    "src/data/api/models.ts",
+    "src/domain/commands/answerWriteCoordinator.test.ts",
+    "src/domain/commands/answerWriteCoordinator.ts",
+    "src/domain/commands/answerWriteStore.ts",
+    "src/domain/drafts/draftRepository.ts",
+    "src/mocks/handlers.ts",
+    "src/mocks/scenarios.ts",
+    "src/mocks/world.ts",
+    "src/screens/archive/AnswerDetailScreen.tsx",
+    "src/screens/archive/ArchiveScreen.test.tsx",
+    "src/screens/archive/ArchiveScreen.tsx",
+    "src/ui/PixelAlertDialog.tsx",
+    "src/ui/components.tsx",
+    "src/ui/copy.ts",
+    "src/ui/ui.css",
+    "src/app/answers.ts",
+    "src/app/archive.test.ts",
+    "src/app/archive.ts",
+    "src/domain/commands/answerCommands.test.ts",
+    "src/screens/archive/EditScreen.tsx",
+    "src/screens/archive/ManageAnswer.test.tsx",
+    "tests/browser-archive/archive.spec.ts"
+  ],
+  "gate": {
+    "mode": "--full",
+    "result": "PASS"
+  },
+  "extra_checks": [
+    {
+      "name": "vitest unit",
+      "result": "PASS 247/247"
+    },
+    {
+      "name": "contract",
+      "result": "PASS 59/59"
+    },
+    {
+      "name": "test:browser production, mock core, onboarding, time, archive (MS-LIST-003, F21~F23, 320px/200%) Chromium+WebKit",
+      "result": "PASS 30/30"
+    },
+    {
+      "name": "CI-like checkout without gitignored files (unit/typecheck)",
+      "result": "PASS (246 + 1 docs-only skip)"
+    }
+  ],
+  "decisions": [
+    "Q1 answered: writes/answers/archive reset on generation-only change (+refs/completions/draftRefs clear)",
+    "Q2 answered: IX-011 follows 06 §2.3 (no offline block) -> CPY-F23-010, F22-022/031 unused",
+    "answer-target commands: second AnswerWriteCoordinator instance, Storage namespace answer, one lock per answerId (06 §4.3)",
+    "UPDATE result excerpt via OP-008 STANDARD before ack; F20 row patched only at base revision with sourceRevision == new revision",
+    "F23 as child route of F21 (/archive/detail/delete) so F21 stays mounted",
+    "mock OP-010 cursor switched to keyset (created/deleted between pages)",
+    "CPY-F11-036~039 (IX-007 dialog) and CPY-F11-029/040/042 reused on F22"
+  ],
+  "open_questions": [
+    "delete result unconfirmed: no F23 copy; interim CPY-F23-008 + CPY-COM-007 recheck, dialog stays dismiss-locked (offline can trap the user in the modal)",
+    "stale edit draft (other base revision): not applied, no UI copy; kept until 7-day expiry",
+    "after REVISION_CONFLICT the edit cannot continue on the new revision (save disabled, copy kept); label CPY-F22-017",
+    "F20 row with excerpt UNAVAILABLE has no 04 copy",
+    "non-blocking: mark F20 stale also on prepare REVISION_CONFLICT rejection; delete success leaves F20,F21,F20 history"
+  ],
+  "external_evidence": [
+    {
+      "status": "BLOCKED",
+      "ref": "08 real device: scroll anchor restore in WebView, Android Back on F23 dialog/F22, IME in F22, Safe Area, screen reader announcements"
+    },
+    {
+      "status": "NOT_RUN",
+      "ref": "08 real server: OP-010 keyset cursor/CURSOR_INVALID, OP-006 UPDATE, OP-012/007/008/015 answer delete, ALREADY_ABSENT, REVISION_CONFLICT"
+    }
+  ],
+  "commit": null,
+  "ts": "2026-09-27T15:03:37.172Z"
+}

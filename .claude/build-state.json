@@ -165,7 +165,7 @@
     },
     {
       "id": "step-6-archive-management",
-      "status": "TODO",
+      "status": "COMPLETED",
       "phase_file": ".claude/resource/phases/step-6-archive-management.md",
       "scope": [
         "F20",
@@ -180,7 +180,28 @@
         "spec",
         "architecture",
         "experience"
-      ]
+      ],
+      "work": {
+        "goal": "F20 page chain/refresh, F21 detail, F22 edit (draft+command), F23 delete (OP-011/012)",
+        "done": [
+          "Q1 writes.reset() on generation-only change (+coordinator test, fails without)",
+          "F20 page chain: ArchiveChains (IX-023 more/end, CURSOR_INVALID fresh first page, IX-042 held candidate/apply/top-apply, anchor restore after F21, refresh failure), mock keyset cursor; MS-LIST-001~007, MS-NAV-001 tests",
+          "answer-target coordinator (UPDATE/DELETE, namespace answer, one lock per answer), OP-012/UPDATE api+mock, update drafts",
+          "F21 edit/delete actions + unresolved edit banner + F23 modal route (dismiss lock, failure/conflict/ALREADY_ABSENT)",
+          "F22 edit screen (draft restore, unchanged, discard dialog, IX-007 leave, conflict)",
+          "browser archive project (Chromium+WebKit, 320px/200%)"
+        ],
+        "next": [
+          "await user approval for step 7"
+        ],
+        "deferred": [
+          "delete result unconfirmed: no F23 copy -> temporary CPY-F23-008 + CPY-COM-007 recheck (user decision)",
+          "stale edit draft (other base revision): not applied, no UI copy (user decision)",
+          "offline copies CPY-F23-010, CPY-F22-022/031 unused (Q2: network not a gate; unknown != failure)",
+          "past-day unresolved save UI entry (Q5 deferred)",
+          "token discard threshold (Q4 unspecified, step 8)"
+        ]
+      }
     },
     {
       "id": "step-7-settings-delete",
@@ -233,6 +254,10 @@
     "step-4-onboarding": {
       "ts": "2026-09-27T12:47:54.150Z",
       "evidence": "사용자: 다음 컨텍스트에서 5단계 진행 지시 (4단계 커밋, push 후)"
+    },
+    "step-5-recovery": {
+      "ts": "2026-09-27T14:05:47.381Z",
+      "evidence": "사용자: 새 컨텍스트에서 6단계 진행 지시 (5단계 커밋 후)"
     }
   },
   "log": [
@@ -315,6 +340,34 @@
     {
       "ts": "2026-09-27T13:30:41.955Z",
       "msg": "step-5-recovery COMPLETED: full gate PASS, unit 214, browser 22 PASS, reviews spec/architecture/experience PASS; awaiting user approval"
+    },
+    {
+      "ts": "2026-09-27T14:05:47.381Z",
+      "msg": "step-5 approved; step-6-archive-management started"
+    },
+    {
+      "ts": "2026-09-27T14:24:00.558Z",
+      "msg": "step-5 open questions answered: Q1 reset on generation change=call; Q2 IX-011 follow 06 §2.3 (notice only, no block); Q3 add server-state-only CPY ID to 04 §7 at next copy pass; Q4 token discard threshold stays unspecified (step-8 ops input); Q5 past-day unresolved save UI entry deferred beyond step 6"
+    },
+    {
+      "ts": "2026-09-27T14:33:56.650Z",
+      "msg": "step-6 slice F20 page chain done; archive tests 12 PASS"
+    },
+    {
+      "ts": "2026-09-27T14:55:17.358Z",
+      "msg": "step-6 completion candidate: all slices done; unit 246, contract 59, archive browser 8 PASS; round-1 reviews started"
+    },
+    {
+      "ts": "2026-09-27T14:59:20.326Z",
+      "msg": "step-6 round-1: architecture PASS, spec FAIL(1), experience FAIL(2); fix attempt 1 applied (+arch non-blocking: sync fence, generation-change ref clear); unit 247 PASS"
+    },
+    {
+      "ts": "2026-09-27T15:03:37.172Z",
+      "msg": "step-6 round-2: spec/architecture/experience PASS; retry cleared"
+    },
+    {
+      "ts": "2026-09-27T15:03:37.172Z",
+      "msg": "step-6-archive-management COMPLETED: full gate PASS, unit 247, contract 59, browser 30 PASS, reviews spec/architecture/experience PASS; awaiting user approval"
     }
   ]
 }
