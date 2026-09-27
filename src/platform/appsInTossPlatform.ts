@@ -1,4 +1,4 @@
-import { getNetworkStatus, Storage, setClipboardText, User } from '@apps-in-toss/web-framework';
+import { generateHapticFeedback, getNetworkStatus, Storage, setClipboardText, User } from '@apps-in-toss/web-framework';
 import type { AnonymousKeyResult, ClipboardResult, PlatformPort } from './ports.ts';
 
 // Outside the Toss WebView the bridge may never settle; bound the wait so F00 can reach F90.
@@ -69,5 +69,14 @@ export function createAppsInTossPlatform(): PlatformPort {
     clipboard: { writeText: writeClipboard },
     // The customer-center capability and URL are not confirmed yet (06 §14); report unavailability honestly.
     external: { openSupport: async () => ({ kind: 'unavailable' }) },
+    haptic: {
+      async memorySaved() {
+        try {
+          await generateHapticFeedback({ type: 'softMedium' });
+        } catch {
+          // Unsupported or failed haptics never block the result.
+        }
+      },
+    },
   };
 }

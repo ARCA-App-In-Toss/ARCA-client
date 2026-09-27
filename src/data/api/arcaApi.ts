@@ -1,8 +1,25 @@
 import type { z } from 'zod';
 import { ProtocolFailure, TransportFailure } from '../failures.ts';
 import { toDomainFailure } from './errorEnvelope.ts';
-import { zEstablishSessionResponse, zTodayReadModel } from './generated/zod.gen.ts';
-import type { EstablishedSession, ExcerptProfile, SessionContext, Today } from './models.ts';
+import {
+  zAnswerDetail,
+  zAnswerPage,
+  zAnswerWriteCommandResult,
+  zEstablishSessionResponse,
+  zTodayReadModel,
+} from './generated/zod.gen.ts';
+import type {
+  AnswerDetail,
+  AnswerPage,
+  AnswerWriteResult,
+  Availability,
+  EstablishedSession,
+  Excerpt,
+  ExcerptProfile,
+  PrepareAnswerCreate,
+  SessionContext,
+  Today,
+} from './models.ts';
 import type { HttpRequest, HttpTransport } from './transport.ts';
 
 /** Safe query transport budget and single connectivity retry (06 §6.2). */
@@ -18,16 +35,44 @@ export interface ArcaApi {
   establishSession(anonymousKey: string): Promise<EstablishedSession>;
   /** OP-005. */
   getToday(auth: Bearer, excerptProfile: ExcerptProfile, signal?: AbortSignal): Promise<Today>;
+  /** OP-010. `cursor` is the opaque value from the previous page only. */
+  listAnswers(
+    auth: Bearer,
+    cursor: string | null,
+    excerptProfile: ExcerptProfile,
+    signal?: AbortSignal,
+  ): Promise<AnswerPage>;
+  /** OP-011. */
+  getAnswer(auth: Bearer, answerId: string, signal?: AbortSignal): Promise<AnswerDetail>;
+  /** OP-006. `operationId` travels only as the Idempotency-Key header (05 §7.2). */
+  prepareAnswerWrite(
+    auth: Bearer,
+    operationId: string,
+    input: PrepareAnswerCreate,
+    timeoutMs: number,
+  ): Promise<AnswerWriteResult>;
+  /** OP-007. Timeout or loss says nothing about the outcome; use OP-008 (05 §8.3). */
+  executeAnswerWrite(auth: Bearer, ticketId: string, content: string, timeoutMs: number): Promise<AnswerWriteResult>;
+  /** OP-008 (safe query). */
+  getAnswerWriteResult(
+    auth: Bearer,
+    ticketId: string,
+    excerptProfile: ExcerptProfile,
+    timeoutMs: number,
+  ): Promise<AnswerWriteResult>;
+  /** OP-009. */
+  acknowledgeCommand(auth: Bearer, ticketId: string): Promise<void>;
 }
 
 async function send<S extends z.ZodType>(
   transport: HttpTransport,
   request: HttpRequest,
-  expectedStatus: number,
+  expectedStatus: number | readonly number[],
   schema: S,
 ): Promise<z.output<S>> {
   const response = await transport(request);
-  if (response.status === expectedStatus) {
+  const expected = typeof expectedStatus === 'number' ? [expectedStatus] : expectedStatus;
+  if (expected.includes(response.status)) {
     const parsed = schema.safeParse(response.body);
     if (!parsed.success) throw new ProtocolFailure('schema');
     return parsed.data;
@@ -104,6 +149,55 @@ function toToday(wire: z.output<typeof zTodayReadModel>): Today {
   };
 }
 
+function toAvailability<
+  W extends { state: 'AVAILABLE'; value: unknown } | { state: 'UNAVAILABLE'; retryable: boolean },
+  T,
+>(wire: W, map: (value: Extract<W, { state: 'AVAILABLE' }>['value']) => T): Availability<T> {
+  return wire.state === 'AVAILABLE'
+    ? { state: 'AVAILABLE', value: map((wire as Extract<W, { state: 'AVAILABLE' }>).value) }
+    : { state: 'UNAVAILABLE', retryable: (wire as { retryable: boolean }).retryable };
+}
+
+function toAnswerWriteResult(wire: z.output<typeof zAnswerWriteCommandResult>): AnswerWriteResult {
+  const base = { ticketId: wire.ticketId, operationId: wire.operationId };
+  switch (wire.state) {
+    case 'PREPARED':
+      return { state: 'PREPARED', ...base };
+    case 'EXECUTING':
+      return { state: 'EXECUTING', ...base };
+    case 'NOT_APPLIED':
+      return { state: 'NOT_APPLIED', ...base, error: { code: wire.error.code, category: wire.error.category } };
+    case 'CLOSED_OUTCOME_UNAVAILABLE':
+      return { state: 'CLOSED_OUTCOME_UNAVAILABLE', ...base };
+    case 'SUCCEEDED': {
+      const p = wire.presentation;
+      return {
+        state: 'SUCCEEDED',
+        ...base,
+        proof: { answerId: wire.proof.answerId, revision: wire.proof.revision, mode: wire.proof.mode },
+        presentation:
+          p.state === 'AVAILABLE'
+            ? {
+                state: 'AVAILABLE',
+                question: { ...p.value.question },
+                excerpt: toAvailability(
+                  p.value.excerpt,
+                  (e): Excerpt => ({
+                    sourceRevision: e.sourceRevision,
+                    text: e.text,
+                    isTruncated: e.isTruncated,
+                  }),
+                ),
+                activeAnswerCount: toAvailability(p.value.activeAnswerCount, (c) => ({ ...c })),
+              }
+            : p.state === 'UNAVAILABLE'
+              ? { state: 'UNAVAILABLE', retryable: p.retryable }
+              : { state: p.state },
+      };
+    }
+  }
+}
+
 export function createArcaApi(transport: HttpTransport): ArcaApi {
   return {
     async establishSession(anonymousKey) {
@@ -137,6 +231,118 @@ export function createArcaApi(transport: HttpTransport): ArcaApi {
       };
       if (signal) request.signal = signal;
       return toToday(await sendSafeQuery(transport, request, zTodayReadModel));
+    },
+
+    async prepareAnswerWrite(auth, operationId, input, timeoutMs) {
+      const wire = await send(
+        transport,
+        {
+          method: 'POST',
+          path: '/answer-write-commands',
+          bearer: auth.bearer,
+          idempotencyKey: operationId,
+          body: input,
+          timeoutMs,
+        },
+        [200, 201],
+        zAnswerWriteCommandResult,
+      );
+      return toAnswerWriteResult(wire);
+    },
+
+    async executeAnswerWrite(auth, ticketId, content, timeoutMs) {
+      const wire = await send(
+        transport,
+        {
+          method: 'PUT',
+          path: `/commands/${encodeURIComponent(ticketId)}/execution`,
+          bearer: auth.bearer,
+          body: { kind: 'ANSWER_WRITE', content },
+          timeoutMs,
+        },
+        [200, 202],
+        zAnswerWriteCommandResult,
+      );
+      return toAnswerWriteResult(wire);
+    },
+
+    async getAnswerWriteResult(auth, ticketId, excerptProfile, timeoutMs) {
+      const wire = await send(
+        transport,
+        {
+          method: 'GET',
+          path: `/commands/${encodeURIComponent(ticketId)}`,
+          query: { excerptProfile },
+          bearer: auth.bearer,
+          timeoutMs,
+        },
+        200,
+        zAnswerWriteCommandResult,
+      );
+      return toAnswerWriteResult(wire);
+    },
+
+    async acknowledgeCommand(auth, ticketId) {
+      const response = await transport({
+        method: 'PUT',
+        path: `/commands/${encodeURIComponent(ticketId)}/acknowledgement`,
+        bearer: auth.bearer,
+        body: {},
+        timeoutMs: SAFE_QUERY_TIMEOUT_MS,
+      });
+      if (response.status === 204) return;
+      if (response.status >= 400) throw toDomainFailure(response.body);
+      throw new ProtocolFailure('status');
+    },
+
+    async listAnswers(auth, cursor, excerptProfile, signal) {
+      const query: Record<string, string> = { excerptProfile };
+      if (cursor) query.cursor = cursor;
+      const request: HttpRequest = {
+        method: 'GET',
+        path: '/answers',
+        query,
+        bearer: auth.bearer,
+        timeoutMs: SAFE_QUERY_TIMEOUT_MS,
+      };
+      if (signal) request.signal = signal;
+      const wire = await sendSafeQuery(transport, request, zAnswerPage);
+      return {
+        nextCursor: wire.nextCursor,
+        items: wire.items.map((item) => ({
+          answerId: item.answerId,
+          revision: item.revision,
+          createdDateKst: item.createdDateKst,
+          question: { ...item.question },
+          excerpt: toAvailability(
+            item.excerpt,
+            (e): Excerpt => ({
+              sourceRevision: e.sourceRevision,
+              text: e.text,
+              isTruncated: e.isTruncated,
+            }),
+          ),
+        })),
+      };
+    },
+
+    async getAnswer(auth, answerId, signal) {
+      const request: HttpRequest = {
+        method: 'GET',
+        path: `/answers/${encodeURIComponent(answerId)}`,
+        bearer: auth.bearer,
+        timeoutMs: SAFE_QUERY_TIMEOUT_MS,
+      };
+      if (signal) request.signal = signal;
+      const wire = await sendSafeQuery(transport, request, zAnswerDetail);
+      return {
+        answerId: wire.answerId,
+        revision: wire.revision,
+        createdDateKst: wire.createdDateKst,
+        isEdited: wire.isEdited,
+        question: { ...wire.question },
+        content: wire.content,
+      };
     },
   };
 }

@@ -251,3 +251,270 @@ p {
   white-space: nowrap;
   border: 0;
 }
+
+/* CMP-005 RecordPanel (plain) */
+.arca-record-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-300);
+  padding: var(--space-500);
+  background: var(--color-bg-record);
+  border-radius: var(--corner-panel);
+}
+
+/* Pixel-voice short labels (02 §4.2) */
+.arca-label {
+  font-family: var(--font-family-pixel);
+  font-size: var(--type-control-size);
+  line-height: var(--type-control-line);
+  font-synthesis: none;
+  color: var(--color-text-on-dark-secondary);
+}
+
+/* JOY's question: pixel voice, full text, never truncated (02 §4.3). */
+.arca-question {
+  font-family: var(--font-family-pixel);
+  font-size: var(--type-question-size);
+  line-height: var(--type-question-line);
+  font-synthesis: none;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* The user's own words: body voice, whitespace and line breaks preserved (04 §5.10). */
+.arca-user-text {
+  font-family: var(--font-family-body);
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-line);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.arca-meta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-100);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-family: var(--font-family-pixel);
+  font-size: var(--type-control-size);
+  line-height: var(--type-control-line);
+  font-synthesis: none;
+  color: var(--color-text-on-dark-secondary);
+}
+
+.arca-memory-count {
+  font-family: var(--font-family-pixel);
+  font-size: var(--type-control-size);
+  line-height: var(--type-control-line);
+  font-synthesis: none;
+  color: var(--color-memory);
+}
+
+/* CMP-008 PixelIconButton (glyph placeholder until AST-008 icons are adopted) */
+.arca-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--layout-target-min);
+  height: var(--layout-target-min);
+  padding: 0;
+  border: var(--border-default) solid transparent;
+  border-radius: var(--corner-control);
+  background: transparent;
+  color: var(--color-text-on-dark-primary);
+  font-family: var(--font-family-pixel);
+  font-size: var(--type-question-size);
+  cursor: pointer;
+}
+
+.arca-icon-button:focus-visible {
+  outline: var(--focus-width) solid var(--color-text-on-dark-primary);
+  outline-offset: var(--focus-offset);
+}
+
+.arca-screen-header {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-200);
+}
+
+/* CMP-009 PixelField + CMP-011 PixelTextarea */
+.arca-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-200);
+}
+
+.arca-textarea {
+  display: block;
+  width: 100%;
+  /* 3 lines of body text as the initial space (02 §5.2 layout.textarea-initial-lines). */
+  min-height: calc(var(--type-body-line) * 3 + var(--space-300) * 2);
+  padding: var(--space-300);
+  border: var(--border-default) solid var(--color-border-on-dark);
+  border-radius: var(--corner-control);
+  background: var(--color-bg-inset-dark);
+  color: var(--color-text-on-dark-primary);
+  font-family: var(--font-family-body);
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-line);
+  white-space: pre-wrap;
+  overflow: hidden;
+  resize: none;
+}
+
+.arca-textarea::placeholder {
+  color: var(--color-text-on-dark-secondary);
+}
+
+.arca-textarea:focus-visible {
+  outline: var(--focus-width) solid var(--color-text-on-dark-primary);
+  outline-offset: var(--focus-offset);
+}
+
+.arca-textarea[aria-invalid="true"] {
+  border-color: var(--color-status-danger-on-dark-fg);
+}
+
+.arca-textarea:read-only {
+  cursor: default;
+}
+
+.arca-field-help {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-200);
+  font-family: var(--font-family-pixel);
+  font-size: var(--type-control-size);
+  line-height: var(--type-control-line);
+  font-synthesis: none;
+  color: var(--color-text-on-dark-secondary);
+}
+
+.arca-field-error {
+  color: var(--color-status-danger-on-dark-fg);
+}
+
+/* CMP-025 RootFloatingTabs (ARCA inner labels; platform outer frame is not imitated) */
+.arca-shell__content--with-tabs {
+  padding-bottom: calc(var(--layout-button-height) + var(--space-1200) + env(safe-area-inset-bottom));
+}
+
+.arca-root-tabs {
+  position: fixed;
+  left: 50%;
+  bottom: max(var(--space-400), env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  display: flex;
+  gap: var(--space-200);
+  padding: var(--space-100);
+  background: var(--color-bg-scene);
+  border: var(--border-default) solid var(--color-border-on-dark);
+  border-radius: var(--corner-scene);
+}
+
+.arca-root-tab {
+  min-width: calc(var(--layout-target-min) * 2);
+  min-height: var(--layout-target-min);
+  padding: var(--space-200) var(--space-400);
+  border: var(--border-default) solid transparent;
+  border-radius: var(--corner-control);
+  background: transparent;
+  color: var(--color-text-on-dark-secondary);
+  font-family: var(--font-family-pixel);
+  font-size: var(--type-control-size);
+  line-height: var(--type-control-line);
+  font-synthesis: none;
+  cursor: pointer;
+}
+
+.arca-root-tab[aria-current="page"] {
+  color: var(--color-text-on-dark-primary);
+  border-color: var(--color-text-on-dark-primary);
+}
+
+.arca-root-tab:focus-visible {
+  outline: var(--focus-width) solid var(--color-text-on-dark-primary);
+  outline-offset: var(--focus-offset);
+}
+
+/* F20 list */
+.arca-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-300);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.arca-month {
+  margin: var(--space-400) 0 0;
+  font-family: var(--font-family-pixel);
+  font-size: var(--type-control-size);
+  line-height: var(--type-control-line);
+  font-weight: var(--font-weight-regular);
+  font-synthesis: none;
+  color: var(--color-text-on-dark-secondary);
+}
+
+/* CMP-015 MemoryRow */
+.arca-memory-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-200);
+  width: 100%;
+  min-height: var(--layout-target-min);
+  padding: var(--space-400);
+  border: var(--border-default) solid transparent;
+  border-radius: var(--corner-panel);
+  background: var(--color-bg-record);
+  color: var(--color-text-on-dark-primary);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.arca-memory-row:focus-visible {
+  outline: var(--focus-width) solid var(--color-text-on-dark-primary);
+  outline-offset: var(--focus-offset);
+}
+
+.arca-memory-row > span {
+  display: block;
+}
+
+/* CMP-017 PixelAlertDialog + dimmer (02 §6.2–6.3) */
+.arca-dimmer {
+  position: fixed;
+  inset: 0;
+  z-index: var(--layer-dialog);
+  background: var(--color-dimmer);
+}
+
+.arca-alert-dialog {
+  position: fixed;
+  z-index: var(--layer-dialog);
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-400);
+  width: min(calc(100vw - var(--layout-gutter-compact) * 2), var(--layout-content-max));
+  max-height: calc(100dvh - var(--space-1200));
+  overflow-y: auto;
+  padding: var(--space-600);
+  background: var(--color-bg-scene);
+  color: var(--color-text-on-dark-primary);
+  border: var(--border-default) solid var(--color-border-on-dark);
+  border-radius: var(--corner-scene);
+}
+
+.arca-alert-dialog:focus {
+  outline: none;
+}

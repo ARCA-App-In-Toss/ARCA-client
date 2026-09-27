@@ -246,7 +246,7 @@
 | `corner.none` | `0` | 별도 모서리 장식이 없는 읽기·보조 영역 |
 | `focus.width` | `2px` | 키보드 포커스 선 |
 | `focus.offset` | `2px` | 외곽선과 컴포넌트 사이 간격 |
-| `shadow.raised` | `4px 4px 0` | Primary와 선택된 raised surface에만 사용 |
+| `shadow.raised` | `4px 4px 0` | Primary와 선택된 raised surface에만 사용. 그림자 색은 해당 요소의 전경색(`currentColor`, on-dark primary)을 현재 채택값으로 사용 |
 | `shadow.pressed` | `2px 2px 0` | Pressed 상태 |
 
 주요 행동·도메인 장면·outlined surface의 모서리는 1~3셀을 직각으로 잘라낸 계단형 실루엣을 기본으로 합니다. 읽기·보조 영역은 `plain` 표현으로 외곽선·모서리 장식을 생략하고 면·여백으로 구분할 수 있습니다. 비상호작용 면마다 테두리를 요구하지 않습니다([D-UI-034 · L92](./DECISIONS.md#6-시각-표현과-탐색)). 입력 경계·포커스·선택 상태는 독립적으로 식별 가능해야 하며 구현 기법은 `06`이 정합니다.

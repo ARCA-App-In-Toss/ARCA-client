@@ -39,6 +39,11 @@ export interface ExternalNavigationPort {
   openSupport(): Promise<ExternalOpenResult>;
 }
 
+export interface HapticPort {
+  /** First-save feedback; failure or no support is a silent no-op (06 §2.3). */
+  memorySaved(): Promise<void>;
+}
+
 export interface PlatformPort {
   identity: IdentityPort;
   storage: KeyValueStoragePort;
@@ -46,4 +51,5 @@ export interface PlatformPort {
   network: NetworkPort;
   clipboard: ClipboardPort;
   external: ExternalNavigationPort;
+  haptic: HapticPort;
 }

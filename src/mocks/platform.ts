@@ -7,18 +7,38 @@ export interface FakeStorage extends KeyValueStoragePort {
   failNextWrite(match: (key: string) => boolean): void;
   /** Next write to a matching key silently stores `mutate(value)` instead (read-back mismatch). */
   corruptNextWrite(match: (key: string) => boolean, mutate: (value: string) => string): void;
+  /** Every write waits for the returned release function (slow Storage). */
+  holdWrites(): () => void;
+  readonly writeCount: number;
 }
 
 export function createFakeStorage(initial?: Map<string, string>): FakeStorage {
   const data = new Map(initial);
   const writeFailures: ((key: string) => boolean)[] = [];
   const writeCorruptions: { match: (key: string) => boolean; mutate: (value: string) => string }[] = [];
+  let gate: Promise<void> | null = null;
+  let writeCount = 0;
   return {
     data,
+    get writeCount() {
+      return writeCount;
+    },
+    holdWrites() {
+      let release!: () => void;
+      gate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      return () => {
+        gate = null;
+        release();
+      };
+    },
     async getItem(key) {
       return data.get(key) ?? null;
     },
     async setItem(key, value) {
+      writeCount += 1;
+      if (gate) await gate;
       const failIndex = writeFailures.findIndex((match) => match(key));
       if (failIndex >= 0) {
         writeFailures.splice(failIndex, 1);
@@ -54,6 +74,7 @@ export interface FakePlatformOptions {
 export interface FakePlatform extends PlatformPort {
   storage: FakeStorage;
   clipboardWrites: string[];
+  hapticCount: number;
   setAnonymousKey(result: AnonymousKeyResult): void;
   setOffline(offline: boolean): void;
   setClipboardFails(fails: boolean): void;
@@ -65,7 +86,8 @@ export function createFakePlatform(options: FakePlatformOptions = {}): FakePlatf
   let clipboardFails = false;
   const clipboardWrites: string[] = [];
   const storage = options.storage ?? createFakeStorage();
-  return {
+  const platform: FakePlatform = {
+    hapticCount: 0,
     storage,
     clipboardWrites,
     identity: {
@@ -83,6 +105,11 @@ export function createFakePlatform(options: FakePlatformOptions = {}): FakePlatf
       },
     },
     external: { openSupport: async () => ({ kind: 'unavailable' }) },
+    haptic: {
+      async memorySaved() {
+        platform.hapticCount += 1;
+      },
+    },
     setAnonymousKey(result) {
       keyResult = result;
     },
@@ -93,4 +120,5 @@ export function createFakePlatform(options: FakePlatformOptions = {}): FakePlatf
       clipboardFails = fails;
     },
   };
+  return platform;
 }

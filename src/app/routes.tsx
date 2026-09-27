@@ -1,19 +1,19 @@
 import type { ReactNode } from 'react';
 import { Navigate, Outlet, type RouteObject, useLocation } from 'react-router';
 import type { SessionMode } from '../data/api/models.ts';
+import { AnswerDetailScreen } from '../screens/archive/AnswerDetailScreen.tsx';
+import { ArchiveScreen } from '../screens/archive/ArchiveScreen.tsx';
 import { StartErrorScreen } from '../screens/error/StartErrorScreen.tsx';
 import { IntroScreen } from '../screens/onboarding/IntroScreen.tsx';
+import { SavedScreen } from '../screens/today/SavedScreen.tsx';
 import { TodayScreen } from '../screens/today/TodayScreen.tsx';
+import { WriteScreen } from '../screens/today/WriteScreen.tsx';
 import { useAppSnapshot } from './AppServices.tsx';
 import { StartScreen } from './bootstrap/StartScreen.tsx';
+import { paths } from './navigation.ts';
 
 // Route table (06 §5.1). URLs and history state carry no IDs, tokens, nicknames or content.
-export const paths = {
-  start: '/',
-  intro: '/intro',
-  today: '/today',
-  startError: '/error/start',
-} as const;
+export { paths };
 
 const targetPath = { intro: paths.intro, today: paths.today } as const;
 
@@ -66,6 +66,38 @@ export const routes: RouteObject[] = [
         element: (
           <RequireMode mode="ACTIVE">
             <TodayScreen />
+          </RequireMode>
+        ),
+      },
+      {
+        path: paths.write,
+        element: (
+          <RequireMode mode="ACTIVE">
+            <WriteScreen />
+          </RequireMode>
+        ),
+      },
+      {
+        path: paths.saved,
+        element: (
+          <RequireMode mode="ACTIVE">
+            <SavedScreen />
+          </RequireMode>
+        ),
+      },
+      {
+        path: paths.archive,
+        element: (
+          <RequireMode mode="ACTIVE">
+            <ArchiveScreen />
+          </RequireMode>
+        ),
+      },
+      {
+        path: paths.detail,
+        element: (
+          <RequireMode mode="ACTIVE">
+            <AnswerDetailScreen />
           </RequireMode>
         ),
       },

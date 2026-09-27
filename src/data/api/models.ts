@@ -70,3 +70,60 @@ export interface Today {
 }
 
 export type ExcerptProfile = 'COMPACT' | 'STANDARD' | 'EXPANDED';
+
+export interface AnswerDetail {
+  answerId: string;
+  revision: string;
+  createdDateKst: string;
+  isEdited: boolean;
+  question: QuestionSnapshot;
+  /** Stored original text; never trimmed or normalized. */
+  content: string;
+}
+
+export interface PrepareAnswerCreate {
+  mode: 'CREATE';
+  dailySemaId: string;
+  semaId: string;
+  semaVersion: string;
+  questionId: string;
+  questionVersion: string;
+}
+
+export type AnswerWritePresentation =
+  | {
+      state: 'AVAILABLE';
+      question: QuestionSnapshot;
+      excerpt: Availability<Excerpt>;
+      activeAnswerCount: Availability<{ count: number; observedAt: string }>;
+    }
+  | { state: 'UNAVAILABLE'; retryable: boolean }
+  | { state: 'ACKNOWLEDGED' }
+  | { state: 'RESOURCE_CHANGED' };
+
+/** OP-006/007/008 answer-write result (05 §5.5). Only SUCCEEDED/NOT_APPLIED are terminal outcomes. */
+export type AnswerWriteResult =
+  | { state: 'PREPARED'; ticketId: string; operationId: string }
+  | { state: 'EXECUTING'; ticketId: string; operationId: string }
+  | {
+      state: 'SUCCEEDED';
+      ticketId: string;
+      operationId: string;
+      proof: { answerId: string; revision: string; mode: 'CREATED' | 'UPDATED' };
+      presentation: AnswerWritePresentation;
+    }
+  | { state: 'NOT_APPLIED'; ticketId: string; operationId: string; error: { code: string; category: string } }
+  | { state: 'CLOSED_OUTCOME_UNAVAILABLE'; ticketId: string; operationId: string };
+
+export interface ArchiveItem {
+  answerId: string;
+  revision: string;
+  createdDateKst: string;
+  question: QuestionSnapshot;
+  excerpt: Availability<Excerpt>;
+}
+
+export interface AnswerPage {
+  items: ArchiveItem[];
+  nextCursor: string | null;
+}

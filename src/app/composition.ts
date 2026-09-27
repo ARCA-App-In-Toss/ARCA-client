@@ -1,7 +1,11 @@
 import { QueryClient } from '@tanstack/react-query';
 import { type ArcaApi, createArcaApi } from '../data/api/arcaApi.ts';
 import { createHttpTransport } from '../data/api/transport.ts';
-import { StorageJournal } from '../data/storage/journal.ts';
+import { queryKeys } from '../data/query/keys.ts';
+import { type ManifestScope, StorageJournal } from '../data/storage/journal.ts';
+import { AnswerWriteCoordinator, type Completion } from '../domain/commands/answerWriteCoordinator.ts';
+import { AnswerWriteStore } from '../domain/commands/answerWriteStore.ts';
+import { DraftRepository } from '../domain/drafts/draftRepository.ts';
 import { SessionController, type SessionSummary } from '../domain/session/sessionController.ts';
 import type { PlatformPort } from '../platform/ports.ts';
 import { type BootstrapState, runBootstrap } from './bootstrap/bootstrap.ts';
@@ -19,6 +23,12 @@ export interface AppServices {
   queryClient: QueryClient;
   session: SessionController;
   journal: StorageJournal;
+  drafts: DraftRepository;
+  writes: AnswerWriteCoordinator;
+  /** Visit-bound F12 completion models (memory only). */
+  completions: Map<string, Completion>;
+  /** Opaque route ref → answer id, memory only, cleared on owner change. */
+  answerRefs: Map<string, string>;
   getSnapshot(): AppSnapshot;
   subscribe(listener: () => void): () => void;
   /** Cold start or F90 reconnect; repeats the same latest judgement (04 IX-032). */
@@ -53,6 +63,26 @@ export function createAppServices(config: AppServicesConfig): AppServices {
   };
 
   let running: Promise<BootstrapState> | null = null;
+  // Device area confirmed by the last bootstrap; drafts and trackers live only inside it.
+  let currentArea: ManifestScope | null = null;
+  const drafts = new DraftRepository({ journal, clock: platform.clock, area: () => currentArea });
+  const writes = new AnswerWriteCoordinator({
+    session,
+    api,
+    store: new AnswerWriteStore({ journal, area: () => currentArea }),
+    drafts,
+    now: () => Date.now(),
+    fence: () =>
+      snapshot.session && currentArea
+        ? { ownerScope: snapshot.session.ownerScope, generation: snapshot.session.generation }
+        : null,
+    // Current resources are re-read after success; old caches never stand in for the result (06 §6.4).
+    syncAfterSuccess: async () => {
+      const owner = snapshot.session;
+      if (!owner?.generation) return;
+      await queryClient.invalidateQueries({ queryKey: queryKeys.owner(owner.ownerScope) });
+    },
+  });
 
   const runStart = (reuse?: SessionSummary): Promise<BootstrapState> => {
     running ??= (async () => {
@@ -61,7 +91,10 @@ export function createAppServices(config: AppServicesConfig): AppServices {
         ...snapshot,
         bootstrap: previous.phase === 'failed' ? { ...previous, retry: 'running' } : { phase: 'starting' },
       });
-      const result = await runBootstrap({ session, journal, api, queryClient, network: platform.network }, reuse);
+      currentArea = null;
+      const outcome = await runBootstrap({ session, journal, api, queryClient, network: platform.network }, reuse);
+      currentArea = outcome.area;
+      const result = outcome.state;
       const next: BootstrapState =
         result.phase === 'failed' && previous.phase === 'failed' ? { ...result, retry: 'failed' } : result;
       publish({ ...snapshot, bootstrap: next });
@@ -72,7 +105,17 @@ export function createAppServices(config: AppServicesConfig): AppServices {
     return running;
   };
 
+  const completions = new Map<string, Completion>();
+  // history.state holds only a local opaque ref; the answer id stays in memory (06 §5.1).
+  const answerRefs = new Map<string, string>();
+
   session.subscribe((event) => {
+    if (event.kind === 'discarded' || event.ownerChanged) {
+      currentArea = null;
+      completions.clear();
+      answerRefs.clear();
+      writes.reset();
+    }
     const previousMode = snapshot.session?.mode;
     const wasReady = !running && snapshot.bootstrap.phase === 'ready';
     if (event.kind === 'discarded') {
@@ -103,6 +146,10 @@ export function createAppServices(config: AppServicesConfig): AppServices {
     queryClient,
     session,
     journal,
+    drafts,
+    writes,
+    completions,
+    answerRefs,
     getSnapshot: () => snapshot,
     subscribe(listener) {
       listeners.add(listener);

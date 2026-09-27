@@ -99,7 +99,13 @@ async function classify(error: unknown, network: NetworkPort): Promise<StartErro
  * `reuse` skips OP-001 when the session was just re-established mid-visit with a new owner or mode;
  * the local area and start state are still re-checked before any private screen reopens.
  */
-export async function runBootstrap(deps: BootstrapDeps, reuse?: SessionSummary): Promise<BootstrapState> {
+export interface BootstrapOutcome {
+  state: BootstrapState;
+  /** The confirmed device area for the ACTIVE generation; null otherwise. Kept out of React state. */
+  area: ManifestScope | null;
+}
+
+export async function runBootstrap(deps: BootstrapDeps, reuse?: SessionSummary): Promise<BootstrapOutcome> {
   try {
     const summary = reuse ?? (await deps.session.establish());
     // Full-deletion recovery is an app-wide gate owned by step 7; until then no private screen opens.
@@ -107,13 +113,20 @@ export async function runBootstrap(deps: BootstrapDeps, reuse?: SessionSummary):
 
     const root = await reconcileLocalArea(deps.journal, summary);
 
-    if (summary.mode === 'PRE_PASSENGER') return { phase: 'ready', target: 'intro', routeEpoch: root.routeEpoch };
+    if (summary.mode === 'PRE_PASSENGER') {
+      return { state: { phase: 'ready', target: 'intro', routeEpoch: root.routeEpoch }, area: null };
+    }
+    const areaRef = root.generations.find((g) => g.generation === summary.generation)?.ref;
+    if (!areaRef) throw new LocalPersistenceFailure('corrupt');
 
     const today = await deps.session.run('ACTIVE', (auth) => deps.api.getToday(auth, START_EXCERPT_PROFILE));
     const generation = summary.generation ?? '';
     deps.queryClient.setQueryData(queryKeys.today(summary.ownerScope, generation, START_EXCERPT_PROFILE), today);
-    return { phase: 'ready', target: 'today', routeEpoch: root.routeEpoch };
+    return {
+      state: { phase: 'ready', target: 'today', routeEpoch: root.routeEpoch },
+      area: { kind: 'generation', ref: areaRef },
+    };
   } catch (error) {
-    return { phase: 'failed', error: await classify(error, deps.network), retry: 'idle' };
+    return { state: { phase: 'failed', error: await classify(error, deps.network), retry: 'idle' }, area: null };
   }
 }
