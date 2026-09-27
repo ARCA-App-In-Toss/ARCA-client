@@ -1,5 +1,6 @@
 import {
   type ButtonHTMLAttributes,
+  type InputHTMLAttributes,
   type ReactNode,
   type Ref,
   type TextareaHTMLAttributes,
@@ -66,6 +67,7 @@ export interface PixelButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonEl
   variant?: ButtonVariant;
   /** Keeps size and label, exposes aria-busy, blocks duplicate activation, stays focusable. */
   loading?: boolean;
+  ref?: Ref<HTMLButtonElement>;
 }
 
 /** CMP-007 PixelButton. */
@@ -76,12 +78,48 @@ export function PixelButton({ variant = 'secondary', loading = false, onClick, c
       type="button"
       className={['arca-button', `arca-button--${variant}`, className].filter(Boolean).join(' ')}
       aria-busy={loading || undefined}
-      aria-disabled={loading || undefined}
+      aria-disabled={loading || rest['aria-disabled'] || undefined}
       onClick={(event) => {
         if (loading) return;
         onClick?.(event);
       }}
     />
+  );
+}
+
+/**
+ * CMP-012 PixelCheckboxRow: a native checkbox whose visible label toggles it. `accessibleName` carries
+ * the required state in the name (04 CPY-F02-015/016); the document link is a separate control.
+ */
+export function PixelCheckboxRow({
+  id,
+  label,
+  badge,
+  accessibleName,
+  checked,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  badge: string;
+  accessibleName: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <div className="arca-checkbox-row">
+      <input
+        id={id}
+        type="checkbox"
+        className="arca-checkbox"
+        aria-label={accessibleName}
+        checked={checked}
+        onChange={(event) => onChange(event.target.checked)}
+      />
+      <label htmlFor={id} className="arca-checkbox-row__label">
+        <span className="arca-checkbox-row__badge">{badge}</span> {label}
+      </label>
+    </div>
   );
 }
 
@@ -192,6 +230,42 @@ export function PixelTextareaField({
         id={id}
         value={value}
         className="arca-textarea"
+        aria-describedby={describedBy}
+        aria-invalid={invalid || undefined}
+      />
+    </div>
+  );
+}
+
+/**
+ * CMP-009 PixelField + CMP-010 PixelTextField: a native single-line input with no maxLength, trimming
+ * or truncation; IME, selection and paste stay native (04 IX-001, 06 §10.6).
+ */
+export function PixelTextField({
+  id,
+  label,
+  describedBy,
+  invalid,
+  value,
+  ...rest
+}: {
+  id: string;
+  label: ReactNode;
+  describedBy: string;
+  invalid: boolean;
+  value: string;
+} & Omit<InputHTMLAttributes<HTMLInputElement>, 'id' | 'value' | 'type' | 'aria-describedby' | 'aria-invalid'>) {
+  return (
+    <div className="arca-field">
+      <label className="arca-label" htmlFor={id}>
+        {label}
+      </label>
+      <input
+        {...rest}
+        id={id}
+        type="text"
+        value={value}
+        className="arca-text-input"
         aria-describedby={describedBy}
         aria-invalid={invalid || undefined}
       />

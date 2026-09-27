@@ -74,22 +74,28 @@ export interface FakePlatformOptions {
 export interface FakePlatform extends PlatformPort {
   storage: FakeStorage;
   clipboardWrites: string[];
+  /** Policy documents opened externally, in order. */
+  openedPolicies: string[];
   hapticCount: number;
   setAnonymousKey(result: AnonymousKeyResult): void;
   setOffline(offline: boolean): void;
   setClipboardFails(fails: boolean): void;
+  setExternalFails(fails: boolean): void;
 }
 
 export function createFakePlatform(options: FakePlatformOptions = {}): FakePlatform {
   let keyResult = options.anonymousKey ?? { kind: 'ok', key: 'synthetic-anon-key-registered' };
   let offline = options.offline ?? false;
   let clipboardFails = false;
+  let externalFails = false;
   const clipboardWrites: string[] = [];
+  const openedPolicies: string[] = [];
   const storage = options.storage ?? createFakeStorage();
   const platform: FakePlatform = {
     hapticCount: 0,
     storage,
     clipboardWrites,
+    openedPolicies,
     identity: {
       async getAnonymousKey() {
         return typeof keyResult === 'function' ? keyResult() : keyResult;
@@ -104,7 +110,14 @@ export function createFakePlatform(options: FakePlatformOptions = {}): FakePlatf
         return { kind: 'copied' };
       },
     },
-    external: { openSupport: async () => ({ kind: 'unavailable' }) },
+    external: {
+      openSupport: async () => ({ kind: 'unavailable' }),
+      async openPolicy(url) {
+        if (externalFails) return { kind: 'unavailable' };
+        openedPolicies.push(url);
+        return { kind: 'opened' };
+      },
+    },
     haptic: {
       async memorySaved() {
         platform.hapticCount += 1;
@@ -118,6 +131,9 @@ export function createFakePlatform(options: FakePlatformOptions = {}): FakePlatf
     },
     setClipboardFails(fails) {
       clipboardFails = fails;
+    },
+    setExternalFails(fails) {
+      externalFails = fails;
     },
   };
   return platform;

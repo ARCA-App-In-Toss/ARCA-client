@@ -6,6 +6,8 @@ import { type ManifestScope, StorageJournal } from '../data/storage/journal.ts';
 import { AnswerWriteCoordinator, type Completion } from '../domain/commands/answerWriteCoordinator.ts';
 import { AnswerWriteStore } from '../domain/commands/answerWriteStore.ts';
 import { DraftRepository } from '../domain/drafts/draftRepository.ts';
+import { BoardingCoordinator } from '../domain/onboarding/boardingCoordinator.ts';
+import { NicknameCoordinator } from '../domain/onboarding/nicknameCoordinator.ts';
 import { SessionController, type SessionSummary } from '../domain/session/sessionController.ts';
 import type { PlatformPort } from '../platform/ports.ts';
 import { type BootstrapState, runBootstrap } from './bootstrap/bootstrap.ts';
@@ -25,6 +27,8 @@ export interface AppServices {
   journal: StorageJournal;
   drafts: DraftRepository;
   writes: AnswerWriteCoordinator;
+  boarding: BoardingCoordinator;
+  nickname: NicknameCoordinator;
   /** Visit-bound F12 completion models (memory only). */
   completions: Map<string, Completion>;
   /** Opaque route ref → answer id, memory only, cleared on owner change. */
@@ -33,6 +37,8 @@ export interface AppServices {
   subscribe(listener: () => void): () => void;
   /** Cold start or F90 reconnect; repeats the same latest judgement (04 IX-032). */
   start(): Promise<BootstrapState>;
+  /** F03 left for F10: the boarding continuation is over and the safe root is today again. */
+  finishBoarding(): void;
 }
 
 export interface AppServicesConfig {
@@ -84,7 +90,7 @@ export function createAppServices(config: AppServicesConfig): AppServices {
     },
   });
 
-  const runStart = (reuse?: SessionSummary): Promise<BootstrapState> => {
+  const runStart = (reuse?: SessionSummary, handoff: 'boarded' | null = null): Promise<BootstrapState> => {
     running ??= (async () => {
       const previous = snapshot.bootstrap;
       publish({
@@ -92,7 +98,11 @@ export function createAppServices(config: AppServicesConfig): AppServices {
         bootstrap: previous.phase === 'failed' ? { ...previous, retry: 'running' } : { phase: 'starting' },
       });
       currentArea = null;
-      const outcome = await runBootstrap({ session, journal, api, queryClient, network: platform.network }, reuse);
+      const outcome = await runBootstrap(
+        { session, journal, api, queryClient, network: platform.network },
+        reuse,
+        handoff,
+      );
       currentArea = outcome.area;
       const result = outcome.state;
       const next: BootstrapState =
@@ -134,9 +144,12 @@ export function createAppServices(config: AppServicesConfig): AppServices {
       bootstrap: reconcile ? { phase: 'starting' } : snapshot.bootstrap,
       session: { ownerScope, mode, epoch, generation },
     });
+    // OP-003 success: F03 reads the created profile from the new owner's cache (06 §6.1, §9.1 #3).
+    const boarded = event.boarded && generation ? event.boarded : null;
+    if (boarded && generation) queryClient.setQueryData(queryKeys.passenger(ownerScope, generation), boarded);
     if (reconcile) {
       const summary = event.summary;
-      queueMicrotask(() => void runStart(summary));
+      queueMicrotask(() => void runStart(summary, boarded ? 'boarded' : null));
     }
   });
 
@@ -148,6 +161,19 @@ export function createAppServices(config: AppServicesConfig): AppServices {
     journal,
     drafts,
     writes,
+    boarding: new BoardingCoordinator({ session, journal }),
+    nickname: new NicknameCoordinator({
+      session,
+      api,
+      journal,
+      network: platform.network,
+      area: () => currentArea,
+      syncProfile: async () => {
+        const owner = snapshot.session;
+        if (!owner?.generation) return;
+        await queryClient.invalidateQueries({ queryKey: queryKeys.passenger(owner.ownerScope, owner.generation) });
+      },
+    }),
     completions,
     answerRefs,
     getSnapshot: () => snapshot,
@@ -156,5 +182,11 @@ export function createAppServices(config: AppServicesConfig): AppServices {
       return () => listeners.delete(listener);
     },
     start: () => runStart(),
+    finishBoarding() {
+      const current = snapshot.bootstrap;
+      if (current.phase === 'ready' && current.target === 'boarded') {
+        publish({ ...snapshot, bootstrap: { ...current, target: 'today' } });
+      }
+    },
   };
 }

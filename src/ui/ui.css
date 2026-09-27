@@ -271,6 +271,84 @@ p {
   color: var(--color-text-on-dark-secondary);
 }
 
+/* CMP-012 PixelCheckboxRow: 44px targets; label and document control never overlap (03 §4.3). */
+.arca-consent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-200);
+}
+
+.arca-checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-300);
+  min-height: var(--layout-target-min);
+}
+
+.arca-checkbox {
+  flex: none;
+  width: var(--layout-target-min);
+  height: var(--layout-target-min);
+  margin: 0;
+  accent-color: var(--color-brand-primary);
+}
+
+.arca-checkbox:focus-visible {
+  outline: var(--focus-width) solid var(--color-text-on-dark-primary);
+  outline-offset: var(--focus-offset);
+}
+
+.arca-checkbox-row__label {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.arca-checkbox-row__badge {
+  font-family: var(--font-family-pixel);
+  font-synthesis: none;
+  color: var(--color-signal);
+}
+
+/* F01 narrative: bundled story text, line breaks preserved (03 §4.2). */
+.arca-narrative {
+  margin: 0;
+  font-family: var(--font-family-body);
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-line);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.arca-intro-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-300);
+}
+
+.arca-intro-progress {
+  margin: 0;
+  font-family: var(--font-family-pixel);
+  font-synthesis: none;
+  color: var(--color-text-on-dark-secondary);
+}
+
+.arca-intro-skip {
+  width: auto;
+}
+
+.arca-story {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-400);
+}
+
+.arca-story > h2 {
+  margin: 0;
+}
+
 /* JOY's question: pixel voice, full text, never truncated (02 §4.3). */
 .arca-question {
   font-family: var(--font-family-pixel);
@@ -364,6 +442,33 @@ p {
   white-space: pre-wrap;
   overflow: hidden;
   resize: none;
+}
+
+.arca-text-input {
+  display: block;
+  width: 100%;
+  min-height: var(--layout-target-min);
+  padding: var(--space-300);
+  border: var(--border-default) solid var(--color-border-on-dark);
+  border-radius: var(--corner-control);
+  background: var(--color-bg-inset-dark);
+  color: var(--color-text-on-dark-primary);
+  font-family: var(--font-family-body);
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-line);
+}
+
+.arca-text-input::placeholder {
+  color: var(--color-text-on-dark-secondary);
+}
+
+.arca-text-input:focus-visible {
+  outline: var(--focus-width) solid var(--color-text-on-dark-primary);
+  outline-offset: var(--focus-offset);
+}
+
+.arca-text-input[aria-invalid="true"] {
+  border-color: var(--color-status-danger-on-dark-fg);
 }
 
 .arca-textarea::placeholder {

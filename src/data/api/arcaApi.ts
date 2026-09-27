@@ -5,7 +5,10 @@ import {
   zAnswerDetail,
   zAnswerPage,
   zAnswerWriteCommandResult,
+  zCreatePassengerResponse,
   zEstablishSessionResponse,
+  zGetPassengerResponse,
+  zNicknameReceipt,
   zTodayReadModel,
 } from './generated/zod.gen.ts';
 import type {
@@ -13,9 +16,13 @@ import type {
   AnswerPage,
   AnswerWriteResult,
   Availability,
+  ConsentReceipt,
+  CreatedPassenger,
   EstablishedSession,
   Excerpt,
   ExcerptProfile,
+  NicknameReceipt,
+  PassengerProfile,
   PrepareAnswerCreate,
   SessionContext,
   Today,
@@ -25,6 +32,10 @@ import type { HttpRequest, HttpTransport } from './transport.ts';
 /** Safe query transport budget and single connectivity retry (06 §6.2). */
 export const SAFE_QUERY_TIMEOUT_MS = 8_000;
 const SESSION_TIMEOUT_MS = 8_000;
+/** OP-003 transport budget. Timeout or loss says nothing about the creation outcome (05 §8.3). */
+export const CREATE_PASSENGER_TIMEOUT_MS = 10_000;
+/** OP-004 transport budget; a timeout is resolved by resending the same key (05 §6.2). */
+export const SET_NICKNAME_TIMEOUT_MS = 10_000;
 
 export interface Bearer {
   readonly bearer: string;
@@ -33,6 +44,20 @@ export interface Bearer {
 export interface ArcaApi {
   /** OP-001. Creates no passenger. */
   establishSession(anonymousKey: string): Promise<EstablishedSession>;
+  /**
+   * OP-003. `operationId` travels only as the Idempotency-Key header. The response carries a new ACTIVE
+   * session; only SessionController may call this.
+   */
+  createPassenger(auth: Bearer, operationId: string, consents: readonly ConsentReceipt[]): Promise<CreatedPassenger>;
+  /** OP-002: the current profile, never proof that a particular nickname request applied. */
+  getPassenger(auth: Bearer, signal?: AbortSignal): Promise<PassengerProfile>;
+  /** OP-004. `nickname: null` clears; `operationId` travels only as the Idempotency-Key header. */
+  setNickname(
+    auth: Bearer,
+    operationId: string,
+    nickname: string | null,
+    expectedRevision: string,
+  ): Promise<NicknameReceipt>;
   /** OP-005. */
   getToday(auth: Bearer, excerptProfile: ExcerptProfile, signal?: AbortSignal): Promise<Today>;
   /** OP-010. `cursor` is the opaque value from the previous page only. */
@@ -218,6 +243,76 @@ export function createArcaApi(transport: HttpTransport): ArcaApi {
               resultExpiresAt: wire.recentDeletion.resultExpiresAt,
             }
           : null,
+      };
+    },
+
+    async createPassenger(auth, operationId, consents) {
+      const wire = await send(
+        transport,
+        {
+          method: 'POST',
+          path: '/passenger',
+          bearer: auth.bearer,
+          idempotencyKey: operationId,
+          body: { consents: consents.map((c) => ({ policyId: c.policyId, version: c.version, agreed: true })) },
+          timeoutMs: CREATE_PASSENGER_TIMEOUT_MS,
+        },
+        [200, 201],
+        zCreatePassengerResponse,
+      );
+      const { passenger } = wire.context;
+      return {
+        session: {
+          accessToken: wire.accessToken,
+          expiresAt: wire.expiresAt,
+          context: { mode: 'ACTIVE', dataGeneration: wire.context.dataGeneration },
+          consentPolicies: wire.consentPolicies.map((policy) => ({ ...policy })),
+          recentDeletion: wire.recentDeletion
+            ? {
+                deletedGeneration: wire.recentDeletion.deletedGeneration,
+                resultExpiresAt: wire.recentDeletion.resultExpiresAt,
+              }
+            : null,
+        },
+        passenger: {
+          passengerCode: passenger.passengerCode,
+          nickname: passenger.nickname,
+          revision: passenger.revision,
+        },
+      };
+    },
+
+    async getPassenger(auth, signal) {
+      const request: HttpRequest = {
+        method: 'GET',
+        path: '/passenger',
+        bearer: auth.bearer,
+        timeoutMs: SAFE_QUERY_TIMEOUT_MS,
+      };
+      if (signal) request.signal = signal;
+      const wire = await sendSafeQuery(transport, request, zGetPassengerResponse);
+      return { passengerCode: wire.passengerCode, nickname: wire.nickname, revision: wire.revision };
+    },
+
+    async setNickname(auth, operationId, nickname, expectedRevision) {
+      const wire = await send(
+        transport,
+        {
+          method: 'PUT',
+          path: '/passenger/nickname',
+          bearer: auth.bearer,
+          idempotencyKey: operationId,
+          body: { nickname, expectedRevision },
+          timeoutMs: SET_NICKNAME_TIMEOUT_MS,
+        },
+        200,
+        zNicknameReceipt,
+      );
+      const { profile } = wire;
+      return {
+        operationId: wire.operationId,
+        profile: { passengerCode: profile.passengerCode, nickname: profile.nickname, revision: profile.revision },
+        resultExpiresAt: wire.resultExpiresAt,
       };
     },
 

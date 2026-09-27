@@ -6,8 +6,10 @@ import {
   type MockAnswer,
   type MockFault,
   type MockOp,
+  type MockPolicy,
   type MockTicket,
   type MockWorld,
+  type Passenger,
 } from './world.ts';
 
 const noStore = { 'Cache-Control': 'no-store' };
@@ -157,10 +159,155 @@ export function createHandlers(world: MockWorld, baseUrl = MOCK_API_BASE) {
                 dataGeneration: passenger.dataGeneration,
               }
             : { mode: 'PRE_PASSENGER', passenger: null },
-          consentPolicies: [],
+          consentPolicies: world.policies,
         },
         { status: 201, headers: noStore },
       );
+    }),
+
+    http.get(`${baseUrl}/v1/passenger`, async ({ request }) => {
+      const bearer = bearerOf(request);
+      world.requests.push({ op: 'OP-002', bearer });
+      const faulted = await applyFault(world, 'OP-002');
+      if (faulted) return faulted;
+      const owner = activeOwner(world, bearer);
+      if (owner instanceof Response) return owner;
+      const { passengerCode, nickname, revision } = world.passengers.get(owner) as Passenger;
+      return HttpResponse.json({ passengerCode, nickname, revision }, { headers: noStore });
+    }),
+
+    // OP-004 (05 §6.2): fingerprint before revision; receipts are replayed until they expire.
+    http.put(`${baseUrl}/v1/passenger/nickname`, async ({ request }) => {
+      const bearer = bearerOf(request);
+      world.requests.push({ op: 'OP-004', bearer });
+      const fault = world.takeFault('OP-004');
+      if (fault && fault.kind !== 'lose-response') {
+        const response = await respondWith(fault, 'OP-004');
+        if (response) return response;
+      }
+      const owner = activeOwner(world, bearer);
+      if (owner instanceof Response) return owner;
+      const operationId = request.headers.get('Idempotency-Key') ?? '';
+      const body = (await request.json()) as { nickname: string | null; expectedRevision: string };
+      const fingerprint = JSON.stringify([body.nickname, body.expectedRevision]);
+      const passenger = world.passengers.get(owner) as Passenger;
+
+      let receipt = world.nicknameReceipts.find((r) => r.anonymousKey === owner && r.operationId === operationId);
+      if (receipt?.expired) {
+        return HttpResponse.json(errorBody('OPERATION_RESULT_EXPIRED', 'CONFLICT'), { status: 409, headers: noStore });
+      }
+      if (receipt && receipt.fingerprint !== fingerprint) {
+        return HttpResponse.json(errorBody('IDEMPOTENCY_KEY_REUSED', 'CONFLICT'), { status: 409, headers: noStore });
+      }
+      if (!receipt) {
+        const value = body.nickname === null ? null : body.nickname.trim();
+        const count = value === null ? 0 : graphemeCount(value);
+        if (value !== null && (count < 2 || count > 12 || /[\p{Cc}\p{Zl}\p{Zp}]/u.test(value))) {
+          return HttpResponse.json(errorBody('NICKNAME_INVALID', 'VALIDATION'), { status: 422, headers: noStore });
+        }
+        if (body.expectedRevision !== passenger.revision) {
+          return HttpResponse.json(errorBody('REVISION_CONFLICT', 'CONFLICT'), { status: 409, headers: noStore });
+        }
+        passenger.nickname = value;
+        passenger.revision = `p-r${world.nicknameReceipts.length + 2}`;
+        receipt = {
+          anonymousKey: owner,
+          operationId,
+          fingerprint,
+          profile: { passengerCode: passenger.passengerCode, nickname: value, revision: passenger.revision },
+          expired: false,
+        };
+        world.nicknameReceipts.push(receipt);
+      }
+      const response = HttpResponse.json(
+        { operationId, profile: receipt.profile, resultExpiresAt: '2026-10-04T02:00:00Z' },
+        { headers: noStore },
+      );
+      return fault?.kind === 'lose-response' ? HttpResponse.error() : response;
+    }),
+
+    // OP-003 (05 §6.2): consents and passenger are created together; the PRE token is revoked.
+    http.post(`${baseUrl}/v1/passenger`, async ({ request }) => {
+      const bearer = bearerOf(request);
+      world.requests.push({ op: 'OP-003', bearer });
+      const fault = world.takeFault('OP-003');
+      if (fault && fault.kind !== 'lose-response') {
+        const response = await respondWith(fault, 'OP-003');
+        if (response) return response;
+      }
+      const session = bearer ? world.sessions.get(bearer) : undefined;
+      if (!session) return HttpResponse.json(errorBody('SESSION_INVALID', 'AUTH'), { status: 401, headers: noStore });
+      if (session.revoked) {
+        return HttpResponse.json(
+          errorBody('SESSION_RECOVERY_REQUIRED', 'AUTH', {
+            recovery: { kind: 'REESTABLISH_SESSION', recoveryAllowed: true },
+          }),
+          { status: 401, headers: noStore },
+        );
+      }
+      const key = session.anonymousKey;
+      const operationId = request.headers.get('Idempotency-Key') ?? '';
+      const body = (await request.json()) as { consents: { policyId: string; version: string }[] };
+      const fingerprint = JSON.stringify(
+        [...body.consents].sort((a, b) => a.policyId.localeCompare(b.policyId)).map((c) => [c.policyId, c.version]),
+      );
+
+      // Fingerprint check comes before current-policy validation (05 §6.2).
+      const replay = world.creations.find((c) => c.anonymousKey === key && c.operationId === operationId);
+      let status = 200;
+      if (replay) {
+        if (replay.fingerprint !== fingerprint) {
+          return HttpResponse.json(errorBody('IDEMPOTENCY_KEY_REUSED', 'CONFLICT'), { status: 409, headers: noStore });
+        }
+      } else {
+        if (world.passengers.has(key)) {
+          return HttpResponse.json(errorBody('PASSENGER_ALREADY_EXISTS', 'CONFLICT'), {
+            status: 409,
+            headers: noStore,
+          });
+        }
+        const required = world.policies.filter((p) => p.required);
+        const agreed = (p: MockPolicy) => body.consents.some((c) => c.policyId === p.policyId);
+        if (required.some((p) => !agreed(p))) {
+          return HttpResponse.json(errorBody('CONSENT_REQUIRED', 'VALIDATION'), { status: 422, headers: noStore });
+        }
+        if (required.some((p) => !body.consents.some((c) => c.policyId === p.policyId && c.version === p.version))) {
+          return HttpResponse.json(
+            errorBody('POLICY_VERSION_CHANGED', 'VALIDATION', {
+              recovery: { kind: 'REFRESH_POLICIES', policies: world.policies },
+            }),
+            { status: 422, headers: noStore },
+          );
+        }
+        world.passengers.set(key, {
+          passengerCode: `SYN-${String(world.creations.length + 1001)}`,
+          nickname: null,
+          revision: 'p-r1',
+          dataGeneration: `gen-synthetic-created-${world.creations.length + 1}`,
+        });
+        world.creations.push({ anonymousKey: key, operationId, fingerprint });
+        world.revokeSessions(key);
+        status = 201;
+      }
+      const passenger = world.passengers.get(key) as Passenger;
+      const response = HttpResponse.json(
+        {
+          accessToken: world.issueToken(key),
+          expiresAt: '2026-09-27T15:00:00Z',
+          context: {
+            mode: 'ACTIVE',
+            passenger: {
+              passengerCode: passenger.passengerCode,
+              nickname: passenger.nickname,
+              revision: passenger.revision,
+            },
+            dataGeneration: passenger.dataGeneration,
+          },
+          consentPolicies: world.policies,
+        },
+        { status, headers: noStore },
+      );
+      return fault?.kind === 'lose-response' ? HttpResponse.error() : response;
     }),
 
     http.get(`${baseUrl}/v1/today`, async ({ request }) => {

@@ -1,7 +1,14 @@
 import type { ArcaApi, Bearer } from '../../data/api/arcaApi.ts';
-import type { EstablishedSession, RecentDeletion, SessionMode } from '../../data/api/models.ts';
-import { DomainFailure } from '../../data/failures.ts';
+import type {
+  ConsentReceipt,
+  EstablishedSession,
+  PassengerProfile,
+  RecentDeletion,
+  SessionMode,
+} from '../../data/api/models.ts';
+import { DomainFailure, ProtocolFailure, TransportFailure } from '../../data/failures.ts';
 import type { ClockPort, IdentityPort } from '../../platform/ports.ts';
+import { digestOwner, type LocalOwnerVerifier, newSalt } from './ownerVerifier.ts';
 
 // Owns OP-001, the access token and the {ownerScope, epoch, generation} fence (06 §4.2, §5.4).
 // The token never leaves this module except as the bearer handed to a single ArcaApi call.
@@ -63,7 +70,13 @@ export interface SessionSummary {
 }
 
 export type SessionEvent =
-  | { kind: 'established'; summary: SessionSummary; ownerChanged: boolean }
+  | {
+      kind: 'established';
+      summary: SessionSummary;
+      ownerChanged: boolean;
+      /** Set only when this session came from this visit's OP-003 response (06 §9.1 #3–4). */
+      boarded?: PassengerProfile;
+    }
   | { kind: 'discarded' };
 
 interface Current {
@@ -74,6 +87,16 @@ interface Current {
   /** In-memory owner comparison only; never exposed or persisted. */
   ownerIdentity: string;
   session: EstablishedSession;
+}
+
+/**
+ * OP-003 outcome is unknown: no response, an unreadable one, or the session was rejected before the
+ * server could answer for this attempt. None of these means "not created" (05 §8.3).
+ */
+function creationOutcomeUnknown(error: unknown): boolean {
+  if (error instanceof TransportFailure) return error.reason === 'network' || error.reason === 'timeout';
+  if (error instanceof ProtocolFailure) return true;
+  return error instanceof DomainFailure && error.category === 'AUTH';
 }
 
 let scopeSeq = 0;
@@ -142,6 +165,60 @@ export class SessionController {
       now.dataGeneration === snapshot.dataGeneration &&
       now.mode === snapshot.mode
     );
+  }
+
+  /** A fresh verifier for the current key, or null without Web Crypto (06 §8.1). */
+  async localOwnerVerifier(): Promise<LocalOwnerVerifier | null> {
+    const salt = newSalt();
+    if (!salt) return null;
+    const value = await digestOwner(salt, await this.requireKey());
+    return value ? { salt, value } : null;
+  }
+
+  /** True only when the current platform key hashes to the stored verifier. */
+  async matchesLocalOwner(verifier: LocalOwnerVerifier): Promise<boolean> {
+    return (await digestOwner(verifier.salt, await this.requireKey())) === verifier.value;
+  }
+
+  /**
+   * OP-003 with the stored operation ID and consents (06 §9.1). The ACTIVE session in the response
+   * replaces the PRE one. If the outcome is unknown, OP-001 is re-exchanged and the same ID/input is
+   * resent once, but only when the verifier proves the key is unchanged; without a verifier nothing is
+   * resent automatically. A plain ACTIVE exchange is never treated as this creation's success: only
+   * the OP-003 response for the same ID completes the handoff.
+   */
+  async createPassenger(
+    operationId: string,
+    consents: readonly ConsentReceipt[],
+    verifier: LocalOwnerVerifier | null,
+  ): Promise<{ summary: SessionSummary; passenger: PassengerProfile }> {
+    const current = this.current;
+    if (current?.summary.mode !== 'PRE_PASSENGER') throw new SessionModeMismatchFailure();
+    let created: Awaited<ReturnType<ArcaApi['createPassenger']>>;
+    try {
+      created = await this.deps.api.createPassenger({ bearer: current.token }, operationId, consents);
+    } catch (error) {
+      if (!creationOutcomeUnknown(error) || !verifier) throw error;
+      const key = await this.requireKey();
+      if ((await digestOwner(verifier.salt, key)) !== verifier.value) {
+        await this.establish();
+        throw new SessionChangedFailure();
+      }
+      const fresh = await this.deps.api.establishSession(key);
+      if (fresh.context.mode === 'DELETION_RECOVERY') {
+        this.apply(fresh);
+        throw new SessionChangedFailure();
+      }
+      try {
+        created = await this.deps.api.createPassenger({ bearer: fresh.accessToken }, operationId, consents);
+      } catch (resendError) {
+        // A PRE refresh is the same owner. An ACTIVE session without this ID's receipt is applied only
+        // on a definite answer, so it goes through normal start instead of a creation success.
+        if (fresh.context.mode === 'PRE_PASSENGER' || !creationOutcomeUnknown(resendError)) this.apply(fresh);
+        throw resendError;
+      }
+    }
+    return { summary: this.apply(created.session, created.passenger), passenger: created.passenger };
   }
 
   /** Drop the token (reload, long background, full deletion success). */
@@ -225,11 +302,18 @@ export class SessionController {
   }
 
   private async runEstablish(): Promise<SessionSummary> {
-    const key = await this.deps.identity.getAnonymousKey();
-    // No OP-001, random id or local fallback when the platform key is unavailable (05 §6.1 #1).
-    if (key.kind !== 'ok') throw new IdentityUnavailableFailure(key.reason);
+    const key = await this.requireKey();
+    return this.apply(await this.deps.api.establishSession(key));
+  }
 
-    const session = await this.deps.api.establishSession(key.key);
+  /** No OP-001, random id or local fallback when the platform key is unavailable (05 §6.1 #1). */
+  private async requireKey(): Promise<string> {
+    const key = await this.deps.identity.getAnonymousKey();
+    if (key.kind !== 'ok') throw new IdentityUnavailableFailure(key.reason);
+    return key.key;
+  }
+
+  private apply(session: EstablishedSession, boarded?: PassengerProfile): SessionSummary {
     const ownerIdentity = ownerIdentityOf(session);
     const previous = this.current;
     const ownerChanged = previous === null || previous.ownerIdentity !== ownerIdentity;
@@ -253,7 +337,11 @@ export class SessionController {
       ownerIdentity,
       session,
     };
-    this.emit({ kind: 'established', summary, ownerChanged });
+    this.emit(
+      boarded
+        ? { kind: 'established', summary, ownerChanged, boarded }
+        : { kind: 'established', summary, ownerChanged },
+    );
     return summary;
   }
 

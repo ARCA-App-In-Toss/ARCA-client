@@ -37,6 +37,8 @@ export type ExternalOpenResult = { kind: 'opened' } | { kind: 'unavailable' };
 
 export interface ExternalNavigationPort {
   openSupport(): Promise<ExternalOpenResult>;
+  /** Opens a server-provided https policy document outside the app; F02 stays mounted (03 §4.3). */
+  openPolicy(url: string): Promise<ExternalOpenResult>;
 }
 
 export interface HapticPort {

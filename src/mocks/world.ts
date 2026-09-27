@@ -8,7 +8,18 @@ export const SYNTHETIC_KEYS = {
   unregistered: 'synthetic-anon-key-unregistered',
 } as const;
 
-export type MockOp = 'OP-001' | 'OP-005' | 'OP-006' | 'OP-007' | 'OP-008' | 'OP-009' | 'OP-010' | 'OP-011';
+export type MockOp =
+  | 'OP-001'
+  | 'OP-002'
+  | 'OP-003'
+  | 'OP-004'
+  | 'OP-005'
+  | 'OP-006'
+  | 'OP-007'
+  | 'OP-008'
+  | 'OP-009'
+  | 'OP-010'
+  | 'OP-011';
 
 /** One scripted fault, consumed once per matching request (07 §6). */
 export type MockFault =
@@ -37,11 +48,53 @@ export interface MockTicket {
   acknowledged: boolean;
 }
 
-interface Passenger {
+export interface Passenger {
   passengerCode: string;
   nickname: string | null;
   revision: string;
   dataGeneration: string;
+}
+
+export interface MockPolicy {
+  policyId: string;
+  version: string;
+  title: string;
+  url: string;
+  required: boolean;
+}
+
+/** Synthetic required policies; the real IDs, versions and URLs are a legal/launch input (03 §4.3). */
+export const SYNTHETIC_POLICIES: readonly MockPolicy[] = [
+  {
+    policyId: 'terms-of-service',
+    version: 'synthetic-v1',
+    title: '서비스 이용약관',
+    url: 'https://arca.mock.invalid/policies/terms',
+    required: true,
+  },
+  {
+    policyId: 'privacy-policy',
+    version: 'synthetic-v1',
+    title: '개인정보처리방침',
+    url: 'https://arca.mock.invalid/policies/privacy',
+    required: true,
+  },
+];
+
+/** OP-003 idempotency record: same key + operation ID + fingerprint replays the same creation. */
+export interface MockCreation {
+  anonymousKey: string;
+  operationId: string;
+  fingerprint: string;
+}
+
+/** OP-004 idempotency record; `expired` simulates the 7-day result retention end (05 §6.2). */
+export interface MockNicknameReceipt {
+  anonymousKey: string;
+  operationId: string;
+  fingerprint: string;
+  profile: { passengerCode: string; nickname: string | null; revision: string };
+  expired: boolean;
 }
 
 interface SessionRecord {
@@ -131,6 +184,10 @@ export const SYNTHETIC_SEMA: MockSema = {
 
 export interface MockWorld {
   passengers: Map<string, Passenger>;
+  /** Current policy list; replace an entry to simulate a version change (MS-ONB-001). */
+  policies: MockPolicy[];
+  creations: MockCreation[];
+  nicknameReceipts: MockNicknameReceipt[];
   sessions: Map<string, SessionRecord>;
   sema: MockSema;
   answers: Map<string, MockAnswer>;
@@ -176,6 +233,9 @@ export function createMockWorld(base: ServerBase): MockWorld {
 
   const world: MockWorld = {
     passengers,
+    policies: SYNTHETIC_POLICIES.map((p) => ({ ...p })),
+    creations: [],
+    nicknameReceipts: [],
     sessions,
     sema: SYNTHETIC_SEMA,
     answers,

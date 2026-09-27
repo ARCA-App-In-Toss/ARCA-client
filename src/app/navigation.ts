@@ -8,6 +8,8 @@ import { useAppServicesInternal, useAppSnapshot } from './AppServices.tsx';
 export const paths = {
   start: '/',
   intro: '/intro',
+  join: '/join',
+  joinComplete: '/join/complete',
   today: '/today',
   write: '/today/write',
   saved: '/today/saved',

@@ -30,6 +30,31 @@ export interface EstablishedSession {
   recentDeletion: RecentDeletion | null;
 }
 
+/** One required policy the user agreed to, by exact ID and version (05 §6.2). */
+export interface ConsentReceipt {
+  policyId: string;
+  version: string;
+}
+
+export interface PassengerProfile {
+  passengerCode: string;
+  nickname: string | null;
+  revision: string;
+}
+
+/** OP-004 result: proof of the profile when this request applied, not the current profile (05 §5.2). */
+export interface NicknameReceipt {
+  operationId: string;
+  profile: PassengerProfile;
+  resultExpiresAt: string;
+}
+
+/** OP-003 result: the ACTIVE session goes to SessionController, the profile to F03. */
+export interface CreatedPassenger {
+  session: EstablishedSession;
+  passenger: PassengerProfile;
+}
+
 export interface QuestionSnapshot {
   questionId: string;
   version: string;

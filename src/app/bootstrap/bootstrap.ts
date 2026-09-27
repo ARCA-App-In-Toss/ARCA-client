@@ -19,7 +19,8 @@ export interface StartError {
 
 export type BootstrapState =
   | { phase: 'starting' }
-  | { phase: 'ready'; target: 'intro' | 'today'; routeEpoch: number }
+  /** `boarded`: this visit's OP-003 handoff; F03 opens once, never from a cold start (06 §9.1). */
+  | { phase: 'ready'; target: 'intro' | 'today' | 'boarded'; routeEpoch: number }
   | { phase: 'failed'; error: StartError; retry: 'idle' | 'running' | 'failed' };
 
 export const START_EXCERPT_PROFILE = 'EXPANDED' as const;
@@ -81,6 +82,9 @@ async function reconcileLocalArea(journal: StorageJournal, summary: SessionSumma
     const scope: ManifestScope = { kind: 'generation', ref: area.ref };
     if ((await journal.readManifest(scope)) === null) throw new LocalPersistenceFailure('corrupt');
     await journal.repair(scope);
+    // ACTIVE owner and its generation area are confirmed: the PRE creation tracker and its owner
+    // verifier have nothing left to recover (06 §9.1 #5).
+    await journal.clearArea({ kind: 'pre' });
   }
   return root;
 }
@@ -105,7 +109,11 @@ export interface BootstrapOutcome {
   area: ManifestScope | null;
 }
 
-export async function runBootstrap(deps: BootstrapDeps, reuse?: SessionSummary): Promise<BootstrapOutcome> {
+export async function runBootstrap(
+  deps: BootstrapDeps,
+  reuse?: SessionSummary,
+  handoff: 'boarded' | null = null,
+): Promise<BootstrapOutcome> {
   try {
     const summary = reuse ?? (await deps.session.establish());
     // Full-deletion recovery is an app-wide gate owned by step 7; until then no private screen opens.
@@ -123,7 +131,7 @@ export async function runBootstrap(deps: BootstrapDeps, reuse?: SessionSummary):
     const generation = summary.generation ?? '';
     deps.queryClient.setQueryData(queryKeys.today(summary.ownerScope, generation, START_EXCERPT_PROFILE), today);
     return {
-      state: { phase: 'ready', target: 'today', routeEpoch: root.routeEpoch },
+      state: { phase: 'ready', target: handoff ?? 'today', routeEpoch: root.routeEpoch },
       area: { kind: 'generation', ref: areaRef },
     };
   } catch (error) {
