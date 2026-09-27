@@ -1,0 +1,253 @@
+/* Minimal reset and base CMP styles. Values come only from tokens.css (02 §2). */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  /* Keep the browser 100% base so user text scaling applies (02 §4.3). */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg-canvas);
+  color: var(--color-text-on-dark-primary);
+  font-family: var(--font-family-body);
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-line);
+  font-weight: var(--font-weight-regular);
+}
+
+h1,
+h2,
+p {
+  margin: 0;
+}
+
+/* CMP-001 PixelAppShell + CMP-003 PixelCanvas */
+.arca-shell {
+  min-height: 100dvh;
+  background: var(--color-bg-canvas);
+}
+
+.arca-shell__content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-600);
+  width: 100%;
+  max-width: var(--layout-content-max);
+  margin-inline: auto;
+  padding-block: var(--space-600) max(var(--space-800), env(safe-area-inset-bottom));
+  padding-inline: max(var(--layout-gutter), env(safe-area-inset-left))
+    max(var(--layout-gutter), env(safe-area-inset-right));
+}
+
+@media (max-width: 359.98px) {
+  .arca-shell__content {
+    padding-inline: max(var(--layout-gutter-compact), env(safe-area-inset-left))
+      max(var(--layout-gutter-compact), env(safe-area-inset-right));
+  }
+}
+
+/* CMP-002 ScreenTitle */
+.arca-screen-title {
+  font-family: var(--font-family-pixel);
+  font-size: var(--type-screen-title-size);
+  line-height: var(--type-screen-title-line);
+  font-weight: var(--font-weight-regular);
+  font-synthesis: none;
+  overflow-wrap: anywhere;
+}
+
+.arca-screen-title:focus {
+  outline: none;
+}
+
+.arca-screen-title:focus-visible {
+  outline: var(--focus-width) solid var(--color-text-on-dark-primary);
+  outline-offset: var(--focus-offset);
+}
+
+/* CMP-004 ScenePanel, CMP-006 InsetPanel (plain) */
+.arca-scene-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-400);
+  padding: var(--space-600);
+  background: var(--color-bg-scene);
+  border-radius: var(--corner-scene);
+}
+
+.arca-inset-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-300);
+  padding: var(--space-400);
+  background: var(--color-bg-inset-dark);
+  border-radius: var(--corner-panel);
+}
+
+.arca-brand {
+  font-family: var(--font-family-pixel);
+  font-size: var(--type-control-size);
+  line-height: var(--type-control-line);
+  font-synthesis: none;
+  color: var(--color-signal);
+}
+
+.arca-text-secondary {
+  color: var(--color-text-on-dark-secondary);
+}
+
+/* CMP-021 PixelPlaceholder: static outline, no shimmer (02 §7.1). */
+.arca-placeholder {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-200);
+}
+
+.arca-placeholder__bar {
+  height: var(--space-300);
+  background: var(--color-bg-inset-dark);
+  border-radius: var(--corner-control);
+}
+
+.arca-placeholder__bar:nth-child(2) {
+  width: 72%;
+}
+
+/* CMP-022 StatePanel */
+.arca-state-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-400);
+}
+
+.arca-code {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-200);
+}
+
+.arca-code__pair {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-100);
+  margin: 0;
+}
+
+.arca-code__label {
+  font-family: var(--font-family-pixel);
+  font-size: var(--type-control-size);
+  line-height: var(--type-control-line);
+  font-synthesis: none;
+  color: var(--color-text-on-dark-secondary);
+}
+
+.arca-code__value {
+  margin: 0;
+  font-family: var(--font-family-body);
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+.arca-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-300);
+}
+
+/* CMP-007 PixelButton */
+.arca-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-200);
+  width: 100%;
+  min-height: var(--layout-button-height);
+  min-width: var(--layout-target-min);
+  padding: var(--space-300) var(--space-500);
+  border: var(--border-default) solid var(--color-border-on-dark);
+  border-radius: var(--corner-control);
+  background: var(--color-bg-scene);
+  color: var(--color-text-on-dark-primary);
+  font-family: var(--font-family-pixel);
+  font-size: var(--type-control-size);
+  line-height: var(--type-control-line);
+  font-synthesis: none;
+  text-align: center;
+  cursor: pointer;
+  transition: none;
+}
+
+.arca-button--primary {
+  background: var(--color-brand-primary);
+  border-color: var(--color-text-on-dark-primary);
+  box-shadow: var(--shadow-raised);
+}
+
+.arca-button--ghost {
+  background: transparent;
+  border-color: transparent;
+}
+
+.arca-button:active:not(:disabled, [aria-disabled="true"]) {
+  transform: translate(2px, 2px);
+}
+
+.arca-button--primary:active:not(:disabled, [aria-disabled="true"]) {
+  box-shadow: var(--shadow-pressed);
+}
+
+/* Reduced Motion removes transform movement; the shadow change still marks Pressed (02 §7.2). */
+@media (prefers-reduced-motion: reduce) {
+  .arca-button:active:not(:disabled, [aria-disabled="true"]) {
+    transform: none;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .arca-button:hover:not(:disabled, [aria-disabled="true"]) {
+    border-color: var(--color-text-on-dark-primary);
+  }
+}
+
+.arca-button:focus-visible {
+  outline: var(--focus-width) solid var(--color-text-on-dark-primary);
+  outline-offset: var(--focus-offset);
+}
+
+.arca-button:disabled,
+.arca-button[aria-disabled="true"] {
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.arca-button:disabled {
+  opacity: var(--opacity-disabled);
+}
+
+/* CMP-020 InlineStatus */
+.arca-inline-status {
+  min-height: var(--type-body-line);
+  color: var(--color-text-on-dark-secondary);
+}
+
+.arca-inline-status--danger {
+  color: var(--color-status-danger-on-dark-fg);
+}
+
+.arca-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}

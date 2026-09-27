@@ -1,0 +1,87 @@
+/* ARCA arca-default tokens. Values mirror 02 Design System §3–§7; 02 is the SSOT. */
+:root {
+  /* 3.1 base & experience */
+  --color-bg-canvas: #071426;
+  --color-bg-scene: #10233f;
+  --color-bg-record: #182b3c;
+  --color-bg-document: #f4f7fb;
+  --color-bg-inset-dark: #0c1b30;
+  --color-bg-inset-light: #e7edf5;
+  --color-text-on-dark-primary: #f4f7fb;
+  --color-text-on-dark-secondary: #aab9cf;
+  --color-text-on-light-primary: #071426;
+  --color-text-on-light-secondary: #425574;
+  --color-border-on-dark: #607795;
+  --color-border-on-light: #7890ad;
+  --color-brand-primary: #2457e6;
+  --color-signal: #67e8f9;
+  --color-memory: #9a78ff;
+  --color-warmth: #c98a3d;
+
+  /* 3.2 functional status, dark surface pair */
+  --color-status-success-on-dark-fg: #63d7a4;
+  --color-status-success-on-dark-bg: #123829;
+  --color-status-warning-on-dark-fg: #f2b84b;
+  --color-status-warning-on-dark-bg: #3a2a10;
+  --color-status-danger-on-dark-fg: #ff7a82;
+  --color-status-danger-on-dark-bg: #3f1d27;
+  --color-status-info-on-dark-fg: #89a7ff;
+  --color-status-info-on-dark-bg: #172b5f;
+
+  /* 4 typography. Neo둥근모 must be self-hosted (02 §4.1); until the file is added the local() lookup falls back. */
+  --font-family-pixel: "NeoDunggeunmo", system-ui, "Apple SD Gothic Neo", sans-serif;
+  --font-family-body: system-ui, "Apple SD Gothic Neo", sans-serif;
+  --font-weight-regular: 400;
+  --type-display-size: 2rem;
+  --type-display-line: 2.75rem;
+  --type-screen-title-size: 1.5rem;
+  --type-screen-title-line: 2.25rem;
+  --type-question-size: 1.25rem;
+  --type-question-line: 2rem;
+  --type-body-size: 1rem;
+  --type-body-line: 1.75rem;
+  --type-control-size: 1rem;
+  --type-control-line: 1.5rem;
+
+  /* 5 spacing & layout */
+  --space-100: 4px;
+  --space-200: 8px;
+  --space-300: 12px;
+  --space-400: 16px;
+  --space-500: 20px;
+  --space-600: 24px;
+  --space-800: 32px;
+  --space-1000: 40px;
+  --space-1200: 48px;
+  --space-1600: 64px;
+  --layout-content-max: 480px;
+  --layout-gutter: 20px;
+  --layout-gutter-compact: 16px;
+  --layout-target-min: 44px;
+  --layout-button-height: 52px;
+
+  /* 6 shape, border, shadow, layer */
+  --corner-control: 4px;
+  --corner-panel: 8px;
+  --corner-scene: 12px;
+  --border-default: 2px;
+  --focus-width: 2px;
+  --focus-offset: 2px;
+  --shadow-raised: 4px 4px 0;
+  --shadow-pressed: 2px 2px 0;
+  --opacity-disabled: 0.48;
+  --layer-content: 0;
+
+  /* 7 motion */
+  --motion-duration-instant: 0ms;
+  --motion-duration-fast: 120ms;
+  --motion-duration-base: 180ms;
+  --motion-easing-pixel: steps(2, end);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-duration-fast: 0ms;
+    --motion-duration-base: 0ms;
+  }
+}
