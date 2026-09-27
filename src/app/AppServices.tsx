@@ -8,7 +8,7 @@ import {
   useMemo,
   useSyncExternalStore,
 } from 'react';
-import type { AnswerDetail, AnswerPage, PassengerProfile, Today } from '../data/api/models.ts';
+import type { AnswerDetail, PassengerProfile, Today } from '../data/api/models.ts';
 import { queryKeys } from '../data/query/keys.ts';
 import type { ClipboardResult, ExternalOpenResult } from '../platform/ports.ts';
 import { type BootstrapState, START_EXCERPT_PROFILE } from './bootstrap/bootstrap.ts';
@@ -136,17 +136,32 @@ export function useAnswer(answerId: string | null) {
   });
 }
 
-/** OP-010 first page for F20 (step 3: first page only; the page chain arrives in step 6). */
-export function useArchiveFirstPage() {
+/** F20 page chain view and its narrow actions (06 §6.3, IX-023·IX-042). */
+export function useArchive() {
   const services = useAppServices();
-  const { session } = useAppSnapshot();
-  const active = session?.mode === 'ACTIVE' && session.generation !== null;
-  return useQuery<AnswerPage>({
-    queryKey: queryKeys.answers(session?.ownerScope ?? '', session?.generation ?? '', 'STANDARD'),
-    enabled: active,
-    queryFn: ({ signal }) =>
-      services.session.run('ACTIVE', (auth) => services.api.listAnswers(auth, null, 'STANDARD', signal)),
-  });
+  const { archive } = services;
+  const view = useSyncExternalStore(archive.subscribe, archive.getView, archive.getView);
+  const { bootstrap } = useAppSnapshot();
+  const routeEpoch = bootstrap.phase === 'ready' ? bootstrap.routeEpoch : -1;
+  const actions = useMemo(
+    () => ({
+      /** Root entry; returns the anchor of the row that opened F21 when coming back from it. */
+      enter: (atTop: () => boolean) => archive.enter({ routeEpoch, atTop }),
+      retryFirst: () => archive.retryFirst(),
+      loadMore: () => void archive.loadMore(),
+      reloadFirst: () => void archive.reloadFirst(),
+      refresh: (atTop: () => boolean) => void archive.refresh(atTop),
+      applyCandidate: (options: { focus: boolean }) => archive.applyCandidate(options),
+      saveAnchor: (answerId: string, viewportOffset: number) =>
+        archive.saveAnchor({ answerId, viewportOffset, routeEpoch }),
+      noteDeleted: () => archive.noteDeleted(),
+      /** The list may show something the server no longer has (e.g. ANSWER_NOT_FOUND): re-read on entry. */
+      markStale: () => archive.invalidate(),
+      takeDeletedNotice: () => archive.takeDeletedNotice(),
+    }),
+    [archive, routeEpoch],
+  );
+  return { view, ...actions };
 }
 
 /** A required policy as F02 shows it; the document URL stays inside app/ (06 §3.2). */

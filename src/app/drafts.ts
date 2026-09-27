@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { DraftContext, DraftIdentity } from '../domain/drafts/draftRepository.ts';
+import { type DraftContext, type DraftIdentity, draftName } from '../domain/drafts/draftRepository.ts';
 import { DraftWriter, type KeepStatus } from '../domain/drafts/draftWriter.ts';
 import { useAppServicesInternal } from './AppServices.tsx';
 
@@ -19,10 +19,22 @@ export interface DraftSession {
   flush(): Promise<boolean>;
   /** Flush, then the confirmed text and last-edit time; null when not kept. */
   flushKept(): Promise<{ text: string; lastModifiedAt: number } | null>;
+  /**
+   * Removes this identity's kept draft (F22 "수정 내용 버리기", or an edit back to the server text) and
+   * continues from `text` with nothing kept. True only when the removal was confirmed.
+   */
+  discard(text: string): Promise<boolean>;
 }
 
-/** One open draft per identity (06 §7). Switching identity flushes nothing by itself; callers flush first. */
-export function useDraftSession(identity: DraftIdentity | null, context?: DraftContext): DraftSession {
+/**
+ * One open draft per identity (06 §7). Switching identity flushes nothing by itself; callers flush first.
+ * `fallbackText` is the starting text when nothing is kept (F22: the server's current answer).
+ */
+export function useDraftSession(
+  identity: DraftIdentity | null,
+  context?: DraftContext,
+  fallbackText = '',
+): DraftSession {
   const services = useAppServicesInternal();
   // Latest date/question for the record value; it never changes which draft is open.
   const contextRef = useRef(context);
@@ -31,9 +43,10 @@ export function useDraftSession(identity: DraftIdentity | null, context?: DraftC
   const [text, setText] = useState('');
   const [status, setStatus] = useState<KeepStatus>({ kind: 'clean' });
   const writerRef = useRef<DraftWriter | null>(null);
-  const key = identity
-    ? `${identity.dailySemaId}|${identity.semaId}@${identity.semaVersion}|${identity.questionId}@${identity.questionVersion}`
-    : null;
+  const fallbackRef = useRef(fallbackText);
+  fallbackRef.current = fallbackText;
+  const startRef = useRef<((initialText: string, lastModifiedAt: number | null) => void) | null>(null);
+  const key = identity ? draftName(identity) : null;
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: `key` fully identifies `identity`.
   useEffect(() => {
@@ -55,15 +68,16 @@ export function useDraftSession(identity: DraftIdentity | null, context?: DraftC
       writerRef.current = writer;
       setText(initialText);
     };
+    startRef.current = start;
     services.drafts.load(identity).then(
       (draft) => {
         if (!active) return;
-        start(draft?.text ?? '', draft?.lastModifiedAt ?? null);
+        start(draft?.text ?? fallbackRef.current, draft?.lastModifiedAt ?? null);
         setLoad({ kind: 'ready', restored: draft !== null && draft.text.length > 0 });
       },
       () => {
         if (!active) return;
-        start('', null);
+        start(fallbackRef.current, null);
         setLoad({ kind: 'unreadable' });
       },
     );
@@ -71,6 +85,7 @@ export function useDraftSession(identity: DraftIdentity | null, context?: DraftC
       active = false;
       writerRef.current?.dispose();
       writerRef.current = null;
+      startRef.current = null;
     };
   }, [key, services.drafts]);
 
@@ -92,5 +107,27 @@ export function useDraftSession(identity: DraftIdentity | null, context?: DraftC
     return writer ? writer.flushKept() : null;
   }, []);
 
-  return { load, text, status, change, compositionEnd, flush, flushKept };
+  const identityRef = useRef(identity);
+  identityRef.current = identity;
+  const discard = useCallback(
+    async (next: string) => {
+      const current = identityRef.current;
+      if (!current) return true;
+      writerRef.current?.dispose();
+      writerRef.current = null;
+      let removed = true;
+      try {
+        await services.drafts.remove(current);
+      } catch {
+        removed = false;
+      }
+      // Continue with a fresh writer: nothing is kept until the next edit.
+      startRef.current?.(next, null);
+      setStatus({ kind: 'clean' });
+      return removed;
+    },
+    [services.drafts],
+  );
+
+  return { load, text, status, change, compositionEnd, flush, flushKept, discard };
 }

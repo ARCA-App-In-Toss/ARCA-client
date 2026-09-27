@@ -16,6 +16,9 @@ export const paths = {
   pastDraft: '/today/past-draft',
   archive: '/archive',
   detail: '/archive/detail',
+  /** F23: a logical modal over F21; the same F21 element stays mounted underneath (06 §5.1). */
+  deleteAnswer: '/archive/detail/delete',
+  edit: '/archive/edit',
   startError: '/error/start',
 } as const;
 

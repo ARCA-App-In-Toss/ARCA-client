@@ -2,6 +2,11 @@ import { z } from 'zod';
 import { ProtocolFailure, TransportFailure } from '../failures.ts';
 import { toDomainFailure } from './errorEnvelope.ts';
 import {
+  zAnswerDeleteClosedOutcomeUnavailableReconciled,
+  zAnswerDeleteCommandResult,
+  zAnswerDeleteExecuting,
+  zAnswerDeleteNotApplied,
+  zAnswerDeleteSucceeded,
   zAnswerDetail,
   zAnswerPage,
   zAnswerWriteClosedOutcomeUnavailableReconciled,
@@ -16,6 +21,8 @@ import {
   zTodayReadModel,
 } from './generated/zod.gen.ts';
 import type {
+  AnswerDeleteClosure,
+  AnswerDeleteResult,
   AnswerDetail,
   AnswerPage,
   AnswerWriteClosure,
@@ -28,7 +35,8 @@ import type {
   ExcerptProfile,
   NicknameReceipt,
   PassengerProfile,
-  PrepareAnswerCreate,
+  PrepareAnswerDelete,
+  PrepareAnswerWrite,
   Reconciliation,
   SessionContext,
   Today,
@@ -79,7 +87,7 @@ export interface ArcaApi {
   prepareAnswerWrite(
     auth: Bearer,
     operationId: string,
-    input: PrepareAnswerCreate,
+    input: PrepareAnswerWrite,
     timeoutMs: number,
   ): Promise<AnswerWriteResult>;
   /** OP-007. Timeout or loss says nothing about the outcome; use OP-008 (05 §8.3). */
@@ -98,6 +106,19 @@ export interface ArcaApi {
    * command running; a failure or COMMAND_NOT_FOUND is never evidence that nothing was applied.
    */
   closeAnswerWrite(auth: Bearer, ticketId: string, timeoutMs: number): Promise<AnswerWriteClosure>;
+  /** OP-012. Reserves ownership and revision only; nothing is deleted until OP-007 (05 §6.5). */
+  prepareAnswerDelete(
+    auth: Bearer,
+    operationId: string,
+    input: PrepareAnswerDelete,
+    timeoutMs: number,
+  ): Promise<AnswerDeleteResult>;
+  /** OP-007 for an answer-delete ticket. Timeout or loss says nothing about the outcome. */
+  executeAnswerDelete(auth: Bearer, ticketId: string, timeoutMs: number): Promise<AnswerDeleteResult>;
+  /** OP-008 for an answer-delete ticket (safe query). */
+  getAnswerDeleteResult(auth: Bearer, ticketId: string, timeoutMs: number): Promise<AnswerDeleteResult>;
+  /** OP-015 for an answer-delete ticket; explicit user action only (05 §6.10). */
+  closeAnswerDelete(auth: Bearer, ticketId: string, timeoutMs: number): Promise<AnswerDeleteClosure>;
 }
 
 async function send<S extends z.ZodType>(
@@ -233,6 +254,40 @@ function toAnswerWriteResult(wire: z.output<typeof zAnswerWriteCommandResult>): 
     }
   }
 }
+
+function toAnswerDeleteResult(wire: z.output<typeof zAnswerDeleteCommandResult>): AnswerDeleteResult {
+  const base = { ticketId: wire.ticketId, operationId: wire.operationId };
+  switch (wire.state) {
+    case 'PREPARED':
+      return { state: 'PREPARED', ...base };
+    case 'EXECUTING':
+      return { state: 'EXECUTING', ...base };
+    case 'NOT_APPLIED':
+      return { state: 'NOT_APPLIED', ...base, error: { code: wire.error.code, category: wire.error.category } };
+    case 'CLOSED_OUTCOME_UNAVAILABLE':
+      return { state: 'CLOSED_OUTCOME_UNAVAILABLE', ...base };
+    case 'SUCCEEDED': {
+      const p = wire.presentation;
+      return {
+        state: 'SUCCEEDED',
+        ...base,
+        proof: { answerId: wire.proof.answerId, effect: wire.proof.effect, deletedAt: wire.proof.deletedAt },
+        presentation:
+          p.state === 'AVAILABLE'
+            ? { state: 'AVAILABLE', activeAnswerCount: toAvailability(p.value.activeAnswerCount, (c) => ({ ...c })) }
+            : p.state === 'UNAVAILABLE'
+              ? { state: 'UNAVAILABLE', retryable: p.retryable }
+              : { state: 'ACKNOWLEDGED' },
+      };
+    }
+  }
+}
+
+const zAnswerDeleteClosure = z.union([
+  zAnswerDeleteSucceeded,
+  zAnswerDeleteNotApplied,
+  zAnswerDeleteClosedOutcomeUnavailableReconciled,
+]);
 
 const zAnswerWriteClosure = z.union([
   zAnswerWriteSucceeded,
@@ -442,6 +497,80 @@ export function createArcaApi(transport: HttpTransport): ArcaApi {
           };
         }
         return toAnswerWriteResult(wire) as AnswerWriteClosure;
+      }
+      if (response.status >= 400) throw toDomainFailure(response.body);
+      throw new ProtocolFailure('status');
+    },
+
+    async prepareAnswerDelete(auth, operationId, input, timeoutMs) {
+      const wire = await send(
+        transport,
+        {
+          method: 'POST',
+          path: '/answer-delete-commands',
+          bearer: auth.bearer,
+          idempotencyKey: operationId,
+          body: { answerId: input.answerId, expectedRevision: input.expectedRevision },
+          timeoutMs,
+        },
+        [200, 201],
+        zAnswerDeleteCommandResult,
+      );
+      return toAnswerDeleteResult(wire);
+    },
+
+    async executeAnswerDelete(auth, ticketId, timeoutMs) {
+      const wire = await send(
+        transport,
+        {
+          method: 'PUT',
+          path: `/commands/${encodeURIComponent(ticketId)}/execution`,
+          bearer: auth.bearer,
+          body: { kind: 'ANSWER_DELETE' },
+          timeoutMs,
+        },
+        [200, 202],
+        zAnswerDeleteCommandResult,
+      );
+      return toAnswerDeleteResult(wire);
+    },
+
+    async getAnswerDeleteResult(auth, ticketId, timeoutMs) {
+      const wire = await send(
+        transport,
+        { method: 'GET', path: `/commands/${encodeURIComponent(ticketId)}`, bearer: auth.bearer, timeoutMs },
+        200,
+        zAnswerDeleteCommandResult,
+      );
+      return toAnswerDeleteResult(wire);
+    },
+
+    async closeAnswerDelete(auth, ticketId, timeoutMs) {
+      const response = await transport({
+        method: 'PUT',
+        path: `/commands/${encodeURIComponent(ticketId)}/closure`,
+        bearer: auth.bearer,
+        body: {},
+        timeoutMs,
+      });
+      if (response.status === 202) {
+        const parsed = zAnswerDeleteExecuting.safeParse(response.body);
+        if (!parsed.success) throw new ProtocolFailure('schema');
+        return { state: 'EXECUTING', ticketId: parsed.data.ticketId, operationId: parsed.data.operationId };
+      }
+      if (response.status === 200) {
+        const parsed = zAnswerDeleteClosure.safeParse(response.body);
+        if (!parsed.success) throw new ProtocolFailure('schema');
+        const wire = parsed.data;
+        if (wire.state === 'CLOSED_OUTCOME_UNAVAILABLE') {
+          return {
+            state: 'CLOSED_OUTCOME_UNAVAILABLE',
+            ticketId: wire.ticketId,
+            operationId: wire.operationId,
+            reconciliation: toReconciliation(wire.reconciliation),
+          };
+        }
+        return toAnswerDeleteResult(wire) as AnswerDeleteClosure;
       }
       if (response.status >= 400) throw toDomainFailure(response.body);
       throw new ProtocolFailure('status');

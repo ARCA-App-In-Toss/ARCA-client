@@ -59,13 +59,19 @@ const TICKET_TIMES = {
   resultExpiresAt: '2026-10-04T02:00:00Z',
 };
 
-/** AnswerWrite CommandResult wire shape for the ticket's current state (05 §5.5). */
+/** CommandResult wire shape for the ticket's current state (05 §5.5): answer write or answer delete. */
 function ticketDto(world: MockWorld, ticket: MockTicket, profile: ExcerptProfile) {
+  const target = ticket.answerTarget;
+  const isDelete = target?.kind === 'DELETE';
   const base = {
     ticketId: ticket.ticketId,
     operationId: ticket.operationId,
-    kind: 'ANSWER_WRITE',
-    target: { mode: 'CREATE', dailySemaId: ticket.dailySemaId },
+    kind: isDelete ? 'ANSWER_DELETE' : 'ANSWER_WRITE',
+    target: isDelete
+      ? { answerId: target.answerId, expectedRevision: target.expectedRevision }
+      : target
+        ? { mode: 'UPDATE', answerId: target.answerId, expectedRevision: target.expectedRevision }
+        : { mode: 'CREATE', dailySemaId: ticket.dailySemaId },
     acceptedAt: TICKET_TIMES.acceptedAt,
     acceptedDateKst: world.sema.dateKst,
     executeBy: TICKET_TIMES.executeBy,
@@ -75,12 +81,28 @@ function ticketDto(world: MockWorld, ticket: MockTicket, profile: ExcerptProfile
   if (ticket.state === 'PREPARED' || ticket.state === 'EXECUTING') return base;
   const settled = { ...base, completedAt: ticket.completedAt, resultExpiresAt: TICKET_TIMES.resultExpiresAt };
   if (ticket.state === 'NOT_APPLIED') return { ...settled, error: ticket.error };
+  const count = {
+    state: 'AVAILABLE',
+    value: { count: world.answersOf(ticket.owner).length, observedAt: '2026-09-27T02:00:01Z' },
+  };
+  if (isDelete) {
+    return {
+      ...settled,
+      proof: { answerId: target.answerId, effect: ticket.deleteEffect ?? 'DELETED', deletedAt: '2026-09-27T02:00:00Z' },
+      presentation: ticket.acknowledged
+        ? { state: 'ACKNOWLEDGED' }
+        : world.presentationUnavailable
+          ? { state: 'UNAVAILABLE', retryable: true }
+          : { state: 'AVAILABLE', value: { activeAnswerCount: count } },
+    };
+  }
   const answer = ticket.answerId ? world.answers.get(ticket.answerId) : undefined;
+  const proofRevision = ticket.proofRevision ?? answer?.revision ?? 'a-r1';
   const presentation = ticket.acknowledged
     ? { state: 'ACKNOWLEDGED' }
     : world.presentationUnavailable
       ? { state: 'UNAVAILABLE', retryable: true }
-      : !answer
+      : !answer || answer.revision !== proofRevision
         ? { state: 'RESOURCE_CHANGED' }
         : {
             state: 'AVAILABLE',
@@ -90,18 +112,15 @@ function ticketDto(world: MockWorld, ticket: MockTicket, profile: ExcerptProfile
                 state: 'AVAILABLE',
                 value: { ...excerptOf(answer.content, profile), sourceRevision: answer.revision },
               },
-              activeAnswerCount: {
-                state: 'AVAILABLE',
-                value: { count: world.answersOf(ticket.owner).length, observedAt: '2026-09-27T02:00:01Z' },
-              },
+              activeAnswerCount: count,
             },
           };
   return {
     ...settled,
     proof: {
       answerId: ticket.answerId,
-      revision: answer?.revision ?? 'a-r1',
-      mode: 'CREATED',
+      revision: proofRevision,
+      mode: target ? 'UPDATED' : 'CREATED',
       acceptedDateKst: world.sema.dateKst,
     },
     presentation,
@@ -109,6 +128,34 @@ function ticketDto(world: MockWorld, ticket: MockTicket, profile: ExcerptProfile
 }
 
 const graphemeCount = (text: string) => [...new Intl.Segmenter('ko', { granularity: 'grapheme' }).segment(text)].length;
+
+function newAnswerTicket(
+  world: MockWorld,
+  owner: string,
+  operationId: string,
+  fingerprint: string,
+  answer: MockAnswer,
+  kind: 'UPDATE' | 'DELETE',
+): MockTicket {
+  const ticket: MockTicket = {
+    owner,
+    ticketId: `synthetic-ticket-${world.tickets.size + 1}`,
+    operationId,
+    fingerprint,
+    dailySemaId: answer.dailySemaId,
+    question: answer.question,
+    state: 'PREPARED',
+    contentDigest: null,
+    pendingContent: null,
+    answerId: null,
+    error: null,
+    completedAt: null,
+    acknowledged: false,
+    answerTarget: { kind, answerId: answer.answerId, expectedRevision: answer.revision },
+  };
+  world.tickets.set(ticket.ticketId, ticket);
+  return ticket;
+}
 
 function bearerOf(request: Request): string | null {
   const header = request.headers.get('Authorization');
@@ -374,6 +421,17 @@ export function createHandlers(world: MockWorld, baseUrl = MOCK_API_BASE) {
           existing.fingerprint === fingerprint
             ? HttpResponse.json(ticketDto(world, existing, 'COMPACT'), { status: 200, headers: noStore })
             : HttpResponse.json(errorBody('IDEMPOTENCY_KEY_REUSED', 'CONFLICT'), { status: 409, headers: noStore });
+      } else if (body.mode === 'UPDATE') {
+        // UPDATE fixes ownership and the expected revision; the question snapshot never changes (05 §6.4).
+        const answer = world.answers.get(String(body.answerId));
+        if (!answer || answer.owner !== owner) {
+          response = HttpResponse.json(errorBody('ANSWER_NOT_FOUND', 'VALIDATION'), { status: 404, headers: noStore });
+        } else if (answer.revision !== body.expectedRevision) {
+          response = HttpResponse.json(errorBody('REVISION_CONFLICT', 'CONFLICT'), { status: 409, headers: noStore });
+        } else {
+          const ticket = newAnswerTicket(world, owner, operationId, fingerprint, answer, 'UPDATE');
+          response = HttpResponse.json(ticketDto(world, ticket, 'COMPACT'), { status: 201, headers: noStore });
+        }
       } else if (body.dailySemaId !== world.sema.dailySemaId) {
         // The server KST day moved on: a past day's new answer is refused (05 §8.2, F13).
         response = HttpResponse.json(errorBody('DATE_CHANGED', 'VALIDATION', { recovery: { kind: 'REFRESH_TODAY' } }), {
@@ -416,6 +474,39 @@ export function createHandlers(world: MockWorld, baseUrl = MOCK_API_BASE) {
       return fault?.kind === 'lose-response' ? HttpResponse.error() : response;
     }),
 
+    http.post(`${baseUrl}/v1/answer-delete-commands`, async ({ request }) => {
+      const bearer = bearerOf(request);
+      world.requests.push({ op: 'OP-012', bearer });
+      const fault = world.takeFault('OP-012');
+      if (fault && fault.kind !== 'lose-response') {
+        const faulted = await respondWith(fault, 'OP-012');
+        if (faulted) return faulted;
+      }
+      const owner = activeOwner(world, bearer);
+      if (owner instanceof Response) return owner;
+      const operationId = request.headers.get('Idempotency-Key') ?? '';
+      const body = (await request.json()) as Record<string, unknown>;
+      const fingerprint = `delete:${JSON.stringify(body)}`;
+      const existing = [...world.tickets.values()].find((t) => t.owner === owner && t.operationId === operationId);
+      let response: Response;
+      const answer = world.answers.get(String(body.answerId));
+      if (existing) {
+        response =
+          existing.fingerprint === fingerprint
+            ? HttpResponse.json(ticketDto(world, existing, 'COMPACT'), { status: 200, headers: noStore })
+            : HttpResponse.json(errorBody('IDEMPOTENCY_KEY_REUSED', 'CONFLICT'), { status: 409, headers: noStore });
+      } else if (!answer || answer.owner !== owner) {
+        // Missing, deleted and not-owned are one result (05 OP-012).
+        response = HttpResponse.json(errorBody('ANSWER_NOT_FOUND', 'VALIDATION'), { status: 404, headers: noStore });
+      } else if (answer.revision !== body.expectedRevision) {
+        response = HttpResponse.json(errorBody('REVISION_CONFLICT', 'CONFLICT'), { status: 409, headers: noStore });
+      } else {
+        const ticket = newAnswerTicket(world, owner, operationId, fingerprint, answer, 'DELETE');
+        response = HttpResponse.json(ticketDto(world, ticket, 'COMPACT'), { status: 201, headers: noStore });
+      }
+      return fault?.kind === 'lose-response' ? HttpResponse.error() : response;
+    }),
+
     http.put(`${baseUrl}/v1/commands/:ticketId/execution`, async ({ request, params }) => {
       const bearer = bearerOf(request);
       world.requests.push({ op: 'OP-007', bearer });
@@ -431,6 +522,19 @@ export function createHandlers(world: MockWorld, baseUrl = MOCK_API_BASE) {
         return HttpResponse.json(errorBody('COMMAND_NOT_FOUND', 'VALIDATION'), { status: 404, headers: noStore });
       }
       const body = (await request.json()) as { kind?: unknown; content?: unknown };
+      const isDelete = ticket.answerTarget?.kind === 'DELETE';
+      if (isDelete) {
+        if (body.kind !== 'ANSWER_DELETE') {
+          return HttpResponse.json(errorBody('INVALID_REQUEST', 'VALIDATION'), { status: 400, headers: noStore });
+        }
+        if (ticket.state === 'PREPARED') {
+          ticket.state = 'EXECUTING';
+          if (!world.asyncExecution) world.completeExecuting();
+        }
+        const status = ticket.state === 'EXECUTING' ? 202 : 200;
+        const response = HttpResponse.json(ticketDto(world, ticket, 'COMPACT'), { status, headers: noStore });
+        return fault?.kind === 'lose-response' ? HttpResponse.error() : response;
+      }
       if (body.kind !== 'ANSWER_WRITE' || typeof body.content !== 'string') {
         return HttpResponse.json(errorBody('INVALID_REQUEST', 'VALIDATION'), { status: 400, headers: noStore });
       }
@@ -511,7 +615,9 @@ export function createHandlers(world: MockWorld, baseUrl = MOCK_API_BASE) {
       }
       // Past result gone: verify the seal and report the current state from one snapshot (05 §6.10).
       if (ticket.resultExpired) {
-        const current = world.answersOf(owner).find((a) => a.dailySemaId === ticket.dailySemaId);
+        const current = ticket.answerTarget
+          ? world.answers.get(ticket.answerTarget.answerId)
+          : world.answersOf(owner).find((a) => a.dailySemaId === ticket.dailySemaId);
         const reconciliation = current
           ? {
               checkedAt: '2026-09-27T02:00:00Z',
@@ -521,7 +627,11 @@ export function createHandlers(world: MockWorld, baseUrl = MOCK_API_BASE) {
             }
           : {
               checkedAt: '2026-09-27T02:00:00Z',
-              nextAction: ticket.dailySemaId === world.sema.dailySemaId ? 'CREATE_CURRENT_DAY' : 'RETURN_TODAY',
+              nextAction: ticket.answerTarget
+                ? 'RETURN_ARCHIVE'
+                : ticket.dailySemaId === world.sema.dailySemaId
+                  ? 'CREATE_CURRENT_DAY'
+                  : 'RETURN_TODAY',
             };
         const response = HttpResponse.json(
           { ...ticketDto(world, ticket, 'COMPACT'), reconciliation },
@@ -550,18 +660,29 @@ export function createHandlers(world: MockWorld, baseUrl = MOCK_API_BASE) {
       const url = new URL(request.url);
       const profile = (url.searchParams.get('excerptProfile') ?? 'STANDARD') as ExcerptProfile;
       const cursor = url.searchParams.get('cursor');
-      // Mock-only opaque cursor: newest first by createdAt, then answerId (05 OP-010).
-      const offset = cursor ? Number.parseInt(atob(cursor).replace('mock-offset:', ''), 10) : 0;
-      if (Number.isNaN(offset)) {
-        return HttpResponse.json(errorBody('CURSOR_INVALID', 'VALIDATION'), { status: 400, headers: noStore });
+      // Mock-only opaque keyset cursor: newest first by createdAt, then answerId (05 OP-010). A new
+      // answer never enters a running chain and a deleted one is simply absent from later pages.
+      let after: { createdAt: string; answerId: string } | null = null;
+      if (cursor) {
+        let decoded = '';
+        try {
+          decoded = atob(cursor);
+        } catch {
+          decoded = '';
+        }
+        const match = /^mock-key:([^|]+)\|(.+)$/.exec(decoded);
+        if (!match?.[1] || !match[2]) {
+          return HttpResponse.json(errorBody('CURSOR_INVALID', 'VALIDATION'), { status: 400, headers: noStore });
+        }
+        after = { createdAt: match[1], answerId: match[2] };
       }
-      const sorted = world
-        .answersOf(owner)
-        .sort((a, b) =>
-          a.createdAt === b.createdAt ? (a.answerId < b.answerId ? 1 : -1) : a.createdAt < b.createdAt ? 1 : -1,
-        );
-      const page = sorted.slice(offset, offset + 20);
-      const next = offset + 20 < sorted.length ? btoa(`mock-offset:${offset + 20}`) : null;
+      const newerFirst = (a: { createdAt: string; answerId: string }, b: { createdAt: string; answerId: string }) =>
+        a.createdAt === b.createdAt ? (a.answerId < b.answerId ? 1 : -1) : a.createdAt < b.createdAt ? 1 : -1;
+      const sorted = world.answersOf(owner).sort(newerFirst);
+      const rest = after ? sorted.filter((a) => newerFirst(a, after) > 0) : sorted;
+      const page = rest.slice(0, 20);
+      const last = page.at(-1);
+      const next = rest.length > 20 && last ? btoa(`mock-key:${last.createdAt}|${last.answerId}`) : null;
       return HttpResponse.json(
         { items: page.map((a) => excerptAnswer(a, profile)), nextCursor: next, pageSnapshotAt: '2026-09-27T02:00:02Z' },
         { headers: noStore },
@@ -589,6 +710,7 @@ export function createHandlers(world: MockWorld, baseUrl = MOCK_API_BASE) {
 }
 
 export const mockErrors = {
+  cursorInvalid: { kind: 'error', status: 400, body: errorBody('CURSOR_INVALID', 'VALIDATION') },
   maintenance: { kind: 'error', status: 503, body: errorBody('MAINTENANCE', 'MAINTENANCE') },
   anonymousKeyInvalid: { kind: 'error', status: 401, body: errorBody('ANONYMOUS_KEY_INVALID', 'AUTH') },
   sessionRecoveryRequired: {

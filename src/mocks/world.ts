@@ -20,6 +20,7 @@ export type MockOp =
   | 'OP-009'
   | 'OP-010'
   | 'OP-011'
+  | 'OP-012'
   | 'OP-015';
 
 /** One scripted fault, consumed once per matching request (07 §6). */
@@ -49,6 +50,12 @@ export interface MockTicket {
   acknowledged: boolean;
   /** Result retention ended: only the sealed registry remains (05 §9 결과 수명). */
   resultExpired?: boolean;
+  /** UPDATE write (OP-006 mode UPDATE) or answer delete (OP-012); absent for a CREATE write. */
+  answerTarget?: { kind: 'UPDATE' | 'DELETE'; answerId: string; expectedRevision: string };
+  /** Delete receipt effect once SUCCEEDED (05 §10.2). */
+  deleteEffect?: 'DELETED' | 'ALREADY_ABSENT';
+  /** Answer revision this write produced; the proof never follows later edits (05 §5.5). */
+  proofRevision?: string;
 }
 
 export interface Passenger {
@@ -266,6 +273,7 @@ export function createMockWorld(base: ServerBase): MockWorld {
   const tickets = new Map<string, MockTicket>();
   let tokenSeq = 0;
   let answerSeq = 0;
+  let revisionSeq = 1;
 
   const world: MockWorld = {
     passengers,
@@ -281,7 +289,41 @@ export function createMockWorld(base: ServerBase): MockWorld {
     advanceDayOnFirstPrepare: false,
     completeExecuting() {
       for (const ticket of tickets.values()) {
-        if (ticket.state !== 'EXECUTING' || ticket.pendingContent === null) continue;
+        if (ticket.state !== 'EXECUTING') continue;
+        const target = ticket.answerTarget;
+        if (target) {
+          // UPDATE/DELETE apply only to the prepared revision (05 §10.1–10.2).
+          const current = answers.get(target.answerId);
+          ticket.completedAt = '2026-09-27T02:00:00Z';
+          if (target.kind === 'DELETE' && !current) {
+            ticket.state = 'SUCCEEDED';
+            ticket.deleteEffect = 'ALREADY_ABSENT';
+            ticket.answerId = target.answerId;
+          } else if (!current) {
+            ticket.state = 'NOT_APPLIED';
+            ticket.error = { code: 'ANSWER_NOT_FOUND', category: 'VALIDATION' };
+          } else if (current.revision !== target.expectedRevision) {
+            ticket.state = 'NOT_APPLIED';
+            ticket.error = { code: 'REVISION_CONFLICT', category: 'CONFLICT' };
+          } else if (target.kind === 'DELETE') {
+            answers.delete(target.answerId);
+            ticket.state = 'SUCCEEDED';
+            ticket.deleteEffect = 'DELETED';
+            ticket.answerId = target.answerId;
+          } else {
+            revisionSeq += 1;
+            current.content = ticket.pendingContent ?? current.content;
+            current.revision = `a-r${revisionSeq}`;
+            current.updatedAt = '2026-09-27T02:00:00Z';
+            current.isEdited = true;
+            ticket.proofRevision = current.revision;
+            ticket.state = 'SUCCEEDED';
+            ticket.answerId = current.answerId;
+          }
+          ticket.pendingContent = null;
+          continue;
+        }
+        if (ticket.pendingContent === null) continue;
         const answer = world.seedAnswer(ticket.owner, ticket.pendingContent, {
           dailySemaId: ticket.dailySemaId,
           question: ticket.question,
@@ -290,6 +332,7 @@ export function createMockWorld(base: ServerBase): MockWorld {
         });
         ticket.state = 'SUCCEEDED';
         ticket.answerId = answer.answerId;
+        ticket.proofRevision = answer.revision;
         ticket.completedAt = '2026-09-27T02:00:00Z';
         ticket.pendingContent = null;
       }

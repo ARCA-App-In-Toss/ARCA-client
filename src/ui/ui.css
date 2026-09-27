@@ -194,6 +194,12 @@ p {
   border-color: transparent;
 }
 
+/* Danger is a secondary-weight role in the danger colour, never the primary colour (02 §9.3). */
+.arca-button--danger {
+  border-color: var(--color-status-danger-on-dark-fg);
+  color: var(--color-status-danger-on-dark-fg);
+}
+
 .arca-button:active:not(:disabled, [aria-disabled="true"]) {
   transform: translate(2px, 2px);
 }
@@ -656,4 +662,44 @@ p {
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+/* F20 page chain: list end and the held first-page notice (IX-023, IX-042) */
+.arca-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-600);
+}
+
+.arca-list-end {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-300);
+}
+
+.arca-list-end:empty {
+  display: none;
+}
+
+.arca-archive-candidate {
+  position: fixed;
+  left: 50%;
+  bottom: calc(max(var(--space-400), env(safe-area-inset-bottom)) + var(--layout-button-height) + var(--space-400));
+  transform: translateX(-50%);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-300);
+  width: min(calc(100% - 2 * var(--layout-gutter)), var(--layout-content-max));
+  padding: var(--space-300);
+  background: var(--color-bg-scene);
+  border: var(--border-default) solid var(--color-border-on-dark);
+  border-radius: var(--corner-scene);
+}
+
+/* F23 dialog: target date/question context and irreversibility (03 §6.4) */
+.arca-dialog-context {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-200);
 }

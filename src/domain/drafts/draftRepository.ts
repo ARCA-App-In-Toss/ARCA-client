@@ -17,7 +17,14 @@ export interface CreateDraftIdentity {
   questionVersion: string;
 }
 
-export type DraftIdentity = CreateDraftIdentity;
+/** F22 edit draft: answer + the server revision the edit started from (06 §7.1). */
+export interface UpdateDraftIdentity {
+  kind: 'update';
+  answerId: string;
+  baseRevision: string;
+}
+
+export type DraftIdentity = CreateDraftIdentity | UpdateDraftIdentity;
 
 /**
  * What F13 shows after the day has passed and OP-005 no longer returns that SEMA: the server KST date
@@ -38,16 +45,24 @@ export interface Draft {
   expiresAt: number;
 }
 
+const zCreateIdentity = z.object({
+  kind: z.literal('create'),
+  dailySemaId: z.string().min(1),
+  semaId: z.string().min(1),
+  semaVersion: z.string().min(1),
+  questionId: z.string().min(1),
+  questionVersion: z.string().min(1),
+});
+
+const zUpdateIdentity = z.object({
+  kind: z.literal('update'),
+  answerId: z.string().min(1),
+  baseRevision: z.string().min(1),
+});
+
 const zDraftRecord = z.object({
   recordType: z.literal('draft'),
-  identity: z.object({
-    kind: z.literal('create'),
-    dailySemaId: z.string().min(1),
-    semaId: z.string().min(1),
-    semaVersion: z.string().min(1),
-    questionId: z.string().min(1),
-    questionVersion: z.string().min(1),
-  }),
+  identity: z.union([zCreateIdentity, zUpdateIdentity]),
   text: z.string(),
   lastModifiedAt: z.number(),
   context: z.object({ dateKst: z.string().min(1), questionText: z.string() }).optional(),
@@ -55,16 +70,18 @@ const zDraftRecord = z.object({
 
 /** A kept, unexpired draft of another day: listed without its text (F10 Sheet rows, 04 CPY-F10-029~030). */
 export interface PastDraftSummary {
-  identity: DraftIdentity;
+  identity: CreateDraftIdentity;
   context: DraftContext | null;
   lastModifiedAt: number;
   expiresAt: number;
 }
 
 const DRAFT_PREFIX = 'draft:create:';
+const UPDATE_PREFIX = 'draft:update:';
 
 export function draftName(identity: DraftIdentity): string {
-  return `draft:create:${identity.dailySemaId}:${identity.semaId}@${identity.semaVersion}:${identity.questionId}@${identity.questionVersion}`;
+  if (identity.kind === 'update') return `${UPDATE_PREFIX}${identity.answerId}@${identity.baseRevision}`;
+  return `${DRAFT_PREFIX}${identity.dailySemaId}:${identity.semaId}@${identity.semaVersion}:${identity.questionId}@${identity.questionVersion}`;
 }
 
 function sameIdentity(a: DraftIdentity, b: DraftIdentity): boolean {
@@ -125,11 +142,12 @@ export class DraftRepository {
       if (!name.startsWith(DRAFT_PREFIX)) continue;
       const parsed = zDraftRecord.safeParse(await this.journal.getRecord(area, name).catch(() => null));
       if (!parsed.success || draftName(parsed.data.identity) !== name) continue;
-      if (parsed.data.identity.dailySemaId === currentDailySemaId) continue;
-      const draft = await this.load(parsed.data.identity).catch(() => null);
+      const identity = parsed.data.identity;
+      if (identity.kind !== 'create' || identity.dailySemaId === currentDailySemaId) continue;
+      const draft = await this.load(identity).catch(() => null);
       if (!draft || draft.text === '') continue;
       found.push({
-        identity: draft.identity,
+        identity,
         context: draft.context,
         lastModifiedAt: draft.lastModifiedAt,
         expiresAt: draft.expiresAt,
@@ -138,9 +156,39 @@ export class DraftRepository {
     return found.sort((a, b) => b.lastModifiedAt - a.lastModifiedAt);
   }
 
-  /** Bootstrap sweep: every expired draft is removed; nothing else changes (06 §7.4). */
+  /** Bootstrap sweep: every expired draft (new and edit) is removed; nothing else changes (06 §7.4). */
   async purgeExpired(): Promise<void> {
     await this.listPast(null);
+    await this.listUpdateDrafts(null);
+  }
+
+  /**
+   * Live edit drafts, of one answer or of all (null). Reading removes expired ones. A draft whose base
+   * revision is not the current one is stale: shown for copy/discard, never applied (06 §7.1).
+   */
+  async listUpdateDrafts(answerId: string | null): Promise<Draft[]> {
+    const area = this.requireArea();
+    const manifest = await this.journal.readManifest(area);
+    const prefix = answerId === null ? UPDATE_PREFIX : `${UPDATE_PREFIX}${answerId}@`;
+    const found: Draft[] = [];
+    for (const name of Object.keys(manifest?.entries ?? {})) {
+      if (!name.startsWith(prefix)) continue;
+      const parsed = zDraftRecord.safeParse(await this.journal.getRecord(area, name).catch(() => null));
+      if (!parsed.success || draftName(parsed.data.identity) !== name) continue;
+      const draft = await this.load(parsed.data.identity).catch(() => null);
+      if (draft) found.push(draft);
+    }
+    return found.sort((a, b) => b.lastModifiedAt - a.lastModifiedAt);
+  }
+
+  /** Single-delete success removes every edit draft of that answer (06 §7.1). */
+  async removeAllForAnswer(answerId: string): Promise<void> {
+    const area = this.requireArea();
+    const manifest = await this.journal.readManifest(area);
+    const prefix = `${UPDATE_PREFIX}${answerId}@`;
+    for (const name of Object.keys(manifest?.entries ?? {})) {
+      if (name.startsWith(prefix)) await this.journal.removeRecord(area, name);
+    }
   }
 
   /** Writes and confirms by exact read-back (journal.putRecord); resolves only when kept. */
@@ -148,14 +196,17 @@ export class DraftRepository {
     const area = this.requireArea();
     await this.journal.putRecord(area, draftName(identity), {
       recordType: 'draft',
-      identity: {
-        kind: identity.kind,
-        dailySemaId: identity.dailySemaId,
-        semaId: identity.semaId,
-        semaVersion: identity.semaVersion,
-        questionId: identity.questionId,
-        questionVersion: identity.questionVersion,
-      },
+      identity:
+        identity.kind === 'update'
+          ? { kind: 'update', answerId: identity.answerId, baseRevision: identity.baseRevision }
+          : {
+              kind: 'create',
+              dailySemaId: identity.dailySemaId,
+              semaId: identity.semaId,
+              semaVersion: identity.semaVersion,
+              questionId: identity.questionId,
+              questionVersion: identity.questionVersion,
+            },
       text,
       lastModifiedAt,
       ...(context ? { context: { dateKst: context.dateKst, questionText: context.questionText } } : {}),

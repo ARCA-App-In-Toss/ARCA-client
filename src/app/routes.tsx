@@ -3,6 +3,7 @@ import { Navigate, Outlet, type RouteObject, useLocation } from 'react-router';
 import type { SessionMode } from '../data/api/models.ts';
 import { AnswerDetailScreen } from '../screens/archive/AnswerDetailScreen.tsx';
 import { ArchiveScreen } from '../screens/archive/ArchiveScreen.tsx';
+import { EditScreen } from '../screens/archive/EditScreen.tsx';
 import { StartErrorScreen } from '../screens/error/StartErrorScreen.tsx';
 import { BoardedScreen } from '../screens/onboarding/BoardedScreen.tsx';
 import { BoardingScreen } from '../screens/onboarding/BoardingScreen.tsx';
@@ -134,6 +135,16 @@ export const routes: RouteObject[] = [
         element: (
           <RequireMode mode="ACTIVE">
             <AnswerDetailScreen />
+          </RequireMode>
+        ),
+        // F23 shares F21's element, so the detail, scroll and focus stay while the dialog is open.
+        children: [{ path: 'delete', element: null }],
+      },
+      {
+        path: paths.edit,
+        element: (
+          <RequireMode mode="ACTIVE">
+            <EditScreen />
           </RequireMode>
         ),
       },

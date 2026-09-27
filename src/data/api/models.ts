@@ -115,6 +115,21 @@ export interface PrepareAnswerCreate {
   questionVersion: string;
 }
 
+/** OP-006 UPDATE: ownership and the expected revision are fixed; the question snapshot never changes. */
+export interface PrepareAnswerUpdate {
+  mode: 'UPDATE';
+  answerId: string;
+  expectedRevision: string;
+}
+
+export type PrepareAnswerWrite = PrepareAnswerCreate | PrepareAnswerUpdate;
+
+/** OP-012 input (05 §6.5). */
+export interface PrepareAnswerDelete {
+  answerId: string;
+  expectedRevision: string;
+}
+
 export type AnswerWritePresentation =
   | {
       state: 'AVAILABLE';
@@ -162,3 +177,26 @@ export interface AnswerPage {
   items: ArchiveItem[];
   nextCursor: string | null;
 }
+
+export type AnswerDeletePresentation =
+  | { state: 'AVAILABLE'; activeAnswerCount: Availability<{ count: number; observedAt: string }> }
+  | { state: 'UNAVAILABLE'; retryable: boolean }
+  | { state: 'ACKNOWLEDGED' };
+
+/** OP-012/007/008 answer-delete result (05 §5.5, §10.2). ALREADY_ABSENT joins the success. */
+export type AnswerDeleteResult =
+  | { state: 'PREPARED'; ticketId: string; operationId: string }
+  | { state: 'EXECUTING'; ticketId: string; operationId: string }
+  | {
+      state: 'SUCCEEDED';
+      ticketId: string;
+      operationId: string;
+      proof: { answerId: string; effect: 'DELETED' | 'ALREADY_ABSENT'; deletedAt: string };
+      presentation: AnswerDeletePresentation;
+    }
+  | { state: 'NOT_APPLIED'; ticketId: string; operationId: string; error: { code: string; category: string } }
+  | { state: 'CLOSED_OUTCOME_UNAVAILABLE'; ticketId: string; operationId: string };
+
+export type AnswerDeleteClosure =
+  | Extract<AnswerDeleteResult, { state: 'SUCCEEDED' | 'NOT_APPLIED' | 'EXECUTING' }>
+  | { state: 'CLOSED_OUTCOME_UNAVAILABLE'; ticketId: string; operationId: string; reconciliation: Reconciliation };

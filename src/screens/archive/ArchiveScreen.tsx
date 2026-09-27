@@ -1,5 +1,6 @@
-import { Fragment, useEffect, useState } from 'react';
-import { useArchiveFirstPage, useIsOffline, useToday } from '../../app/AppServices.tsx';
+import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useArchive, useIsOffline, useRefreshToday, useToday } from '../../app/AppServices.tsx';
+import type { ArchiveView } from '../../app/archive.ts';
 import { paths, useAnswerRefs, useArcaNavigate } from '../../app/navigation.ts';
 import type { ArchiveItem } from '../../data/api/models.ts';
 import { TransportFailure } from '../../data/failures.ts';
@@ -27,20 +28,67 @@ function monthOf(dateKst: string) {
   return { key: dateKst.slice(0, 7), label: fill(copy['CPY-F20-003'], { year: String(year), month: String(month) }) };
 }
 
+/** Scroll position treated as "at the top" for applying a held first page without moving focus. */
+const TOP_SLACK_PX = 8;
+const atTop = () => window.scrollY <= TOP_SLACK_PX;
+
 /**
- * F20 — voyage records (03 §6.1, 04 §6.9). Step 3 shows the first page (newest 20); the page chain,
- * "기록 더 보기" and the refresh candidate arrive in step 6.
+ * F20 — voyage records (03 §6.1, 04 §6.9). One page chain per owner/generation: explicit
+ * "기록 더 보기" (IX-023), a held newer first page applied only by the user or at the top (IX-042),
+ * and the row anchor restored after F21. The count is OP-005's, never derived from rows (06 §6.3).
  */
 export function ArchiveScreen() {
-  const page = useArchiveFirstPage();
+  const archive = useArchive();
+  const { view } = archive;
   const today = useToday();
+  const refreshToday = useRefreshToday();
   const navigate = useArcaNavigate();
   const refs = useAnswerRefs();
   const isOffline = useIsOffline();
   const [offline, setOffline] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const rowRefs = useRef(new Map<string, HTMLLIElement>());
+  const entered = useRef(false);
+  const [deletedNotice, setDeletedNotice] = useState(false);
+
+  // Root entry: first page (or a background refresh), except right after F21 where the kept chain
+  // and anchor come back first (06 §6.2).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs once per F20 visit
+  useLayoutEffect(() => {
+    if (entered.current) return;
+    entered.current = true;
+    if (archive.takeDeletedNotice()) setDeletedNotice(true);
+    const anchor = archive.enter(atTop);
+    if (!anchor) {
+      refreshToday();
+      return;
+    }
+    const row = rowRefs.current.get(anchor.answerId);
+    if (row) window.scrollTo(0, row.getBoundingClientRect().top + window.scrollY - anchor.viewportOffset);
+  }, []);
+
+  // Coming back to the top on one's own applies a held first page without moving focus (IX-042).
+  useEffect(() => {
+    if (!view.candidateReady) return;
+    const onScroll = () => {
+      if (atTop()) archive.applyCandidate({ focus: false });
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [view.candidateReady, archive]);
+
+  // The user chose "최신 기록 보기": top of the new chain, focus on its first record or the title.
+  useEffect(() => {
+    if (view.replacedSeq === 0) return;
+    window.scrollTo(0, 0);
+    const target =
+      containerRef.current?.querySelector<HTMLElement>('.arca-memory-row') ??
+      containerRef.current?.querySelector<HTMLElement>('h1');
+    target?.focus({ preventScroll: true });
+  }, [view.replacedSeq]);
 
   useEffect(() => {
-    if (!(page.error instanceof TransportFailure)) return;
+    if (view.phase !== 'error' || !(view.firstError instanceof TransportFailure)) return;
     let active = true;
     void isOffline().then((value) => {
       if (active) setOffline(value);
@@ -48,27 +96,44 @@ export function ArchiveScreen() {
     return () => {
       active = false;
     };
-  }, [page.error, isOffline]);
+  }, [view.phase, view.firstError, isOffline]);
 
   const tabs = <RootTabs current="archive" />;
   const count = today.data?.activeAnswerCount;
 
+  useEffect(() => {
+    if (deletedNotice && (view.more !== 'idle' || view.candidateReady || view.refreshFailed || view.added)) {
+      setDeletedNotice(false);
+    }
+  }, [deletedNotice, view.more, view.candidateReady, view.refreshFailed, view.added]);
+
+  // One polite source for this screen; visible statuses below are not live (02 §12.4).
+  let announcement: string | null = null;
+  if (view.more === 'failed' || view.more === 'cursorInvalid') announcement = copy['CPY-F20-019'];
+  else if (view.more === 'loading') announcement = copy['CPY-F20-017'];
+  else if (view.candidateReady) announcement = copy['CPY-F20-023'];
+  else if (view.refreshFailed) announcement = copy['CPY-F20-022'];
+  else if (view.added) announcement = fill(copy['CPY-F20-018'], { loadedCount: formatCount(view.added.count) });
+  else if (deletedNotice) announcement = copy['CPY-F23-009'];
+  // Once any later status takes the live region, the deletion is not announced again.
+
   let body: React.ReactNode;
-  if (!page.data) {
-    body = page.isError ? (
-      <StatePanel>
-        <p>{offline ? copy['CPY-F20-015'] : copy['CPY-F20-014']}</p>
-        <PixelButton variant="primary" loading={page.isFetching} onClick={() => void page.refetch()}>
-          {copy['CPY-F20-020']}
-        </PixelButton>
-      </StatePanel>
-    ) : (
-      <RecordPanel>
-        <PixelPlaceholder />
-        <InlineStatus message={copy['CPY-F20-010']} />
-      </RecordPanel>
-    );
-  } else if (page.data.items.length === 0) {
+  if (view.phase !== 'ready') {
+    body =
+      view.phase === 'error' ? (
+        <StatePanel>
+          <p>{offline ? copy['CPY-F20-015'] : copy['CPY-F20-014']}</p>
+          <PixelButton variant="primary" onClick={() => archive.retryFirst()}>
+            {copy['CPY-F20-020']}
+          </PixelButton>
+        </StatePanel>
+      ) : (
+        <RecordPanel>
+          <PixelPlaceholder />
+          <InlineStatus message={copy['CPY-F20-010']} />
+        </RecordPanel>
+      );
+  } else if (view.items.length === 0) {
     body = (
       <StatePanel>
         <h2 className="arca-label">{copy['CPY-F20-011']}</h2>
@@ -79,25 +144,121 @@ export function ArchiveScreen() {
     );
   } else {
     body = (
-      <ArchiveList
-        items={page.data.items}
-        onSelect={(answerId) => navigate(paths.detail, { answerRef: refs.refFor(answerId) })}
-      />
+      <>
+        <ArchiveList
+          items={view.items}
+          rowRefs={rowRefs.current}
+          onSelect={(answerId, row) => {
+            archive.saveAnchor(answerId, row.getBoundingClientRect().top);
+            navigate(paths.detail, { answerRef: refs.refFor(answerId) });
+          }}
+        />
+        <ListEnd
+          view={view}
+          onMore={archive.loadMore}
+          onReloadFirst={archive.reloadFirst}
+          onRefresh={() => archive.refresh(atTop)}
+        />
+      </>
     );
   }
 
   return (
     <PixelAppShell tabs={tabs}>
-      <ScreenTitle>{copy['CPY-F20-001']}</ScreenTitle>
-      {count?.state === 'AVAILABLE' && (
-        <MemoryCount text={fill(copy['CPY-F20-002'], { memoryCount: formatCount(count.value.count) })} />
+      <div ref={containerRef} className="arca-stack">
+        <ScreenTitle>{copy['CPY-F20-001']}</ScreenTitle>
+        {count?.state === 'AVAILABLE' && (
+          <MemoryCount text={fill(copy['CPY-F20-002'], { memoryCount: formatCount(count.value.count) })} />
+        )}
+        {body}
+      </div>
+      {view.phase === 'ready' && view.candidateReady && (
+        // Floats above the tabs so the rows being read are not pushed (IX-042).
+        <div className="arca-archive-candidate">
+          <InlineStatus message={copy['CPY-F20-023']} live={false} />
+          <PixelButton onClick={() => archive.applyCandidate({ focus: true })}>{copy['CPY-F20-024']}</PixelButton>
+        </div>
       )}
-      {body}
+      <div role="status" aria-live="polite" className="arca-visually-hidden">
+        {announcement}
+      </div>
     </PixelAppShell>
   );
 }
 
-function ArchiveList({ items, onSelect }: { items: ArchiveItem[]; onSelect: (answerId: string) => void }) {
+function ListEnd({
+  view,
+  onMore,
+  onReloadFirst,
+  onRefresh,
+}: {
+  view: ArchiveView;
+  onMore: () => void;
+  onReloadFirst: () => void;
+  onRefresh: () => void;
+}) {
+  const endRef = useRef<HTMLParagraphElement>(null);
+  const moreRef = useRef<HTMLButtonElement>(null);
+  const moreFocused = useRef(false);
+  const showMore = view.hasMore && (view.more === 'idle' || view.more === 'loading');
+  const showEnd = !view.hasMore && view.loadedExtra && view.more === 'idle';
+  // The last page removes "기록 더 보기"; focus stays at the list end instead of falling to the page.
+  useEffect(() => {
+    if (!showMore && showEnd && moreFocused.current) endRef.current?.focus({ preventScroll: true });
+    moreFocused.current = false;
+  }, [showMore, showEnd]);
+  return (
+    <div className="arca-list-end">
+      {view.more === 'loading' && <InlineStatus message={copy['CPY-F20-017']} live={false} />}
+      {view.more === 'failed' && (
+        <>
+          <InlineStatus message={copy['CPY-F20-019']} tone="danger" live={false} />
+          <PixelButton onClick={onMore}>{copy['CPY-F20-020']}</PixelButton>
+        </>
+      )}
+      {view.more === 'cursorInvalid' && (
+        // The rejected cursor is not guessed again; a fresh first page is offered instead (06 §6.3).
+        <>
+          <InlineStatus message={copy['CPY-F20-019']} tone="danger" live={false} />
+          <PixelButton onClick={onReloadFirst}>{copy['CPY-F20-024']}</PixelButton>
+        </>
+      )}
+      {showMore && (
+        <PixelButton
+          ref={moreRef}
+          loading={view.more === 'loading'}
+          onClick={() => {
+            moreFocused.current = document.activeElement === moreRef.current;
+            onMore();
+          }}
+        >
+          {copy['CPY-F20-016']}
+        </PixelButton>
+      )}
+      {showEnd && (
+        <p ref={endRef} tabIndex={-1} className="arca-inline-status">
+          {copy['CPY-F20-021']}
+        </p>
+      )}
+      {view.refreshFailed && (
+        <>
+          <InlineStatus message={copy['CPY-F20-022']} live={false} />
+          <PixelButton onClick={onRefresh}>{copy['CPY-F20-020']}</PixelButton>
+        </>
+      )}
+    </div>
+  );
+}
+
+function ArchiveList({
+  items,
+  rowRefs,
+  onSelect,
+}: {
+  items: readonly ArchiveItem[];
+  rowRefs: Map<string, HTMLLIElement>;
+  onSelect: (answerId: string, row: HTMLLIElement) => void;
+}) {
   let previousMonth: string | null = null;
   return (
     <ul className="arca-list">
@@ -115,8 +276,18 @@ function ArchiveList({ items, onSelect }: { items: ArchiveItem[]; onSelect: (ans
                 <h2 className="arca-month">{heading}</h2>
               </li>
             )}
-            <li>
-              <MemoryRow onSelect={() => onSelect(item.answerId)}>
+            <li
+              ref={(node) => {
+                if (node) rowRefs.set(item.answerId, node);
+                else rowRefs.delete(item.answerId);
+              }}
+            >
+              <MemoryRow
+                onSelect={() => {
+                  const row = rowRefs.get(item.answerId);
+                  if (row) onSelect(item.answerId, row);
+                }}
+              >
                 <span className="arca-label">{excerpt?.isTruncated ? copy['CPY-F20-005'] : copy['CPY-F20-004']}</span>
                 <span className="arca-user-text">
                   {excerpt?.text}

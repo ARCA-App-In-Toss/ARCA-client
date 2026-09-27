@@ -95,7 +95,7 @@ export function usePendingWrite(dailySemaId: string | null) {
     writes.unfinished(dailySemaId).then(
       (found) => {
         if (!active) return;
-        setPending(found?.kind === 'unresolved' ? { questionId: found.questionId } : null);
+        setPending(found?.kind === 'unresolved' && found.mode === 'CREATE' ? { questionId: found.questionId } : null);
         // Unresolved: confirm once. Finishing interrupted by termination: resume quietly (06 §8.7).
         if (found) void writes.recheck(dailySemaId, { quiet: found.kind === 'finishing' });
       },
