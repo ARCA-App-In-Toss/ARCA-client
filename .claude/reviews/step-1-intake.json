@@ -1,0 +1,28 @@
+{
+  "id": "step-1-intake",
+  "reviewers": {},
+  "methods": {},
+  "files": [
+    "package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml", ".nvmrc", ".gitignore",
+    "tsconfig.json", "tsconfig.app.json", "tsconfig.test.json", "tsconfig.node.json",
+    "biome.json", "vite.config.ts", "vitest.config.ts", "playwright.config.ts", "apps-in-toss.config.ts",
+    "index.html", ".github/workflows/ci.yml", "scripts/api-generate.mjs",
+    "src/main.tsx", "src/app/App.tsx", "src/app/App.test.tsx", "src/test/setup.ts",
+    "src/data/api/examples.contract.test.ts", "src/data/api/generated/",
+    "tests/browser/smoke.spec.ts",
+    ".claude/spec/06_FRONTEND_SPEC.md", ".claude/spec/08_QA_AND_INTEGRATION.md"
+  ],
+  "gate": { "mode": "--full", "result": "PASS" },
+  "extra_checks": [
+    { "name": "test:browser (Chromium, WebKit)", "result": "PASS" },
+    { "name": "contract examples vs generated Zod", "result": "PASS 58/58" }
+  ],
+  "external_evidence": [
+    { "status": "NOT_RUN", "ref": "08 §11 CI (.github/workflows/ci.yml) — no remote run" },
+    { "status": "NOT_RUN", "ref": "08 §11 Node 24 runtime — local Node 25.2.1 only" },
+    { "status": "BLOCKED", "ref": "08 §11 device QR iOS/Android — no device" },
+    { "status": "BLOCKED", "ref": "08 §11 real server/operations — no host" }
+  ],
+  "commit": null,
+  "ts": "2026-09-27T07:47:06Z"
+}

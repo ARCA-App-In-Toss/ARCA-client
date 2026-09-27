@@ -10,7 +10,7 @@
   "checklist": [
     {
       "id": "step-1-intake",
-      "status": "TODO",
+      "status": "COMPLETED",
       "phase_file": ".claude/resource/phases/step-1-intake.md",
       "scope": ["repository", "toolchain", "contracts", "ui-candidates"],
       "required_reviewers": []
@@ -68,6 +68,14 @@
   "retry": {},
   "manual_review": [],
   "approvals": {},
-  "log": []
+  "log": [
+    {
+      "ts": "2026-09-27T07:23:54.961Z",
+      "msg": "step-1-intake started by user build request"
+    },
+    {
+      "ts": "2026-09-27T07:47:06.733Z",
+      "msg": "step-1-intake COMPLETED: toolchain pinned, scripts wired, full gate PASS, browser PASS; awaiting user approval"
+    }
+  ]
 }
-
