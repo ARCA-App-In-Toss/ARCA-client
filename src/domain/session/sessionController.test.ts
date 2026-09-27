@@ -200,3 +200,37 @@ describe('fence on every re-establishment path', () => {
     expect(events.at(-1)).toEqual({ kind: 'discarded' });
   });
 });
+
+describe('OP-003 createPassenger recovery (06 §9.1, §8.1)', () => {
+  const consents = [
+    { policyId: 'terms-of-service', version: 'synthetic-v1' },
+    { policyId: 'privacy-policy', version: 'synthetic-v1' },
+  ];
+
+  test('without a local owner verifier, an unknown outcome is not resent automatically', async () => {
+    const { session, world, events } = setup({ base: 'server.prePassenger' });
+    await session.establish();
+    world.addFault('OP-003', { kind: 'lose-response' });
+
+    await expect(session.createPassenger('synthetic-op-1', consents, null)).rejects.toThrow();
+    expect(world.requests.filter((r) => r.op === 'OP-003')).toHaveLength(1);
+    expect(op001Count(world)).toBe(1);
+    // The created passenger is not claimed: no ACTIVE session was applied.
+    expect(session.summary?.mode).toBe('PRE_PASSENGER');
+    expect(events.some((e) => e.kind === 'established' && e.boarded)).toBe(false);
+  });
+
+  test('a changed key never receives the stored creation ID', async () => {
+    const { session, world, platform } = setup({ base: 'server.prePassenger', key: SYNTHETIC_KEYS.unregistered });
+    await session.establish();
+    const verifier = await session.localOwnerVerifier();
+    expect(verifier).not.toBeNull();
+    world.addFault('OP-003', { kind: 'lose-response' });
+    platform.setAnonymousKey({ kind: 'ok', key: 'synthetic-anon-key-other' });
+
+    await expect(session.createPassenger('synthetic-op-2', consents, verifier)).rejects.toBeInstanceOf(
+      SessionChangedFailure,
+    );
+    expect(world.requests.filter((r) => r.op === 'OP-003')).toHaveLength(1);
+  });
+});
