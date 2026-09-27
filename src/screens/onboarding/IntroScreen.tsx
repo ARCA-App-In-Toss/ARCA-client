@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState } from 'react';
-import introStory from '../../../docs/ARCA_INTRO_STORY.txt?raw';
 import { paths, useArcaNavigate } from '../../app/navigation.ts';
+import introStory from '../../content/introStory.txt?raw';
 import { PixelAppShell, PixelButton, PixelPlaceholder, ScenePanel, ScreenTitle } from '../../ui/components.tsx';
 import { copy, fill } from '../../ui/copy.ts';
 

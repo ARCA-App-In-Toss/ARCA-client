@@ -2,8 +2,8 @@ import { act, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { setupServer } from 'msw/node';
 import { afterAll, afterEach, beforeAll, describe, expect, test } from 'vitest';
-import introStory from '../../../docs/ARCA_INTRO_STORY.txt?raw';
 import { paths } from '../../app/navigation.ts';
+import introStory from '../../content/introStory.txt?raw';
 import { bootApp, findTitle, opCount } from '../../test/boot.tsx';
 import { copy } from '../../ui/copy.ts';
 
