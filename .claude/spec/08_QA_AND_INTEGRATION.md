@@ -1,6 +1,6 @@
 # ARCA QA 및 통합 검증 명세
 
-- v1.2 · 2026-09-22 · 제품 책임자 승인 설계; 구현·실행 검증은 미착수. 중복 설명을 줄이고 선택 읽기·줄 포인터로 정리.
+- v1.2 · 2026-09-27 · 제품 책임자 승인 설계; 단계 1 명령 연결(§11), 구현·실행 검증은 미착수. 중복 설명을 줄이고 선택 읽기·줄 포인터로 정리.
 - 소유 범위: 검증 층·환경·명령·증거·완료 판정. 시작 상태와 기대 결과는 [.claude/spec/07_MOCK_SCENARIOS.md §11 · 약 L179–307](07_MOCK_SCENARIOS.md#11-이름-있는-시나리오-카탈로그).
 
 ## 1. 범위, 원칙과 현재 자료
@@ -195,7 +195,7 @@ CMP/생성 배경의 상태·320px·200%·키보드·자원 실패·Reduced Moti
 
 ## 11. 환경과 명령 계약
 
-실제 package/lockfile/CI가 생기면 아래 역할의 확인된 명령을 package script/CI에 연결합니다. 현재 구체 명령은 미제공·BLOCKED이며 임의로 만들지 않습니다. 역할을 합친 script도 허용하고 고정 lockfile을 사용합니다.
+실제 package/lockfile/CI의 확인된 명령을 아래 역할에 연결합니다. 역할을 합친 script도 허용하고 고정 lockfile을 사용합니다. 단계 1(2026-09-27) 기준 pnpm script는 `lint`(Biome)·`typecheck`(`tsc -b`)·`test`(Vitest `unit`)·`test:contract`(OpenAPI 파생 drift + 예시 validator)·`build`(`tsc -b && vite build && ait build`)·`test:browser`(production bundle의 Chromium·WebKit)이며, 도구 버전은 [06 §2.2](./06_FRONTEND_SPEC.md#22-선택한-스택과-설치-상태)와 lockfile이 소유합니다. `.github/workflows/ci.yml`은 같은 순서를 secret 없이 실행하지만 원격 실행 증거는 아직 없습니다(NOT_RUN). 기기·실서버/운영 명령은 미제공·BLOCKED이며 임의로 만들지 않습니다.
 
 | 역할 | 확인할 결과 |
 |---|---|

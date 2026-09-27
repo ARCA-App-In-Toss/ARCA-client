@@ -1,10 +1,10 @@
 # ARCA 프런트엔드 구현 명세
 
 - 문서 버전: v1.4
-- 최근 수정일: 2026년 9월 22일
+- 최근 수정일: 2026년 9월 27일
 - 상태: 확정
 - 승인 주체: 제품 책임자
-- 구현·검증 상태: 구조와 실행 순서 승인. 프런트엔드 저장소·Mock·실서버·실기기 구현 및 검증은 미착수
+- 구현·검증 상태: 구조와 실행 순서 승인. 단계 1 인테이크로 저장소·toolchain·package script·API 파생을 고정(§2.2·§2.4). Mock·실서버·실기기 구현 및 검증은 미착수
 - 편집: 중복 인계·설명을 줄이고 작업별 참조 위치를 추가했습니다. 필수 계약은 유지합니다.
 
 승인된 계약을 구현하는 경계·상태 소유권·실행 순서의 원본입니다. 실제 앱·설치·API host·하네스·실기기 증거가 있다는 뜻은 아닙니다.
@@ -58,18 +58,18 @@ composition root·레이어/port·route/guard·상태/cache·session epoch/gener
 
 | 책임 | 승인한 선택 | 현재 상태·제한 |
 |---|---|---|
-| 앱 기반 | 공식 `create-ait-app --template react-ts`, Apps in Toss Web Framework SDK 3.x 이상 | 방향 확정, 프로젝트·SDK 미설치. 생성 직전 공식 템플릿 재확인 |
-| 런타임 | React+TypeScript, 공식 템플릿이 채택한 Vite 계열 build | React·builder 실제 버전 미확인 |
-| 라우팅 | React Router | 방향 확정, 실제 package·버전 미설치 |
-| 서버 상태 | `@tanstack/react-query` v5, 메모리 cache만 사용 | persister·전역 normalized store 없음 |
+| 앱 기반 | 공식 `create-ait-app --template react-ts`, Apps in Toss Web Framework SDK 3.x 이상 | `create-ait-app@0.2.7` react-ts로 생성(2026-09-27). `@apps-in-toss/web-framework`·`devtools` 3.5.0 고정, `ait build`로 `.ait` 생성 확인. SDK export는 §2.3 |
+| 런타임 | React+TypeScript, 공식 템플릿이 채택한 Vite 계열 build | React 19.2.8, TypeScript 6.0.3, Vite 8.3.1·`@vitejs/plugin-react` 6.1.1 |
+| 라우팅 | React Router | `react-router` 8.4.0 설치. route 구성은 단계 2 |
+| 서버 상태 | `@tanstack/react-query` v5, 메모리 cache만 사용 | 5.104.0. persister·전역 normalized store 없음 |
 | 로컬 UI·form | React 내장 state/reducer와 도메인 hook | 외부 UI가 별도 form 정본을 소유하지 않음. 전이 의존성은 §2.4에서 확인 |
-| HTTP·검증 | native `fetch`, Zod 4, `ArcaApi` adapter | Axios 없음. 실제 생성기·Zod 연동 버전은 저장소 생성 뒤 고정 |
+| HTTP·검증 | native `fetch`, Zod 4, `ArcaApi` adapter | Axios 없음. Zod 4.6.5, `@hey-api/openapi-ts` 0.99.0(typescript+zod plugin)을 `scripts/api-generate.mjs`로 `src/data/api/generated`에 생성. `additionalProperties: false`는 plugin resolver로 `z.strictObject` 매핑(생성물 수기 patch 없음). contract 예시 58건 일치, orval 8.38.0은 schema 단위 validator·closed object 미지원으로 제외 |
 | UI·스타일 | native HTML의 의미 보존, ARCA 의미 기반 CSS 변수, 픽셀 UI 컴포넌트 선별 도입 | Tailwind 사용 허용, Emotion은 필요한 범위에 한정. 후보·설치 상태는 §2.4, 스타일 소유는 §2.5 |
-| 복합 Overlay | `@radix-ui/react-dialog`·`@radix-ui/react-alert-dialog`만 ARCA wrapper 뒤에서 사용 | 정확 버전 미설치. Sheet는 Dialog를 시각 변형해 사용 |
+| 복합 Overlay | `@radix-ui/react-dialog`·`@radix-ui/react-alert-dialog`만 ARCA wrapper 뒤에서 사용 | 미설치: 첫 Overlay slice에서 정확 버전 고정. Sheet는 Dialog를 시각 변형해 사용 |
 | 아이콘·서체 | Pixelarticons 기본 후보와 필요한 외부/자체 아이콘 선별, Neo둥근모 self-host·시스템 본문 | [02 §8.2 · L346–366](./02_DESIGN_SYSTEM.md#82-아이콘-체계)의 시각 통일과 Asset Manifest 적용. 실제 목록·import 미확인 |
 | 모션·날짜 | CSS/Web Animations API, `Intl.DateTimeFormat`, 주입 `Clock` | Motion/date utility library 없음 |
-| Mock·검증 | AIT Devtools, MSW 2, Vitest 5, RTL, user-event, axe-core, Playwright Chromium·WebKit, 실제 iOS·Android QR | 모두 방향만 확정, 하네스·script 미제공 |
-| 정적 품질·패키지 | TypeScript strict 옵션, Biome 2, Node 24 LTS, 고정 pnpm·lockfile | 설치·CI 없음 |
+| Mock·검증 | AIT Devtools, MSW 2, Vitest 5, RTL, user-event, axe-core, Playwright Chromium·WebKit, 실제 iOS·Android QR | MSW 2.15.0(postinstall 비허용, worker는 사용 slice에서 생성), Vitest 5.0.2(jsdom 30.1.1, `unit`·`contract` project), RTL 16.3.3, user-event 14.6.7, jest-dom 7.0.1, axe-core 4.13.0, Playwright 1.63.0(Chromium·WebKit). AIT Devtools는 Vite plugin 연결. 기기 QR 미실행 |
+| 정적 품질·패키지 | TypeScript strict 옵션, Biome 2, Node 24 LTS, 고정 pnpm·lockfile | strict·`noUncheckedIndexedAccess`·`exactOptionalPropertyTypes`(`tsc -b`, noEmit), Biome 2.5.14 recommended, pnpm 12.6.0(`packageManager`)·`pnpm-lock.yaml`, `.nvmrc`=24·`engines` ≥24. 로컬 확인 Node는 25.2.1이며 Node 24 실행 증거·CI 없음 |
 | 오류·분석 | Replay·PII를 끈 최소 Sentry, ARCA OP-014 | 실제 DSN·환경값 없음; 비밀값은 문서 범위 아님 |
 
 프로젝트 생성 시점의 공식 템플릿·SDK·peer dependency를 확인하고 정확한 버전을 lockfile로 고정합니다([D-TECH-008 · L64](./DECISIONS.md#4-기술-스택-결정)). 월 1회 검증 후 업데이트합니다. Radix는 ARCA wrapper 밖에서 직접 import하지 않습니다.
@@ -80,17 +80,17 @@ SDK 출시 제약은 [플랫폼 기준 §3 · L30–34](../../spec/platform/ARCA
 
 ### 2.3 공식 플랫폼 사실과 fallback
 
-2026년 9월 13일 확인한 공식 문서와 승인 방향은 다음과 같습니다. 실제 SDK export와 설치 버전은 앱 생성 뒤 다시 확인합니다.
+2026년 9월 13일 확인한 공식 문서와 승인 방향은 다음과 같습니다. 2026년 9월 27일 설치한 `@apps-in-toss/web-framework` 3.5.0의 runtime export 존재만 확인했으며 WebView 동작·실패 경로는 해당 slice와 08에서 확인합니다.
 
 | capability | adapter 정책 | 확인 자료·미확인 범위 |
 |---|---|---|
-| 익명 식별 | [`getAnonymousKey`](https://developers-apps-in-toss.toss.im/bedrock/reference/framework/%EB%B9%84%EA%B2%8C%EC%9E%84/getAnonymousKey.html)만 사용. 실패 시 random ID·`localStorage` fallback 금지 | 실제 SDK import 미확인 |
-| 영속 저장 | 공식 [`Storage`](https://developers-apps-in-toss.toss.im/bedrock/reference/framework/%EC%A0%80%EC%9E%A5%EC%86%8C/Storage.html)만 사용 | string key/value와 Promise API는 확인. 다중 key transaction·key 열거·원자 쓰기는 확인되지 않음 |
-| Safe Area | [`SafeAreaInsets`](https://developers-apps-in-toss.toss.im/bedrock/reference/framework/%ED%99%94%EB%A9%B4%20%EC%A0%9C%EC%96%B4/safe-area.html) 조회·구독, layout에만 CSS `env(safe-area-inset-*)` fallback | 구형 API에 새 의존 금지 |
+| 익명 식별 | [`getAnonymousKey`](https://developers-apps-in-toss.toss.im/bedrock/reference/framework/%EB%B9%84%EA%B2%8C%EC%9E%84/getAnonymousKey.html)만 사용. 실패 시 random ID·`localStorage` fallback 금지 | 3.5.0 export(function) 확인. WebView 동작 미확인 |
+| 영속 저장 | 공식 [`Storage`](https://developers-apps-in-toss.toss.im/bedrock/reference/framework/%EC%A0%80%EC%9E%A5%EC%86%8C/Storage.html)만 사용 | string key/value와 Promise API는 확인. 3.5.0 export: `getItem`·`setItem`·`removeItem`·`clearItems`와 `getItems`·`setItems`. 다중 key 호출의 원자성·key 열거는 확인되지 않았으므로 §8.2 교대 사본 순서를 유지 |
+| Safe Area | [`SafeAreaInsets`](https://developers-apps-in-toss.toss.im/bedrock/reference/framework/%ED%99%94%EB%A9%B4%20%EC%A0%9C%EC%96%B4/safe-area.html) 조회·구독, layout에만 CSS `env(safe-area-inset-*)` fallback | 3.5.0 `SafeAreaInsets.get`·`subscribe` 확인. 구형 `getSafeAreaInsets`에 새 의존 금지 |
 | 네트워크·시간 | [`getNetworkStatus`·`getServerTime`](https://developers-apps-in-toss.toss.im/bedrock/reference/framework/%EB%84%A4%ED%8A%B8%EC%9B%8C%ED%81%AC/network.html)는 안내·재조회 timing에만 사용. 없으면 `navigator.onLine`·device clock도 advisory로만 사용 | 저장 가능 여부·KST 날짜 판정에 사용 금지 |
 | Clipboard | 공식 [`setClipboardText`](https://developers-apps-in-toss.toss.im/bedrock/reference/framework/%ED%81%B4%EB%A6%BD%EB%B3%B4%EB%93%9C/clipboard.html) → 사용자 gesture 안의 표준 Clipboard API → read-only 원문의 직접 선택·복사 순 | 권한·실기기 실패 경로는 08 검증 |
-| 햅틱 | 지원 SDK를 최초 저장 성공에 한 번 호출, 실패·미지원은 no-op | 성공 판단과 연출을 막지 않음 |
-| 외부 문서·고객센터 | `ExternalNavigationPort`로 격리 | 실제 SDK capability·복귀 event·운영 URL 미확인 |
+| 햅틱 | 지원 SDK를 최초 저장 성공에 한 번 호출, 실패·미지원은 no-op | 3.5.0 `generateHapticFeedback` export 확인. 성공 판단과 연출을 막지 않음 |
+| 외부 문서·고객센터 | `ExternalNavigationPort`로 격리 | 3.5.0 `openURL` export 확인. 복귀 event·운영 URL 미확인 |
 
 식별과 Storage에는 대체 저장소를 두지 않습니다. layout·복사·비필수 감각 피드백만 기능을 축소하는 fallback을 허용합니다.
 
@@ -113,6 +113,7 @@ SDK 출시 제약은 [플랫폼 기준 §3 · L30–34](../../spec/platform/ARCA
 
 - 각 CMP를 채택할 때 이 표의 해당 행에 **실제 출처 URL·package/원본 경로·정확 버전 또는 commit·도입 방식·로컬 구현 경로·수정 이유·검증 증거**를 연결합니다. 한 행의 출처가 갈리면 해당 CMP만 나눕니다. 별도 출처 문서나 전체 라이브러리 코드를 명세에 생성하지 않습니다.
 - package 사용은 공개 export와 CSS 진입점·React peer·전이 의존성을 확인합니다. 소스 편입은 필요한 component/helper/style만 가져오고 원문 라이선스·저작권 고지·upstream 위치를 보존합니다. 문서 사이트와 예제 앱의 의존성을 그대로 옮기지 않습니다.
+- 단계 1 인테이크(2026-09-27, CMP 채택 아님): `@pxlkit/ui-kit` 2.1.1은 MIT·React ^18.2‖^19 peer, 단일 root export와 Tailwind v4 `styles.css`(`@import "tailwindcss"`·`--retro-*` 테마)를 제공합니다. `react-table`·`embla-carousel`·`react-hook-form`·`@pxlkit/gamification`이 직접 의존성이고 `sideEffects` 선언이 없어, Vite 8 production에서 `PixelButton` 하나만 import해도 JS가 +343 KB(min)·+97 KB(gzip) 늘었습니다. 따라서 root package import는 쓰지 않고 필요한 component 소스 편입을 기본으로 비교합니다. Pixelact UI는 npm 배포가 아닌 shadcn registry 소스(MIT, commit `165eacd`, 2026-07-29)이며 Radix·Tailwind v4·`class-variance-authority`를 사용합니다. 두 후보 모두 Tailwind v4 구성을 요구하므로 첫 CMP 채택 slice에서 `@tailwindcss/vite`와 §2.5 layer 순서를 함께 고정합니다.
 - 선택 기준은 필요한 상태/컴포넌트 충족, 실제 React·WebView 호환, 최근 유지보수·테스트와 알려진 문제, 수정 부담·접근성·실제 번들 비용·사용 조건입니다. 패키지 크기나 컴포넌트 개수만으로 성능·품질을 판단하지 않습니다.
 - 패키지 갱신과 편입 소스의 upstream 변경은 채택본·로컬 수정과 비교해 반영합니다. 업데이트마다 해당 CMP의 입력/Overlay/시각 회귀를 확인하며 편입 소스가 자동 갱신된 것으로 취급하지 않습니다(D-TECH-054).
 
