@@ -12,57 +12,164 @@
       "id": "step-1-intake",
       "status": "COMPLETED",
       "phase_file": ".claude/resource/phases/step-1-intake.md",
-      "scope": ["repository", "toolchain", "contracts", "ui-candidates"],
+      "scope": [
+        "repository",
+        "toolchain",
+        "contracts",
+        "ui-candidates"
+      ],
       "required_reviewers": []
     },
     {
       "id": "step-2-minimum-boundary",
       "status": "COMPLETED",
       "phase_file": ".claude/resource/phases/step-2-minimum-boundary.md",
-      "scope": ["F00", "F90", "session", "generation", "journal", "routes"],
-      "required_reviewers": ["spec", "architecture", "experience"]
+      "scope": [
+        "F00",
+        "F90",
+        "session",
+        "generation",
+        "journal",
+        "routes"
+      ],
+      "required_reviewers": [
+        "spec",
+        "architecture",
+        "experience"
+      ]
     },
     {
       "id": "step-3-core-experience",
-      "status": "TODO",
+      "status": "COMPLETED",
       "phase_file": ".claude/resource/phases/step-3-core-experience.md",
-      "scope": ["F10", "F11", "F12", "F20", "F21", "draft", "command"],
-      "required_reviewers": ["spec", "architecture", "experience"]
+      "scope": [
+        "F10",
+        "F11",
+        "F12",
+        "F20",
+        "F21",
+        "draft",
+        "command"
+      ],
+      "required_reviewers": [
+        "spec",
+        "architecture",
+        "experience"
+      ],
+      "work": {
+        "goal": "F10→F11→F12→F20/F21 core flow",
+        "done": [
+          "F10 today (unanswered/answered)",
+          "F21 read-only detail",
+          "F11 writing + DraftRepository/DraftWriter (MS-CORE-003)",
+          "AnswerWriteCoordinator + store + OP-006~009 mock (MS-CORE-001, 004, 005, 006)",
+          "biome screen import restrictions",
+          "F11 save UI wired (IX-008/036/037 unconfirmed, recheck, copy, safe exit)",
+          "F12 static completion (IX-039 fixed hierarchy, haptic once)",
+          "MS-CORE-001 end-to-end component test",
+          "F20 first page + root tabs",
+          "IX-007 leave dialog (Radix AlertDialog wrapper, useBlocker)",
+          "MS-CORE-002/007/008/010 tests",
+          "browser mock projects: core flow, 320px/200%, Reduced Motion (Chromium+WebKit)"
+        ],
+        "next": [
+          "await user approval for step 4"
+        ],
+        "deferred": [
+          "external pixel CMP adoption (Pxlkit/Pixelact) and visual adoption -> not done; native CMP baseline",
+          "MemoryFormation animation (AST-006/009 assets) -> static completion",
+          "IX-038 first-time help toggle",
+          "IX-011 offline pre-send block",
+          "IX-012 SEMA replaced / DATE_CHANGED -> F13 (step 5)",
+          "IX-041 explicit close OP-015 (step 5)",
+          "F20 page chain (step 6)",
+          "real device IME/keyboard/Safe Area/Back BLOCKED"
+        ]
+      }
     },
     {
       "id": "step-4-onboarding",
       "status": "TODO",
       "phase_file": ".claude/resource/phases/step-4-onboarding.md",
-      "scope": ["F01", "F02", "F03", "OP-003", "OP-004"],
-      "required_reviewers": ["spec", "architecture", "experience"]
+      "scope": [
+        "F01",
+        "F02",
+        "F03",
+        "OP-003",
+        "OP-004"
+      ],
+      "required_reviewers": [
+        "spec",
+        "architecture",
+        "experience"
+      ]
     },
     {
       "id": "step-5-recovery",
       "status": "TODO",
       "phase_file": ".claude/resource/phases/step-5-recovery.md",
-      "scope": ["F13", "OP-015", "session-refresh", "expiry"],
-      "required_reviewers": ["spec", "architecture", "experience"]
+      "scope": [
+        "F13",
+        "OP-015",
+        "session-refresh",
+        "expiry"
+      ],
+      "required_reviewers": [
+        "spec",
+        "architecture",
+        "experience"
+      ]
     },
     {
       "id": "step-6-archive-management",
       "status": "TODO",
       "phase_file": ".claude/resource/phases/step-6-archive-management.md",
-      "scope": ["F20", "F21", "F22", "F23", "pagination", "edit", "delete"],
-      "required_reviewers": ["spec", "architecture", "experience"]
+      "scope": [
+        "F20",
+        "F21",
+        "F22",
+        "F23",
+        "pagination",
+        "edit",
+        "delete"
+      ],
+      "required_reviewers": [
+        "spec",
+        "architecture",
+        "experience"
+      ]
     },
     {
       "id": "step-7-settings-delete",
       "status": "TODO",
       "phase_file": ".claude/resource/phases/step-7-settings-delete.md",
-      "scope": ["F30", "F31", "generation-fence", "local-cleanup"],
-      "required_reviewers": ["spec", "architecture", "experience"]
+      "scope": [
+        "F30",
+        "F31",
+        "generation-fence",
+        "local-cleanup"
+      ],
+      "required_reviewers": [
+        "spec",
+        "architecture",
+        "experience"
+      ]
     },
     {
       "id": "step-8-integration",
       "status": "TODO",
       "phase_file": ".claude/resource/phases/step-8-integration.md",
-      "scope": ["real-server", "real-device", "operations", "release-evidence"],
-      "required_reviewers": ["spec", "architecture", "experience"]
+      "scope": [
+        "real-server",
+        "real-device",
+        "operations",
+        "release-evidence"
+      ],
+      "required_reviewers": [
+        "spec",
+        "architecture",
+        "experience"
+      ]
     }
   ],
   "retry": {},
@@ -71,6 +178,10 @@
     "step-1-intake": {
       "ts": "2026-09-27T09:04:46.108Z",
       "evidence": "사용자: \"오키 굳굳 2단계 들어가자\" (1단계 결과 검토 후 2단계 진행 지시)"
+    },
+    "step-2-minimum-boundary": {
+      "ts": "2026-09-27T09:51:45.325Z",
+      "evidence": "사용자: \"이어서 해줘\" (2단계 커밋 후 다음 단계 진행 지시)"
     }
   },
   "log": [
@@ -93,6 +204,38 @@
     {
       "ts": "2026-09-27T09:28:15.899Z",
       "msg": "step-2-minimum-boundary COMPLETED: full gate PASS, browser PASS, reviews spec/architecture/experience PASS; awaiting user approval"
+    },
+    {
+      "ts": "2026-09-27T09:51:45.325Z",
+      "msg": "step-2 approved; step-3-core-experience started"
+    },
+    {
+      "ts": "2026-09-27T11:23:49.017Z",
+      "msg": "step-3 manual-review: retry budget exhausted after round-2 fixes (arch unlock, IX-037 wording); gate checks run individually"
+    },
+    {
+      "ts": "2026-09-27T11:29:24.348Z",
+      "msg": "step-3 manual-review: user chose B (confirmation review of two round-2 fixes, 1 round)"
+    },
+    {
+      "ts": "2026-09-27T11:30:52.197Z",
+      "msg": "step-3 B confirmation: experience PASS, architecture FAIL (silent setView on same-epoch fence loss); code untouched, manual-review kept"
+    },
+    {
+      "ts": "2026-09-27T11:32:32.398Z",
+      "msg": "step-3 resumed: user allowed up to 2 more fix attempts (answer C); retry reset"
+    },
+    {
+      "ts": "2026-09-27T11:33:41.607Z",
+      "msg": "step-3 fix attempt 1: Run.setView throws AbandonedRun when !alive(); +2 unit tests (fail without fix); 40/40 PASS"
+    },
+    {
+      "ts": "2026-09-27T11:35:44.024Z",
+      "msg": "step-3 confirmation architecture PASS after fix attempt 1; retry cleared"
+    },
+    {
+      "ts": "2026-09-27T11:35:44.024Z",
+      "msg": "step-3-core-experience COMPLETED: full gate PASS, reviews spec/architecture/experience PASS; awaiting user approval"
     }
   ]
 }

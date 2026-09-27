@@ -1,0 +1,112 @@
+{
+  "id": "step-3-core-experience",
+  "reviewers": {
+    "spec": "PASS",
+    "architecture": "PASS",
+    "experience": "PASS"
+  },
+  "methods": {
+    "spec": "agent",
+    "architecture": "agent",
+    "experience": "agent"
+  },
+  "review_rounds": {
+    "spec": "round 1 FAIL -> fixed -> round 2 PASS",
+    "architecture": "round 1 FAIL -> fixed -> round 2: round-1 items PASS, 1 new (F11 lock) fixed -> confirmation (user B) FAIL: same-epoch silent Run.setView -> user C: fix attempt 1 -> confirmation PASS",
+    "experience": "round 1 FAIL -> fixed -> round 2: 1 new (IX-037 COM-008 with confirmed keep failure) fixed -> confirmation (user B) PASS"
+  },
+  "files": [
+    "biome.json",
+    "package.json",
+    "playwright.config.ts",
+    "pnpm-lock.yaml",
+    "src/app/AppServices.tsx",
+    "src/app/bootstrap/bootstrap.ts",
+    "src/app/composition.ts",
+    "src/app/routes.tsx",
+    "src/data/api/arcaApi.ts",
+    "src/data/api/models.ts",
+    "src/data/query/keys.ts",
+    "src/mocks/handlers.ts",
+    "src/mocks/platform.ts",
+    "src/mocks/world.ts",
+    "src/platform/appsInTossPlatform.ts",
+    "src/platform/ports.ts",
+    "src/screens/today/TodayScreen.tsx",
+    "src/ui/components.tsx",
+    "src/ui/copy.ts",
+    "src/ui/tokens.css",
+    "src/ui/ui.css",
+    "src/app/drafts.ts",
+    "src/app/navigation.ts",
+    "src/app/writes.ts",
+    "src/domain/commands/answerWriteCoordinator.ts",
+    "src/domain/commands/answerWriteCoordinator.test.ts",
+    "src/domain/commands/answerWriteStore.ts",
+    "src/domain/drafts/draftRepository.ts",
+    "src/domain/drafts/draftWriter.ts",
+    "src/domain/drafts/draftWriter.test.ts",
+    "src/domain/text/graphemes.ts",
+    "src/screens/RootTabs.tsx",
+    "src/screens/archive/AnswerDetailScreen.tsx",
+    "src/screens/archive/ArchiveScreen.tsx",
+    "src/screens/archive/ArchiveScreen.test.tsx",
+    "src/screens/today/SavedScreen.tsx",
+    "src/screens/today/SavedScreen.test.tsx",
+    "src/screens/today/TodayScreen.test.tsx",
+    "src/screens/today/WriteScreen.tsx",
+    "src/screens/today/WriteScreen.test.tsx",
+    "src/test/boot.tsx",
+    "src/ui/PixelAlertDialog.tsx",
+    "src/ui/format.ts",
+    "tests/browser-mock/core.spec.ts",
+    ".claude/spec/02_DESIGN_SYSTEM.md",
+    ".claude/spec/06_FRONTEND_SPEC.md"
+  ],
+  "gate": {
+    "mode": "--full",
+    "result": "PASS"
+  },
+  "extra_checks": [
+    {
+      "name": "vitest answerWriteCoordinator + WriteScreen (after final fix)",
+      "result": "PASS 40/40; 2 new tests fail without fix"
+    },
+    {
+      "name": "browser mock core flow, 320px/200%, Reduced Motion (Chromium+WebKit)",
+      "result": "PASS earlier in step 3; not rerun after round-2/confirmation fixes"
+    }
+  ],
+  "known_issues": [
+    "proof-record failure then success can show the success notice twice (non-blocking)",
+    "field help and status both show CPY-F11-013 on keep failure (visual duplicate, one live region)",
+    "abandoned run right after putTracker (before putPayload) leaves tracker without payload -> re-entry repeats unconfirmed, ticket may stay PREPARED (answerWriteCoordinator.ts:176; review note, not verified; step 5 recovery)",
+    "dropUnsent continues if fence changes mid-await (authenticated rejection; owner-scoped storage to confirm)",
+    "same-epoch fence change: new owner save/recheck awaits old run promise (06 §4.2 intent to confirm)"
+  ],
+  "deferred_ref": ".claude/build-state.json checklist[step-3-core-experience].work.deferred",
+  "external_evidence": [
+    {
+      "status": "BLOCKED",
+      "ref": "08 §7 real-device IME composition on F11 (iOS/Android)"
+    },
+    {
+      "status": "BLOCKED",
+      "ref": "08 §7 software keyboard / visual viewport on F11"
+    },
+    {
+      "status": "BLOCKED",
+      "ref": "08 §7 Safe Area on F10/F11/F12/F20"
+    },
+    {
+      "status": "BLOCKED",
+      "ref": "08 §7 Android Back / IX-007 leave on F11"
+    },
+    {
+      "status": "NOT_RUN",
+      "ref": "08 §11 CI remote run"
+    }
+  ],
+  "commit": null,
+  "ts": "2026-09-27T11:35:44.024Z"
+}
