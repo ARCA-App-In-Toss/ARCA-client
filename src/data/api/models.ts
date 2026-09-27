@@ -140,6 +140,16 @@ export type AnswerWriteResult =
   | { state: 'NOT_APPLIED'; ticketId: string; operationId: string; error: { code: string; category: string } }
   | { state: 'CLOSED_OUTCOME_UNAVAILABLE'; ticketId: string; operationId: string };
 
+/** Server snapshot guidance after an explicit close; never a permission for the next change (05 OP-015). */
+export type Reconciliation =
+  | { checkedAt: string; nextAction: 'CREATE_CURRENT_DAY' | 'RETURN_TODAY' | 'RETURN_ARCHIVE' }
+  | { checkedAt: string; nextAction: 'REVIEW_CURRENT_ANSWER'; answerId: string; revision: string };
+
+/** OP-015 answer-write result: the settled result, the unchanged EXECUTING state, or a sealed past command. */
+export type AnswerWriteClosure =
+  | Extract<AnswerWriteResult, { state: 'SUCCEEDED' | 'NOT_APPLIED' | 'EXECUTING' }>
+  | { state: 'CLOSED_OUTCOME_UNAVAILABLE'; ticketId: string; operationId: string; reconciliation: Reconciliation };
+
 export interface ArchiveItem {
   answerId: string;
   revision: string;

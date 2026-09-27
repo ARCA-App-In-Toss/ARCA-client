@@ -81,6 +81,8 @@ export interface FakePlatform extends PlatformPort {
   setOffline(offline: boolean): void;
   setClipboardFails(fails: boolean): void;
   setExternalFails(fails: boolean): void;
+  /** Simulates the app going to the background (false) or returning (true). */
+  setVisible(visible: boolean): void;
 }
 
 export function createFakePlatform(options: FakePlatformOptions = {}): FakePlatform {
@@ -90,6 +92,7 @@ export function createFakePlatform(options: FakePlatformOptions = {}): FakePlatf
   let externalFails = false;
   const clipboardWrites: string[] = [];
   const openedPolicies: string[] = [];
+  const visibilityListeners = new Set<(visible: boolean) => void>();
   const storage = options.storage ?? createFakeStorage();
   const platform: FakePlatform = {
     hapticCount: 0,
@@ -134,6 +137,15 @@ export function createFakePlatform(options: FakePlatformOptions = {}): FakePlatf
     },
     setExternalFails(fails) {
       externalFails = fails;
+    },
+    lifecycle: {
+      onVisibilityChange(listener) {
+        visibilityListeners.add(listener);
+        return () => visibilityListeners.delete(listener);
+      },
+    },
+    setVisible(visible) {
+      for (const listener of visibilityListeners) listener(visible);
     },
   };
   return platform;

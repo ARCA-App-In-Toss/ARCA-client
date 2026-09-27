@@ -1,7 +1,13 @@
 import type { ArcaApi } from '../../data/api/arcaApi.ts';
-import type { AnswerWritePresentation, AnswerWriteResult, PrepareAnswerCreate } from '../../data/api/models.ts';
+import type {
+  AnswerWriteClosure,
+  AnswerWritePresentation,
+  AnswerWriteResult,
+  PrepareAnswerCreate,
+  Reconciliation,
+} from '../../data/api/models.ts';
 import { DomainFailure } from '../../data/failures.ts';
-import type { DraftRepository } from '../drafts/draftRepository.ts';
+import { DRAFT_TTL_MS, type DraftRepository } from '../drafts/draftRepository.ts';
 import type { Timers } from '../drafts/draftWriter.ts';
 import type { SessionController } from '../session/sessionController.ts';
 import type { AnswerWriteStore, AnswerWriteTracker } from './answerWriteStore.ts';
@@ -16,6 +22,8 @@ export const TRANSPORT_MAX_MS = 8_000;
 /** OP-008 attempt offsets inside one foreground cycle (06 §8.5). */
 export const RESULT_CHECK_OFFSETS_MS = [0, 1_000, 3_000, 7_000] as const;
 export const COMPLETION_EXCERPT_PROFILE = 'COMPACT' as const;
+/** Fixed payload lifetime: the same 7 days from the last user edit as the draft (06 §8.6). */
+export const PAYLOAD_TTL_MS = DRAFT_TTL_MS;
 
 export interface Completion {
   answerId: string;
@@ -26,7 +34,14 @@ export type WriteView =
   | { kind: 'idle' }
   /** Local pre-keeping, then network; `trackerKept` enables safe exit once the draft is kept too. */
   | { kind: 'working'; stage: 'keeping' | 'sending' | 'confirming'; trackerKept: boolean }
-  | { kind: 'unconfirmed'; trackerKept: boolean }
+  /**
+   * `recovery` names the user's explicit OP-015 action (04 IX-041, 06 §8.5): `closePrepared` when the
+   * server holds a prepared request this device can no longer execute (payload missing or expired),
+   * `cleanUpExpired` when the past result is no longer retained (CLOSED_OUTCOME_UNAVAILABLE).
+   */
+  | { kind: 'unconfirmed'; trackerKept: boolean; recovery?: 'closePrepared' | 'cleanUpExpired' }
+  /** Sealed past command cleaned up; the server's current-state guidance, never a success claim. */
+  | { kind: 'reconciled'; reconciliation: Reconciliation }
   | { kind: 'succeeded'; completion: Completion }
   | { kind: 'notApplied'; code: string }
   /** Authenticated prepare rejection; no ticket was created. */
@@ -63,8 +78,8 @@ export interface AnswerWriteCoordinatorDeps {
   fence: () => OwnerFence | null;
   timers?: Timers;
   newOperationId?: () => string;
-  /** Current-resource sync after success (today/archive caches); must be repeat-safe. */
-  syncAfterSuccess(answerId: string): Promise<void>;
+  /** Current-resource sync after success or reconciliation (today/archive caches); must be repeat-safe. */
+  syncCurrentResources(answerId: string): Promise<void>;
 }
 
 const realTimers: Timers = {
@@ -74,6 +89,11 @@ const realTimers: Timers = {
 
 /** Shared idle snapshot: view reads must be referentially stable for subscribers. */
 const IDLE_VIEW: WriteView = Object.freeze({ kind: 'idle' });
+
+/** A tracker whose payload was never confirmed and that has no ticket: no mutation was sent (06 §8.3). */
+function neverSent(tracker: AnswerWriteTracker): boolean {
+  return tracker.ticketId === null && !tracker.networkAllowed;
+}
 
 function isTerminal(result: AnswerWriteResult): boolean {
   return result.state === 'SUCCEEDED' || result.state === 'NOT_APPLIED';
@@ -99,6 +119,14 @@ export class AnswerWriteCoordinator {
   private readonly listeners = new Map<string, Set<(view: WriteView) => void>>();
   private readonly inFlight = new Map<string, Promise<void>>();
   private epoch = 0;
+  /** Background: result-check timers stop; foreground/re-entry checks once again (06 §8.5 #6). */
+  private suspended = false;
+  private readonly sleepers = new Set<() => void>();
+  /**
+   * Tickets whose outcome was already shown in this app session. Showing is separate from local
+   * finishing: a later re-read (e.g. after a failed proof write) finishes quietly (06 §8.7).
+   */
+  private readonly announced = new Set<string>();
 
   constructor(deps: AnswerWriteCoordinatorDeps) {
     this.deps = deps;
@@ -119,10 +147,43 @@ export class AnswerWriteCoordinator {
   /** Owner/generation change or discard: drop every view and ignore all in-flight runs (06 §4.2). */
   reset(): void {
     this.epoch += 1;
+    this.announced.clear();
     this.inFlight.clear();
     const targets = [...this.views.keys()];
     this.views.clear();
     for (const target of targets) this.emit(target, IDLE_VIEW);
+  }
+
+  /** App went to the background: stop waiting between result checks; nothing is judged from it. */
+  suspend(): void {
+    this.suspended = true;
+    for (const wake of [...this.sleepers]) wake();
+  }
+
+  resume(): void {
+    this.suspended = false;
+  }
+
+  /**
+   * One bounded check per kept tracker, at most `concurrency` at a time, joining any running
+   * single-flight (06 §5.3 #7, §8.5 #6). Never OP-015, never a new operation, never polling.
+   */
+  async recheckAll(options: { except?: string | null; concurrency?: number } = {}): Promise<void> {
+    let targets: string[];
+    try {
+      targets = (await this.deps.store.listTargets()).filter((t) => t !== options.except);
+    } catch {
+      return;
+    }
+    const queue = [...targets];
+    const worker = async () => {
+      for (let target = queue.shift(); target !== undefined; target = queue.shift()) {
+        const tracker = await this.deps.store.getTracker(target).catch(() => null);
+        if (!tracker) continue;
+        await this.recheck(target, { quiet: tracker.outcome !== null }).catch(() => undefined);
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(options.concurrency ?? 2, queue.length) }, worker));
   }
 
   /** Clears a settled view once the screen has consumed it (visit feedback is separate from cleanup). */
@@ -155,7 +216,7 @@ export class AnswerWriteCoordinator {
         return run.setView({ kind: 'localFailure' });
       }
       run.check();
-      if (existing) return this.drive(run, { quiet: false });
+      if (existing && !neverSent(existing)) return this.drive(run, { quiet: false });
 
       // 06 §8.3: latest draft → tracker meta → fixed payload, each read back, before any mutation.
       const kept = await request.flushDraft();
@@ -163,16 +224,18 @@ export class AnswerWriteCoordinator {
       if (!kept) return run.setView({ kind: 'localFailure' });
       const operationId = this.deps.newOperationId?.() ?? crypto.randomUUID();
       try {
-        await this.deps.store.putTracker(target, {
+        const tracker: AnswerWriteTracker = {
           recordType: 'command',
           kind: 'ANSWER_WRITE',
           operationId,
           prepareInput: request.input,
           executeIntent: true,
+          networkAllowed: false,
           ticketId: null,
           outcome: null,
           createdAt: this.deps.now(),
-        });
+        };
+        await this.deps.store.putTracker(target, tracker);
         run.check();
         await this.deps.store.putPayload(target, {
           recordType: 'command-payload',
@@ -180,6 +243,8 @@ export class AnswerWriteCoordinator {
           content: kept.text,
           lastModifiedAt: kept.lastModifiedAt,
         });
+        run.check();
+        await this.deps.store.putTracker(target, { ...tracker, networkAllowed: true });
       } catch (error) {
         if (error instanceof AbandonedRun) throw error;
         // Nothing was sent; drop the partial tracker if possible so the next save starts clean.
@@ -206,6 +271,44 @@ export class AnswerWriteCoordinator {
       run.check();
       if (!tracker) return;
       return this.drive(run, { quiet: options.quiet === true && tracker.outcome !== null });
+    });
+  }
+
+  /**
+   * The user's explicit "이 저장 요청 끝내기" (04 IX-041). OP-015 is never called by a timer, an exit or
+   * a background check. Only an authenticated NOT_APPLIED (or a race-winning SUCCEEDED) settles it;
+   * EXECUTING, failures and COMMAND_NOT_FOUND keep the tracker and the result check (05 §6.10).
+   */
+  close(dailySemaId: string): Promise<void> {
+    return this.singleFlight(dailySemaId, async (run) => {
+      let tracker: AnswerWriteTracker | null;
+      try {
+        tracker = await this.deps.store.getTracker(dailySemaId);
+      } catch {
+        return run.setView({ kind: 'localFailure' });
+      }
+      run.check();
+      if (!tracker) return run.setView(IDLE_VIEW);
+      if (tracker.outcome || tracker.ticketId === null) return this.drive(run, { quiet: false });
+      const ticketId = tracker.ticketId;
+      // Closing is not saving: show the result-check progress, never "saving" (04 IX-041).
+      run.setView({ kind: 'working', stage: 'confirming', trackerKept: true });
+      let closure: AnswerWriteClosure;
+      try {
+        closure = await this.deps.session.run('ACTIVE', (auth) =>
+          this.deps.api.closeAnswerWrite(auth, ticketId, TRANSPORT_MAX_MS),
+        );
+      } catch {
+        run.check();
+        return run.setView({ kind: 'unconfirmed', trackerKept: true });
+      }
+      run.check();
+      if (closure.state === 'SUCCEEDED' || closure.state === 'NOT_APPLIED') {
+        return this.settle(run, tracker, closure, { quiet: false });
+      }
+      if (closure.state === 'CLOSED_OUTCOME_UNAVAILABLE') return this.reconcile(run, closure.reconciliation);
+      // EXECUTING keeps checking the result; it is never force-closed.
+      return run.setView({ kind: 'unconfirmed', trackerKept: true });
     });
   }
 
@@ -265,6 +368,11 @@ export class AnswerWriteCoordinator {
     run.check();
     if (!tracker) return run.setView(IDLE_VIEW);
     if (tracker.outcome) return this.finalize(run, tracker, null, options);
+    if (neverSent(tracker)) {
+      // Pre-keeping stopped before the payload was confirmed: nothing reached the server (06 §8.3).
+      await this.dropUnsent(run);
+      return run.setView(IDLE_VIEW);
+    }
     run.setView({ kind: 'working', stage: 'sending', trackerKept: true });
 
     let result: AnswerWriteResult | null = null;
@@ -299,11 +407,18 @@ export class AnswerWriteCoordinator {
 
     const settledFrom = tracker;
     const ticketId = tracker.ticketId as string;
-    const execute = async (): Promise<AnswerWriteResult | null> => {
-      const payload = await this.deps.store.getPayload(target, settledFrom.operationId).catch(() => null);
+    /** 'unexecutable': the exact payload or the intent is gone; the prepared request waits for a close. */
+    const execute = async (): Promise<AnswerWriteResult | 'unexecutable' | null> => {
+      let payload = await this.deps.store.getPayload(target, settledFrom.operationId).catch(() => null);
       run.check();
+      if (payload && this.payloadExpired(payload.lastModifiedAt)) {
+        // 7 days after the last edit the text goes and auto-execution stops (06 §8.6).
+        await this.deps.store.removePayload(target).catch(() => undefined);
+        run.check();
+        payload = null;
+      }
       // Only the exact kept payload with the original intent may run (05 OP-006 re-entry rule).
-      if (!payload || !settledFrom.executeIntent) return null;
+      if (!payload || !settledFrom.executeIntent) return 'unexecutable';
       executed = true;
       try {
         return await this.deps.session.run('ACTIVE', (auth) =>
@@ -314,8 +429,16 @@ export class AnswerWriteCoordinator {
       }
     };
 
-    if (result?.state === 'PREPARED') result = await execute();
-    run.check();
+    const closable = () => run.setView({ kind: 'unconfirmed', trackerKept: true, recovery: 'closePrepared' });
+    const sealed = () => run.setView({ kind: 'unconfirmed', trackerKept: true, recovery: 'cleanUpExpired' });
+    // Restored prepare of a past command whose result is no longer retained (05 §8.3).
+    if (result?.state === 'CLOSED_OUTCOME_UNAVAILABLE') return sealed();
+    if (result?.state === 'PREPARED') {
+      const outcome = await execute();
+      run.check();
+      if (outcome === 'unexecutable') return closable();
+      result = outcome;
+    }
     if (result && isTerminal(result)) return this.settle(run, settledFrom, result, options);
 
     run.setView({ kind: 'working', stage: 'confirming', trackerKept: true });
@@ -323,16 +446,20 @@ export class AnswerWriteCoordinator {
       const wait = cycleStart + offset - this.deps.now();
       if (wait > 0) await this.sleep(wait);
       run.check();
-      if (remaining() <= 0) break;
+      // Backgrounded: stop here with the result still unknown; foreground checks again.
+      if (this.suspended || remaining() <= 0) break;
       try {
         const current = await this.deps.session.run('ACTIVE', (auth) =>
           this.deps.api.getAnswerWriteResult(auth, ticketId, COMPLETION_EXCERPT_PROFILE, budget()),
         );
         run.check();
         if (isTerminal(current)) return this.settle(run, settledFrom, current, options);
+        // Past result no longer retained: neither success nor failure is claimed (05 §8.3).
+        if (current.state === 'CLOSED_OUTCOME_UNAVAILABLE') return sealed();
         if (current.state === 'PREPARED' && !executed) {
           const executedResult = await execute();
           run.check();
+          if (executedResult === 'unexecutable') return closable();
           if (executedResult && isTerminal(executedResult)) {
             return this.settle(run, settledFrom, executedResult, options);
           }
@@ -393,7 +520,7 @@ export class AnswerWriteCoordinator {
         return;
       }
       run.check();
-      await this.deps.syncAfterSuccess(outcome.answerId).catch(() => undefined);
+      await this.deps.syncCurrentResources(outcome.answerId).catch(() => undefined);
       run.check();
     }
     try {
@@ -420,24 +547,94 @@ export class AnswerWriteCoordinator {
   ): WriteView {
     const outcome = tracker.outcome;
     if (!outcome || options.quiet) return IDLE_VIEW;
+    if (tracker.ticketId !== null) {
+      if (this.announced.has(tracker.ticketId)) return IDLE_VIEW;
+      this.announced.add(tracker.ticketId);
+    }
     if (outcome.state === 'NOT_APPLIED') return { kind: 'notApplied', code: outcome.code };
     const presentation: AnswerWritePresentation =
       result?.state === 'SUCCEEDED' ? result.presentation : { state: 'UNAVAILABLE', retryable: true };
     return { kind: 'succeeded', completion: { answerId: outcome.answerId, presentation } };
   }
 
+  /**
+   * OP-015 sealed the past command (no further execution possible) and reported the current state:
+   * only now the tracker and any payload go. No ack (there is no retained result) and no success
+   * notice; a current answer is synced so the next screen reads it fresh (04 IX-041).
+   */
+  private async reconcile(run: Run, reconciliation: Reconciliation): Promise<void> {
+    try {
+      await this.deps.store.removePayload(run.target);
+      run.check();
+      await this.deps.store.removeTracker(run.target);
+    } catch (error) {
+      if (error instanceof AbandonedRun) throw error;
+      // A leftover tracker repeats the idempotent close on the next explicit action.
+    }
+    run.check();
+    if (reconciliation.nextAction === 'REVIEW_CURRENT_ANSWER') {
+      await this.deps.syncCurrentResources(reconciliation.answerId).catch(() => undefined);
+      run.check();
+    }
+    return run.setView({ kind: 'reconciled', reconciliation });
+  }
+
   /** Authenticated prepare rejection: nothing was accepted, so the local command records go. */
   private async dropUnsent(run: Run): Promise<void> {
     try {
+      run.check();
       await this.deps.store.removePayload(run.target);
+      run.check();
       await this.deps.store.removeTracker(run.target);
-    } catch {
-      // A leftover unsent tracker is resumed (and rejected again) on the next entry.
+    } catch (error) {
+      // A run whose owner/generation moved must not touch the records any further.
+      if (error instanceof AbandonedRun) throw error;
+      // A leftover unsent tracker is resumed (and rejected or dropped again) on the next entry.
     }
   }
 
+  /**
+   * Startup sweep (06 §8.6): payloads past 7 days from the last edit are removed; the non-text
+   * tracker stays until a terminal result, an authenticated cleanup or an all-data delete. The
+   * result lifetime never extends the text lifetime.
+   */
+  async expirePayloads(): Promise<void> {
+    const fence = this.deps.fence();
+    if (!fence) return;
+    const epoch = this.epoch;
+    const same = () => {
+      const now = this.deps.fence();
+      return epoch === this.epoch && now?.ownerScope === fence.ownerScope && now.generation === fence.generation;
+    };
+    for (const target of await this.deps.store.listTargets()) {
+      if (!same() || this.inFlight.has(target)) continue;
+      const tracker = await this.deps.store.getTracker(target).catch(() => null);
+      if (!tracker || !same()) continue;
+      const payload = await this.deps.store.getPayload(target, tracker.operationId).catch(() => null);
+      if (!payload || !this.payloadExpired(payload.lastModifiedAt) || !same() || this.inFlight.has(target)) continue;
+      // A save may have replaced the operation while reading: remove only the one judged expired.
+      const latest = await this.deps.store.getTracker(target).catch(() => null);
+      if (latest?.operationId !== tracker.operationId || !same() || this.inFlight.has(target)) continue;
+      await this.deps.store.removePayload(target).catch(() => undefined);
+    }
+  }
+
+  private payloadExpired(lastModifiedAt: number): boolean {
+    return this.deps.now() >= lastModifiedAt + PAYLOAD_TTL_MS;
+  }
+
   private sleep(ms: number): Promise<void> {
-    return new Promise((resolve) => this.timers.set(resolve, ms));
+    if (this.suspended) return Promise.resolve();
+    return new Promise((resolve) => {
+      let handle: unknown = null;
+      const wake = () => {
+        this.sleepers.delete(wake);
+        if (handle !== null) this.timers.clear(handle);
+        resolve();
+      };
+      this.sleepers.add(wake);
+      handle = this.timers.set(wake, ms);
+    });
   }
 
   private setView(target: string, view: WriteView): void {

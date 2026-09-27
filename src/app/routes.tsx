@@ -7,6 +7,7 @@ import { StartErrorScreen } from '../screens/error/StartErrorScreen.tsx';
 import { BoardedScreen } from '../screens/onboarding/BoardedScreen.tsx';
 import { BoardingScreen } from '../screens/onboarding/BoardingScreen.tsx';
 import { IntroScreen } from '../screens/onboarding/IntroScreen.tsx';
+import { PastDraftScreen } from '../screens/today/PastDraftScreen.tsx';
 import { SavedScreen } from '../screens/today/SavedScreen.tsx';
 import { TodayScreen } from '../screens/today/TodayScreen.tsx';
 import { WriteScreen } from '../screens/today/WriteScreen.tsx';
@@ -109,6 +110,14 @@ export const routes: RouteObject[] = [
         element: (
           <RequireMode mode="ACTIVE">
             <SavedScreen />
+          </RequireMode>
+        ),
+      },
+      {
+        path: paths.pastDraft,
+        element: (
+          <RequireMode mode="ACTIVE">
+            <PastDraftScreen />
           </RequireMode>
         ),
       },

@@ -13,3 +13,15 @@ export function formatCount(count: number): string {
 export function isWhitespaceOnly(text: string): boolean {
   return text.length > 0 && text.trim().length === 0;
 }
+
+const KST_OFFSET_MS = 9 * 60 * 60 * 1_000;
+
+/** `{expiresAtKst}`: `2026년 9월 19일 오후 11:42 (KST)` (04 §5.10). Fixed +9h; KST has no DST. */
+export function formatInstantKst(epochMs: number): string {
+  const kst = new Date(epochMs + KST_OFFSET_MS);
+  const hours = kst.getUTCHours();
+  const period = hours < 12 ? '오전' : '오후';
+  const hour12 = hours % 12 === 0 ? 12 : hours % 12;
+  const minutes = String(kst.getUTCMinutes()).padStart(2, '0');
+  return `${kst.getUTCFullYear()}년 ${kst.getUTCMonth() + 1}월 ${kst.getUTCDate()}일 ${period} ${hour12}:${minutes} (KST)`;
+}

@@ -60,6 +60,33 @@ export class NicknameCoordinator {
     return this.inFlight;
   }
 
+  /**
+   * A tracker left unresolved after F03 (outcome unknown, then the user moved on) is resent once with
+   * the same key and input to restore its receipt; only a definite answer removes it (06 §9.1). The
+   * expected revision keeps a newer profile from being overwritten.
+   */
+  async resume(): Promise<void> {
+    if (this.inFlight) return;
+    const area = this.deps.area();
+    if (!area) return;
+    const stored = zTracker.safeParse(await this.deps.journal.getRecord(area, TRACKER).catch(() => null));
+    if (!stored.success) return;
+    const tracker = stored.data;
+    // The area (owner/generation) may have moved while reading: never send another owner's request.
+    if (this.deps.area() !== area) return;
+    this.inFlight = (async (): Promise<NicknameSaveResult> => {
+      const result = await this.send(tracker, () => this.deps.area() === area);
+      if ((result === 'saved' || result === 'rejected' || result === 'expired') && this.deps.area() === area) {
+        await this.deps.journal.removeRecord(area, TRACKER).catch(() => undefined);
+        await this.deps.syncProfile().catch(() => undefined);
+      }
+      return result;
+    })().finally(() => {
+      this.inFlight = null;
+    });
+    await this.inFlight;
+  }
+
   private async run(nickname: string, expectedRevision: string): Promise<NicknameSaveResult> {
     const area = this.deps.area();
     if (!area) return 'unknown';
@@ -70,9 +97,10 @@ export class NicknameCoordinator {
       // Not stored and read back, so nothing was sent: a definite, skippable failure (06 §9.1).
       return 'rejected';
     }
-    let result = await this.send(tracker);
+    const sameArea = () => this.deps.area() === area;
+    let result = await this.send(tracker, sameArea);
     // One resend with the same key restores the receipt of a lost response (MS-NICK-002).
-    if (result === 'unknown') result = await this.send(tracker);
+    if (result === 'unknown') result = await this.send(tracker, sameArea);
     if (result === 'saved' || result === 'rejected' || result === 'expired') {
       // Cleanup never changes the server outcome already confirmed above.
       await this.deps.journal.removeRecord(area, TRACKER).catch(() => undefined);
@@ -81,7 +109,9 @@ export class NicknameCoordinator {
     return result;
   }
 
-  private async send(tracker: Tracker): Promise<NicknameSaveResult> {
+  /** `current` is checked right before sending: a moved owner/generation sends nothing ('unknown'). */
+  private async send(tracker: Tracker, current: () => boolean): Promise<NicknameSaveResult> {
+    if (!current()) return 'unknown';
     try {
       await this.deps.session.run('ACTIVE', (auth) =>
         this.deps.api.setNickname(auth, tracker.operationId, tracker.nickname, tracker.expectedRevision),

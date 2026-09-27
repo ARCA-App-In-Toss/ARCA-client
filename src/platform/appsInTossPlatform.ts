@@ -64,6 +64,16 @@ export function createAppsInTossPlatform(): PlatformPort {
       removeItem: (key) => Storage.removeItem(key),
     },
     clock: { now: () => Date.now() },
+    // The SDK's visibility event is for transparent service webs only; the WebView's standard
+    // visibilitychange is the fallback until real-device evidence says otherwise (06 §2.3).
+    lifecycle: {
+      onVisibilityChange(listener) {
+        if (typeof document === 'undefined') return () => undefined;
+        const handler = () => listener(document.visibilityState === 'visible');
+        document.addEventListener('visibilitychange', handler);
+        return () => document.removeEventListener('visibilitychange', handler);
+      },
+    },
     network: {
       async isOffline() {
         try {

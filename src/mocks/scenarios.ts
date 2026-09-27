@@ -26,6 +26,15 @@ export const scenarios: Record<string, ScenarioDefinition> = {
     base: 'server.activeUnanswered',
     anonymousKey: { kind: 'unavailable', reason: 'error' },
   },
+  // Draft written just before midnight, first saved after it (07 MS-TIME-002 → F13, then the Sheet).
+  'MS-TIME-002': {
+    id: 'MS-TIME-002',
+    base: 'server.activeUnanswered',
+    anonymousKey: { kind: 'ok', key: SYNTHETIC_KEYS.registered },
+    setup: (world) => {
+      world.advanceDayOnFirstPrepare = true;
+    },
+  },
   'start-maintenance': {
     id: 'MS-SES-001',
     base: 'server.activeUnanswered',

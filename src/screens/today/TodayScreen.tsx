@@ -1,12 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
-import { useIsOffline, useToday } from '../../app/AppServices.tsx';
+import { useIsOffline, useToday, useTodayRefreshEvents } from '../../app/AppServices.tsx';
 import { paths, type QuestionRole, useAnswerRefs, useArcaNavigate } from '../../app/navigation.ts';
+import { usePastDrafts } from '../../app/pastDrafts.ts';
 import { useAnswerWrite, usePendingWrite } from '../../app/writes.ts';
 import type { Today, TodayAnswer } from '../../data/api/models.ts';
 import { TransportFailure } from '../../data/failures.ts';
 import {
   InlineStatus,
+  InsetPanel,
   MemoryCount,
+  MemoryRow,
   PixelAppShell,
   PixelButton,
   PixelPlaceholder,
@@ -16,12 +19,14 @@ import {
   StatePanel,
 } from '../../ui/components.tsx';
 import { copy, fill } from '../../ui/copy.ts';
-import { formatCount, formatDateKst, isWhitespaceOnly } from '../../ui/format.ts';
+import { formatCount, formatDateKst, formatInstantKst, isWhitespaceOnly } from '../../ui/format.ts';
+import { PixelSheet } from '../../ui/PixelSheet.tsx';
 import { RootTabs } from '../RootTabs.tsx';
 
 /** F10 — today's SEMA (03 §5.1, 04 §6.5). Unanswered: question first; answered: own excerpt first. */
 export function TodayScreen() {
   const today = useToday();
+  useTodayRefreshEvents({ onEntry: true });
   const isOffline = useIsOffline();
   const [offline, setOffline] = useState(false);
 
@@ -102,6 +107,7 @@ export function TodayScreen() {
           showRetry={!refreshFailed}
         />
       )}
+      <PastDrafts currentDailySemaId={data.sema.dailySemaId} />
       {/* The screen's single polite source (02 §12.4); visible statuses above are not live. */}
       <div className="arca-visually-hidden">
         <InlineStatus message={liveMessage} />
@@ -269,5 +275,70 @@ function Answered({
       <SemaMeta today={today} />
       <Count today={today} />
     </>
+  );
+}
+
+/**
+ * Past drafts (03 F10 지난 임시본 있음, 04 IX-015·034): shown only when an unexpired draft of another
+ * day exists. Reading the list removes expired drafts (06 §7.4). Rows open F13; nothing is copied
+ * into today's question.
+ */
+function PastDrafts({ currentDailySemaId }: { currentDailySemaId: string }) {
+  const navigate = useArcaNavigate();
+  const [open, setOpen] = useState(false);
+  // Entry read decides whether the area shows; opening the Sheet reads the list fresh.
+  const list = usePastDrafts(currentDailySemaId, true);
+  const sheetList = usePastDrafts(currentDailySemaId, open);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const [selected, setSelected] = useState<string | null>(null);
+  useEffect(() => {
+    if (open || !selected) return;
+    navigate(paths.pastDraft, { draftRef: selected, pastDraftEntry: 'review' });
+  }, [open, selected, navigate]);
+  if (list.kind !== 'ready' || list.rows.length === 0) return null;
+  return (
+    <InsetPanel>
+      <p className="arca-label">{copy['CPY-F10-024']}</p>
+      <p className="arca-text-secondary">{copy['CPY-F10-025']}</p>
+      <PixelButton ref={triggerRef} onClick={() => setOpen(true)}>
+        {copy['CPY-F10-026']}
+      </PixelButton>
+      <PixelSheet
+        open={open}
+        title={copy['CPY-F10-027']}
+        description={copy['CPY-F10-028']}
+        closeLabel={copy['CPY-F10-034']}
+        onClose={() => setOpen(false)}
+        returnFocusRef={triggerRef}
+      >
+        {sheetList.kind === 'loading' ? (
+          <PixelPlaceholder />
+        ) : sheetList.kind === 'failed' ? (
+          <InlineStatus message={copy['CPY-F10-033']} tone="danger" />
+        ) : sheetList.rows.length === 0 ? (
+          <InlineStatus message={copy['CPY-F10-032']} />
+        ) : (
+          <ul className="arca-sheet-list">
+            {sheetList.rows.map((row) => (
+              <li key={row.ref}>
+                <MemoryRow
+                  onSelect={() => {
+                    // Close first; the move happens once the Sheet no longer holds navigation.
+                    setOpen(false);
+                    setSelected(row.ref);
+                  }}
+                >
+                  <span>{formatDateKst(row.context.dateKst)}</span>
+                  <span className="arca-question">{row.context.questionText}</span>
+                  <span className="arca-text-secondary">
+                    {fill(copy['CPY-F10-031'], { expiresAtKst: formatInstantKst(row.expiresAt) })}
+                  </span>
+                </MemoryRow>
+              </li>
+            ))}
+          </ul>
+        )}
+      </PixelSheet>
+    </InsetPanel>
   );
 }

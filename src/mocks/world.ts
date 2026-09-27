@@ -19,7 +19,8 @@ export type MockOp =
   | 'OP-008'
   | 'OP-009'
   | 'OP-010'
-  | 'OP-011';
+  | 'OP-011'
+  | 'OP-015';
 
 /** One scripted fault, consumed once per matching request (07 §6). */
 export type MockFault =
@@ -46,6 +47,8 @@ export interface MockTicket {
   error: { code: string; category: string } | null;
   completedAt: string | null;
   acknowledged: boolean;
+  /** Result retention ended: only the sealed registry remains (05 §9 결과 수명). */
+  resultExpired?: boolean;
 }
 
 export interface Passenger {
@@ -182,6 +185,37 @@ export const SYNTHETIC_SEMA: MockSema = {
   },
 };
 
+/** The next KST day's SEMA (MS-TIME: the server day moved on while a draft was open). */
+export const SYNTHETIC_NEXT_DAY_SEMA: MockSema = {
+  ...SYNTHETIC_SEMA,
+  dailySemaId: 'synthetic-day-2',
+  semaId: 'synthetic-sema-2',
+  semaCode: 'SYN-002',
+  dateKst: '2026-09-28',
+  primaryQuestion: {
+    ...SYNTHETIC_SEMA.primaryQuestion,
+    questionId: 'synthetic-q3',
+    text: '다음 날 합성 질문 (synthetic/non-user)',
+  },
+  alternateQuestion: {
+    ...SYNTHETIC_SEMA.alternateQuestion,
+    questionId: 'synthetic-q4',
+    text: '다음 날 합성 대체 질문 (synthetic/non-user)',
+  },
+};
+
+/** Same daily slot, operator-replaced SEMA content (MS-SEMA: IX-012). */
+export const SYNTHETIC_REPLACED_SEMA: MockSema = {
+  ...SYNTHETIC_SEMA,
+  semaId: 'synthetic-sema-replaced',
+  semaCode: 'SYN-001R',
+  primaryQuestion: {
+    ...SYNTHETIC_SEMA.primaryQuestion,
+    questionId: 'synthetic-q5',
+    text: '교체된 합성 질문 (synthetic/non-user)',
+  },
+};
+
 export interface MockWorld {
   passengers: Map<string, Passenger>;
   /** Current policy list; replace an entry to simulate a version change (MS-ONB-001). */
@@ -196,6 +230,8 @@ export interface MockWorld {
   asyncExecution: boolean;
   /** When true, SUCCEEDED results carry presentation UNAVAILABLE (retryable). */
   presentationUnavailable: boolean;
+  /** MS-TIME-002: the server day moves to the next SEMA just before the first OP-006 is judged. */
+  advanceDayOnFirstPrepare: boolean;
   /** Applies pending EXECUTING effects, as a server worker would. */
   completeExecuting(): void;
   faults: Map<MockOp, MockFault[]>;
@@ -242,6 +278,7 @@ export function createMockWorld(base: ServerBase): MockWorld {
     tickets,
     asyncExecution: false,
     presentationUnavailable: false,
+    advanceDayOnFirstPrepare: false,
     completeExecuting() {
       for (const ticket of tickets.values()) {
         if (ticket.state !== 'EXECUTING' || ticket.pendingContent === null) continue;

@@ -46,6 +46,14 @@ export interface HapticPort {
   memorySaved(): Promise<void>;
 }
 
+export interface LifecyclePort {
+  /**
+   * Foreground (true) / background (false) changes of the app surface. Returns an unsubscribe.
+   * Best-effort: a missed event must never be read as a result (06 §7.3, §8.5 #6).
+   */
+  onVisibilityChange(listener: (visible: boolean) => void): () => void;
+}
+
 export interface PlatformPort {
   identity: IdentityPort;
   storage: KeyValueStoragePort;
@@ -54,4 +62,5 @@ export interface PlatformPort {
   clipboard: ClipboardPort;
   external: ExternalNavigationPort;
   haptic: HapticPort;
+  lifecycle: LifecyclePort;
 }

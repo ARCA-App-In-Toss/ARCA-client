@@ -1,4 +1,4 @@
-import type { DraftIdentity, DraftRepository } from './draftRepository.ts';
+import type { DraftContext, DraftIdentity, DraftRepository } from './draftRepository.ts';
 
 // Keeping schedule for one open draft (06 §7.3, 04 IX-005). A write is requested at 500ms after the
 // last completed change or 2s after the first unkept change, whichever comes first; typing never
@@ -33,11 +33,14 @@ export interface DraftWriterOptions {
   initialLastModifiedAt: number | null;
   onStatus?: (status: KeepStatus) => void;
   timers?: Timers;
+  /** Date and question kept with the text so F13 can show them after the day passes. */
+  context?: DraftContext;
 }
 
 export class DraftWriter {
   private readonly repository: DraftRepository;
   private readonly identity: DraftIdentity;
+  private readonly context: DraftContext | undefined;
   private readonly timers: Timers;
   private readonly onStatus: (status: KeepStatus) => void;
 
@@ -57,6 +60,7 @@ export class DraftWriter {
   constructor(options: DraftWriterOptions) {
     this.repository = options.repository;
     this.identity = options.identity;
+    this.context = options.context;
     this.timers = options.timers ?? realTimers;
     this.onStatus = options.onStatus ?? (() => undefined);
     this.text = options.initialText;
@@ -159,7 +163,7 @@ export class DraftWriter {
       const lastModifiedAt = this.lastModifiedAt ?? this.repository.now();
       try {
         if (text === '') await this.repository.remove(this.identity);
-        else await this.repository.save(this.identity, text, lastModifiedAt);
+        else await this.repository.save(this.identity, text, lastModifiedAt, this.context);
         this.confirmedVersion = Math.max(this.confirmedVersion, version);
         if (this.failedVersion !== null && this.failedVersion <= version) this.failedVersion = null;
       } catch {

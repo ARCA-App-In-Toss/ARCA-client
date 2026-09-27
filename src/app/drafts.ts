@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { DraftIdentity } from '../domain/drafts/draftRepository.ts';
+import type { DraftContext, DraftIdentity } from '../domain/drafts/draftRepository.ts';
 import { DraftWriter, type KeepStatus } from '../domain/drafts/draftWriter.ts';
 import { useAppServicesInternal } from './AppServices.tsx';
 
@@ -22,8 +22,11 @@ export interface DraftSession {
 }
 
 /** One open draft per identity (06 §7). Switching identity flushes nothing by itself; callers flush first. */
-export function useDraftSession(identity: DraftIdentity | null): DraftSession {
+export function useDraftSession(identity: DraftIdentity | null, context?: DraftContext): DraftSession {
   const services = useAppServicesInternal();
+  // Latest date/question for the record value; it never changes which draft is open.
+  const contextRef = useRef(context);
+  contextRef.current = context;
   const [load, setLoad] = useState<DraftLoad>({ kind: 'loading' });
   const [text, setText] = useState('');
   const [status, setStatus] = useState<KeepStatus>({ kind: 'clean' });
@@ -44,6 +47,7 @@ export function useDraftSession(identity: DraftIdentity | null): DraftSession {
         identity,
         initialText,
         initialLastModifiedAt: lastModifiedAt,
+        ...(contextRef.current ? { context: contextRef.current } : {}),
         onStatus: (next) => {
           if (active) setStatus(next);
         },

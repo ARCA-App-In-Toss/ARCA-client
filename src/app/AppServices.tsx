@@ -1,5 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
-import { createContext, type ReactNode, useContext, useMemo, useSyncExternalStore } from 'react';
+import {
+  createContext,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useSyncExternalStore,
+} from 'react';
 import type { AnswerDetail, AnswerPage, PassengerProfile, Today } from '../data/api/models.ts';
 import { queryKeys } from '../data/query/keys.ts';
 import type { ClipboardResult, ExternalOpenResult } from '../platform/ports.ts';
@@ -67,6 +75,47 @@ export function useToday() {
     queryFn: ({ signal }) =>
       services.session.run('ACTIVE', (auth) => services.api.getToday(auth, START_EXCERPT_PROFILE, signal)),
   });
+}
+
+/** Re-reads OP-005 for the current owner (IX-012 새 질문 확인, KST boundary, foreground). */
+export function useRefreshToday() {
+  const services = useAppServices();
+  const { session } = useAppSnapshot();
+  return useCallback(() => {
+    if (!session?.generation) return;
+    void services.queryClient.invalidateQueries({
+      queryKey: queryKeys.today(session.ownerScope, session.generation, START_EXCERPT_PROFILE),
+    });
+  }, [services, session?.ownerScope, session?.generation]);
+}
+
+const KST_OFFSET_MS = 9 * 60 * 60 * 1_000;
+const DAY_MS = 24 * 60 * 60 * 1_000;
+/** Small delay past the boundary so the server has certainly moved to the new day. */
+const KST_BOUNDARY_SLACK_MS = 2_000;
+
+/** Delay from `now` until just after the next KST midnight (a re-query hint only). */
+export function msUntilKstBoundary(now: number): number {
+  const nextMidnightUtc = Math.floor((now + KST_OFFSET_MS) / DAY_MS + 1) * DAY_MS - KST_OFFSET_MS;
+  return nextMidnightUtc - now + KST_BOUNDARY_SLACK_MS;
+}
+
+/**
+ * Re-query OP-005 on screen entry (except the entry that consumes F00's seeded read model) and at
+ * the next KST midnight. Device time only schedules the hint; the server response decides the day
+ * (06 §6.2, 04 IX-029).
+ */
+export function useTodayRefreshEvents(options: { onEntry: boolean }) {
+  const services = useAppServices();
+  const refresh = useRefreshToday();
+  const { onEntry } = options;
+  useEffect(() => {
+    if (onEntry && !services.consumeTodaySeed()) refresh();
+  }, [services, refresh, onEntry]);
+  useEffect(() => {
+    const handle = setTimeout(refresh, msUntilKstBoundary(services.platform.clock.now()));
+    return () => clearTimeout(handle);
+  }, [services, refresh]);
 }
 
 export function useIsOffline() {

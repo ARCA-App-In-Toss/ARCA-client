@@ -1,10 +1,14 @@
-import type { z } from 'zod';
+import { z } from 'zod';
 import { ProtocolFailure, TransportFailure } from '../failures.ts';
 import { toDomainFailure } from './errorEnvelope.ts';
 import {
   zAnswerDetail,
   zAnswerPage,
+  zAnswerWriteClosedOutcomeUnavailableReconciled,
   zAnswerWriteCommandResult,
+  zAnswerWriteExecuting,
+  zAnswerWriteNotApplied,
+  zAnswerWriteSucceeded,
   zCreatePassengerResponse,
   zEstablishSessionResponse,
   zGetPassengerResponse,
@@ -14,6 +18,7 @@ import {
 import type {
   AnswerDetail,
   AnswerPage,
+  AnswerWriteClosure,
   AnswerWriteResult,
   Availability,
   ConsentReceipt,
@@ -24,6 +29,7 @@ import type {
   NicknameReceipt,
   PassengerProfile,
   PrepareAnswerCreate,
+  Reconciliation,
   SessionContext,
   Today,
 } from './models.ts';
@@ -87,6 +93,11 @@ export interface ArcaApi {
   ): Promise<AnswerWriteResult>;
   /** OP-009. */
   acknowledgeCommand(auth: Bearer, ticketId: string): Promise<void>;
+  /**
+   * OP-015, only for the user's explicit close/cleanup action (05 §6.10). An EXECUTING reply keeps the
+   * command running; a failure or COMMAND_NOT_FOUND is never evidence that nothing was applied.
+   */
+  closeAnswerWrite(auth: Bearer, ticketId: string, timeoutMs: number): Promise<AnswerWriteClosure>;
 }
 
 async function send<S extends z.ZodType>(
@@ -221,6 +232,20 @@ function toAnswerWriteResult(wire: z.output<typeof zAnswerWriteCommandResult>): 
       };
     }
   }
+}
+
+const zAnswerWriteClosure = z.union([
+  zAnswerWriteSucceeded,
+  zAnswerWriteNotApplied,
+  zAnswerWriteClosedOutcomeUnavailableReconciled,
+]);
+
+function toReconciliation(
+  wire: z.output<typeof zAnswerWriteClosedOutcomeUnavailableReconciled>['reconciliation'],
+): Reconciliation {
+  return wire.nextAction === 'REVIEW_CURRENT_ANSWER'
+    ? { checkedAt: wire.checkedAt, nextAction: wire.nextAction, answerId: wire.answerId, revision: wire.revision }
+    : { checkedAt: wire.checkedAt, nextAction: wire.nextAction };
 }
 
 export function createArcaApi(transport: HttpTransport): ArcaApi {
@@ -386,6 +411,38 @@ export function createArcaApi(transport: HttpTransport): ArcaApi {
         timeoutMs: SAFE_QUERY_TIMEOUT_MS,
       });
       if (response.status === 204) return;
+      if (response.status >= 400) throw toDomainFailure(response.body);
+      throw new ProtocolFailure('status');
+    },
+
+    async closeAnswerWrite(auth, ticketId, timeoutMs) {
+      const response = await transport({
+        method: 'PUT',
+        path: `/commands/${encodeURIComponent(ticketId)}/closure`,
+        bearer: auth.bearer,
+        body: {},
+        timeoutMs,
+      });
+      // 202 is only ever the unchanged EXECUTING state; 200 only a settled or sealed result (05 §7).
+      if (response.status === 202) {
+        const parsed = zAnswerWriteExecuting.safeParse(response.body);
+        if (!parsed.success) throw new ProtocolFailure('schema');
+        return { state: 'EXECUTING', ticketId: parsed.data.ticketId, operationId: parsed.data.operationId };
+      }
+      if (response.status === 200) {
+        const parsed = zAnswerWriteClosure.safeParse(response.body);
+        if (!parsed.success) throw new ProtocolFailure('schema');
+        const wire = parsed.data;
+        if (wire.state === 'CLOSED_OUTCOME_UNAVAILABLE') {
+          return {
+            state: 'CLOSED_OUTCOME_UNAVAILABLE',
+            ticketId: wire.ticketId,
+            operationId: wire.operationId,
+            reconciliation: toReconciliation(wire.reconciliation),
+          };
+        }
+        return toAnswerWriteResult(wire) as AnswerWriteClosure;
+      }
       if (response.status >= 400) throw toDomainFailure(response.body);
       throw new ProtocolFailure('status');
     },

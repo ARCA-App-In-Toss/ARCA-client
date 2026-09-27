@@ -13,6 +13,7 @@ export const paths = {
   today: '/today',
   write: '/today/write',
   saved: '/today/saved',
+  pastDraft: '/today/past-draft',
   archive: '/archive',
   detail: '/archive/detail',
   startError: '/error/start',
@@ -24,6 +25,9 @@ export interface RouteState {
   routeEpoch: number;
   questionRole?: QuestionRole;
   answerRef?: string;
+  /** F13: opaque local draft ref and how it was entered (03 F13 진입). */
+  draftRef?: string;
+  pastDraftEntry?: 'dateChanged' | 'review';
 }
 
 function isRouteState(value: unknown): value is RouteState {

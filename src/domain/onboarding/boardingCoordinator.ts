@@ -75,6 +75,23 @@ export class BoardingCoordinator {
   }
 
   /**
+   * Cold start as ACTIVE with this device's creation tracker (response lost, app closed): true only
+   * when the same ID's OP-003 receipt comes back, so F03 continues; a plain ACTIVE session never
+   * counts as this creation's success (06 §9.1 #4). Without a verifier nothing is resent.
+   */
+  async resumeAsActive(): Promise<boolean> {
+    const stored = zTracker.safeParse(await this.deps.journal.getRecord(PRE_AREA, TRACKER).catch(() => null));
+    if (!stored.success || stored.data.verifier === null) return false;
+    if (!(await this.deps.session.matchesLocalOwner(stored.data.verifier).catch(() => false))) return false;
+    try {
+      await this.deps.session.replayCreationAsActive(stored.data.operationId, stored.data.consents);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
    * An existing tracker for the same local owner is resent unchanged, whatever is selected now: its
    * outcome is still unknown. Without Web Crypto there is no verifier to prove the owner, so the
    * tracker is still kept rather than overwritten by a new ID; the controller then never resends it

@@ -20,6 +20,11 @@ const zTracker = z.object({
   operationId: z.string().min(1),
   prepareInput: zPrepareInput,
   executeIntent: z.boolean(),
+  /**
+   * Set only after the payload is read back (06 §8.3 #4). A tracker without a ticket that never reached
+   * this point was never sent. Older records predate the flag and may have been sent.
+   */
+  networkAllowed: z.boolean().default(true),
   ticketId: z.string().min(1).nullable(),
   outcome: z
     .union([
@@ -85,6 +90,15 @@ export class AnswerWriteStore {
 
   putPayload(dailySemaId: string, payload: AnswerWritePayload): Promise<void> {
     return this.journal.putRecord(this.requireArea(), payloadName(dailySemaId), payload);
+  }
+
+  /** Daily SEMA ids with a kept tracker, from the manifest (no Storage enumeration). */
+  async listTargets(): Promise<string[]> {
+    const manifest = await this.journal.readManifest(this.requireArea());
+    const prefix = trackerName('');
+    return Object.keys(manifest?.entries ?? {})
+      .filter((name) => name.startsWith(prefix))
+      .map((name) => name.slice(prefix.length));
   }
 
   removePayload(dailySemaId: string): Promise<void> {

@@ -221,6 +221,20 @@ export class SessionController {
     return { summary: this.apply(created.session, created.passenger), passenger: created.passenger };
   }
 
+  /**
+   * Cold start already ACTIVE with a kept creation tracker: resend the same OP-003 ID and input under
+   * the ACTIVE session (05 OP-003 same-owner re-request). Only that receipt continues onboarding; any
+   * other answer throws and the caller starts normally (06 §9.1 #4).
+   */
+  async replayCreationAsActive(operationId: string, consents: readonly ConsentReceipt[]): Promise<PassengerProfile> {
+    const current = this.current;
+    if (current?.summary.mode !== 'ACTIVE') throw new SessionModeMismatchFailure();
+    const created = await this.deps.api.createPassenger({ bearer: current.token }, operationId, consents);
+    const summary = this.apply(created.session, created.passenger);
+    if (summary.ownerScope !== current.summary.ownerScope) throw new SessionChangedFailure();
+    return created.passenger;
+  }
+
   /** Drop the token (reload, long background, full deletion success). */
   discard(): void {
     if (!this.current) return;
@@ -289,6 +303,11 @@ export class SessionController {
   private requireToken(): string {
     if (!this.current) throw new SessionModeMismatchFailure();
     return this.current.token;
+  }
+
+  /** Foreground entry: the same proactive refresh as before a request (06 §5.4). */
+  refreshOnForeground(): Promise<void> {
+    return this.refreshIfNearExpiry();
   }
 
   /** Proactive margin min(60s, 10% of observed TTL); device time is only a hint (06 §5.4). */

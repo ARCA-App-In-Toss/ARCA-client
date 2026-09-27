@@ -11,6 +11,8 @@ export interface AnswerWriteHandle {
   view: WriteView;
   save(input: PrepareAnswerCreate, flushKept: () => Promise<KeptDraft | null>): void;
   recheck(): void;
+  /** The user's explicit close of a request this device can no longer execute (04 IX-041). */
+  close(): void;
   /** Screen consumed a settled view (success navigation, error shown and dismissed). */
   consume(): void;
 }
@@ -32,6 +34,9 @@ export function useAnswerWrite(dailySemaId: string | null): AnswerWriteHandle {
       },
       recheck: () => {
         if (dailySemaId) void writes.recheck(dailySemaId);
+      },
+      close: () => {
+        if (dailySemaId) void writes.close(dailySemaId);
       },
       consume: () => {
         if (dailySemaId) writes.acknowledgeView(dailySemaId);

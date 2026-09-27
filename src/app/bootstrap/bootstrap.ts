@@ -31,6 +31,8 @@ export interface BootstrapDeps {
   api: ArcaApi;
   queryClient: QueryClient;
   network: NetworkPort;
+  /** Cold start as ACTIVE with a kept creation tracker: true only on the same ID's OP-003 receipt. */
+  resumeCreation?: () => Promise<boolean>;
 }
 
 class DeletionRecoveryPendingFailure extends Error {
@@ -119,6 +121,11 @@ export async function runBootstrap(
     // Full-deletion recovery is an app-wide gate owned by step 7; until then no private screen opens.
     if (summary.mode === 'DELETION_RECOVERY') throw new DeletionRecoveryPendingFailure();
 
+    // Before the PRE area is cleared: a creation whose response was lost continues to F03 only with
+    // its own receipt; otherwise the normal ACTIVE start applies (06 §9.1 #4).
+    if (!reuse && !handoff && summary.mode === 'ACTIVE' && deps.resumeCreation) {
+      if (await deps.resumeCreation().catch(() => false)) handoff = 'boarded';
+    }
     const root = await reconcileLocalArea(deps.journal, summary);
 
     if (summary.mode === 'PRE_PASSENGER') {

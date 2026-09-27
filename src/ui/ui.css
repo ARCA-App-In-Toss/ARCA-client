@@ -623,3 +623,37 @@ p {
 .arca-alert-dialog:focus {
   outline: none;
 }
+
+/* CMP-018 PixelSheet: bottom sheet over the dimmer; the Safe Area stays clear of its controls. */
+.arca-sheet {
+  position: fixed;
+  z-index: var(--layer-dialog);
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-400);
+  width: min(100vw, var(--layout-content-max));
+  max-height: calc(100dvh - var(--space-1200));
+  overflow-y: auto;
+  padding: var(--space-600) var(--layout-gutter-compact) calc(var(--space-600) + env(safe-area-inset-bottom));
+  background: var(--color-bg-scene);
+  color: var(--color-text-on-dark-primary);
+  border: var(--border-default) solid var(--color-border-on-dark);
+  border-bottom: none;
+  border-radius: var(--corner-scene) var(--corner-scene) 0 0;
+}
+
+.arca-sheet:focus {
+  outline: none;
+}
+
+.arca-sheet-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-200);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}

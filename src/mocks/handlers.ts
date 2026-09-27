@@ -10,6 +10,7 @@ import {
   type MockTicket,
   type MockWorld,
   type Passenger,
+  SYNTHETIC_NEXT_DAY_SEMA,
 } from './world.ts';
 
 const noStore = { 'Cache-Control': 'no-store' };
@@ -70,6 +71,7 @@ function ticketDto(world: MockWorld, ticket: MockTicket, profile: ExcerptProfile
     executeBy: TICKET_TIMES.executeBy,
     state: ticket.state,
   };
+  if (ticket.resultExpired) return { ...base, state: 'CLOSED_OUTCOME_UNAVAILABLE', executionSealed: true };
   if (ticket.state === 'PREPARED' || ticket.state === 'EXECUTING') return base;
   const settled = { ...base, completedAt: ticket.completedAt, resultExpiresAt: TICKET_TIMES.resultExpiresAt };
   if (ticket.state === 'NOT_APPLIED') return { ...settled, error: ticket.error };
@@ -361,6 +363,10 @@ export function createHandlers(world: MockWorld, baseUrl = MOCK_API_BASE) {
       const operationId = request.headers.get('Idempotency-Key') ?? '';
       const body = (await request.json()) as Record<string, unknown>;
       const fingerprint = JSON.stringify(body);
+      if (world.advanceDayOnFirstPrepare) {
+        world.advanceDayOnFirstPrepare = false;
+        world.sema = SYNTHETIC_NEXT_DAY_SEMA;
+      }
       const existing = [...world.tickets.values()].find((t) => t.owner === owner && t.operationId === operationId);
       let response: Response;
       if (existing) {
@@ -368,7 +374,13 @@ export function createHandlers(world: MockWorld, baseUrl = MOCK_API_BASE) {
           existing.fingerprint === fingerprint
             ? HttpResponse.json(ticketDto(world, existing, 'COMPACT'), { status: 200, headers: noStore })
             : HttpResponse.json(errorBody('IDEMPOTENCY_KEY_REUSED', 'CONFLICT'), { status: 409, headers: noStore });
-      } else if (body.dailySemaId !== world.sema.dailySemaId || body.semaId !== world.sema.semaId) {
+      } else if (body.dailySemaId !== world.sema.dailySemaId) {
+        // The server KST day moved on: a past day's new answer is refused (05 §8.2, F13).
+        response = HttpResponse.json(errorBody('DATE_CHANGED', 'VALIDATION', { recovery: { kind: 'REFRESH_TODAY' } }), {
+          status: 422,
+          headers: noStore,
+        });
+      } else if (body.semaId !== world.sema.semaId || body.semaVersion !== world.sema.version) {
         response = HttpResponse.json(
           errorBody('SEMA_REPLACED', 'VALIDATION', { recovery: { kind: 'REFRESH_TODAY' } }),
           {
@@ -481,6 +493,51 @@ export function createHandlers(world: MockWorld, baseUrl = MOCK_API_BASE) {
       }
       ticket.acknowledged = true;
       return new HttpResponse(null, { status: 204 });
+    }),
+
+    http.put(`${baseUrl}/v1/commands/:ticketId/closure`, async ({ request, params }) => {
+      const bearer = bearerOf(request);
+      world.requests.push({ op: 'OP-015', bearer });
+      const fault = world.takeFault('OP-015');
+      if (fault && fault.kind !== 'lose-response') {
+        const faulted = await respondWith(fault, 'OP-015');
+        if (faulted) return faulted;
+      }
+      const owner = activeOwner(world, bearer);
+      if (owner instanceof Response) return owner;
+      const ticket = world.tickets.get(String(params.ticketId));
+      if (!ticket || ticket.owner !== owner) {
+        return HttpResponse.json(errorBody('COMMAND_NOT_FOUND', 'VALIDATION'), { status: 404, headers: noStore });
+      }
+      // Past result gone: verify the seal and report the current state from one snapshot (05 §6.10).
+      if (ticket.resultExpired) {
+        const current = world.answersOf(owner).find((a) => a.dailySemaId === ticket.dailySemaId);
+        const reconciliation = current
+          ? {
+              checkedAt: '2026-09-27T02:00:00Z',
+              nextAction: 'REVIEW_CURRENT_ANSWER',
+              answerId: current.answerId,
+              revision: current.revision,
+            }
+          : {
+              checkedAt: '2026-09-27T02:00:00Z',
+              nextAction: ticket.dailySemaId === world.sema.dailySemaId ? 'CREATE_CURRENT_DAY' : 'RETURN_TODAY',
+            };
+        const response = HttpResponse.json(
+          { ...ticketDto(world, ticket, 'COMPACT'), reconciliation },
+          { status: 200, headers: noStore },
+        );
+        return fault?.kind === 'lose-response' ? HttpResponse.error() : response;
+      }
+      // Seals PREPARED atomically against execution; EXECUTING is never force-cancelled (05 §6.10).
+      if (ticket.state === 'PREPARED') {
+        ticket.state = 'NOT_APPLIED';
+        ticket.error = { code: 'COMMAND_CLOSED', category: 'CONFLICT' };
+        ticket.completedAt = '2026-09-27T02:00:00Z';
+      }
+      const status = ticket.state === 'EXECUTING' ? 202 : 200;
+      const response = HttpResponse.json(ticketDto(world, ticket, 'COMPACT'), { status, headers: noStore });
+      return fault?.kind === 'lose-response' ? HttpResponse.error() : response;
     }),
 
     http.get(`${baseUrl}/v1/answers`, async ({ request }) => {
