@@ -1,6 +1,6 @@
 # ARCA Mock 시나리오 명세
 
-- v1.3 · 2026-09-28 · 제품 책임자 승인 설계; 로컬 Mock 구현·회귀 실행 증거는 08 §14.1, 실서버·실기기는 별도 미검증.
+- v1.4 · 2026-09-28 · 제품 책임자 승인 설계; 로컬 Mock 구현·회귀 실행 증거는 08 §14.1, 실서버·실기기는 별도 미검증.
 - 소유 범위: 합성 시작 상태·장애·사건 순서·기대 결과. 실행 방법과 완료 판정은 [.claude/spec/08_QA_AND_INTEGRATION.md §3 · 약 L50–76](08_QA_AND_INTEGRATION.md#3-07-시나리오-실행-전략).
 
 ## 1. 범위와 권위
@@ -215,7 +215,7 @@ P0-core는 질문→작성→저장→다시 읽기와 입력/응답 유실, P0-
 | `MS-SES-004` | 재교환 결과 주체·권한 또는 generation 변경 | 이전 private cache·draft·tracker·navigation 폐기, 이전 command 자동 재실행·늦은 응답 적용 금지 | OP-001; [API-V-014 · API-V-017 · API-V-021, L848, L852 · 약 L782–789](05_API_SPEC.md#15-계약-검증-추적); [Acc #39 · #44 · #50, L129, L140 · 약 L121–140](../../docs/ARCA_MVP_ACCEPTANCE.md#문구복합-실패결과-미확인-복구) |
 | `MS-ONB-001` | 필수 정책 중 하나 누락, 제출 직전 version 변경, 이후 최신 두 정책 동의 | 거절 시 passenger 없음·checkbox/scroll 유지. 최신 정확 version 성공에서만 passenger와 동의 원자 생성 | OP-003; [API-V-003 · 약 L771–771](05_API_SPEC.md#15-계약-검증-추적); [Acc #2 · #3 · 약 L53–54](../../docs/ARCA_MVP_ACCEPTANCE.md#최초-탑승) |
 | `MS-ONB-002` | OP-003 commit 뒤 response 유실, PRE token 폐기, OP-001 재교환 후 같은 ID/input 재전송 | 같은 생성 효과와 ACTIVE continuation 복원. 새 passenger·중복 완료 연출 없음, F03으로 replace | OP-001·003; [API-V-003 · API-V-022, L853 · 약 L771–790](05_API_SPEC.md#15-계약-검증-추적); [Acc #3 · #6 · #45, L57, L130 · 약 L54–130](../../docs/ARCA_MVP_ACCEPTANCE.md#최초-탑승) |
-| `MS-ONB-003` | PRE 상태 F01에서 장면 진행·원문 펼침/접기·각 상태의 건너뛰기, 분석 flush 실패 | 원문 조작은 장면 문맥·focus를 보존하고 어디서 건너뛰어도 추가 확인 없이 F02. passenger 생성 없음, 분석 실패가 이동을 막지 않음 | OP-014만 측정; [API-V-018 · 약 L786–786](05_API_SPEC.md#15-계약-검증-추적); [Acc #1 · #2 · 약 L52–53](../../docs/ARCA_MVP_ACCEPTANCE.md#최초-탑승) |
+| `MS-ONB-003` | PRE 상태 F01에서 6장면 진행·각 장면의 건너뛰기, 분석 flush 실패 | 장면 진행은 진행 정보·새 장면 본문을 한 번 알리고 어디서 건너뛰어도 추가 확인 없이 F02. 원문 펼침 조작 없음. passenger 생성 없음, 분석 실패가 이동을 막지 않음 | OP-014만 측정; [API-V-018 · 약 L786–786](05_API_SPEC.md#15-계약-검증-추적); [Acc #1 · #2 · 약 L52–53](../../docs/ARCA_MVP_ACCEPTANCE.md#최초-탑승) |
 | `MS-NICK-001` | F03 빈 값, 1/2/12/13 EGC, 결합 이모지, 금지 문자, 확정 실패 뒤 명시적 건너뛰기 | 빈 값은 무요청 F10. 유효값만 OP-004. 오류·실패는 입력 유지, 사용자가 선택한 건너뛰기만 편집값 폐기 | OP-004; [API-V-004 · 약 L772–772](05_API_SPEC.md#15-계약-검증-추적); [Acc #4 · #7, L58 · 약 L55–58](../../docs/ARCA_MVP_ACCEPTANCE.md#최초-탑승) |
 | `MS-NICK-002` | OP-004 response 유실, 같은 key 재전송 사이 기기 B가 최신 nickname 수정, 결과 7일 만료 | 같은 key receipt를 복원하되 오래된 receipt로 최신 profile을 덮지 않음. 만료 key는 재실행하지 않고 현재 profile 뒤 새 사용자 행동 사용 | OP-002·004; [API-V-004 · API-V-023, L854 · 약 L772–791](05_API_SPEC.md#15-계약-검증-추적); [Acc #4 · #7 · #45, L58, L130 · 약 L55–130](../../docs/ARCA_MVP_ACCEPTANCE.md#최초-탑승) |
 

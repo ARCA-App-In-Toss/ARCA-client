@@ -1,6 +1,6 @@
 # ARCA Design System
 
-- 문서 버전: v1.8
+- 문서 버전: v1.10
 - 최근 수정일: 2026년 9월 28일
 - 상태: 확정
 - 승인 주체: 제품 책임자
@@ -125,7 +125,7 @@
 | `color.bg.canvas.deep` | `#050B15` | 장면의 먼 배경 |
 | `color.border.subtle` | `#2D4059` | 비상호작용 구분선 |
 | `color.brand.edge` | `#91ABE9` | Primary 외곽 |
-| `color.tap-highlight` | `transparent` | 텍스트 행동의 브라우저 tap 배경 제거 |
+| `color.tap-highlight` | `transparent` | 앱 전체 브라우저 tap 배경 제거(`html`에서 상속). 조작 반응은 각 control의 눌림으로 표현 |
 
 위 값은 `src/ui/tokens.css`의 현행 채택값입니다. 네이비 바탕 → 장면 → 기록 면의 명도 차이로 깊이를 만들며 브랜드 블루는 주 행동, 시안은 JOY·신호·포커스, 바이올렛은 기억 표식에 제한합니다. 단계 색은 본문색이나 감정·기능 상태색으로 사용하지 않습니다.
 
@@ -299,20 +299,24 @@ Blur shadow, backdrop blur, glass surface, 연속 gradient glow와 hover 발광�
 | `motion.duration.base` | `180ms` | 화면 본문 진입 fade의 현행 값; Overlay 공통 duration |
 | `motion.duration.scene` | `320ms` | 장면 전환용 예약값; 현재 라우트 진입에는 base 사용 |
 | `motion.duration.memory` | `1600ms` (제품 상한 2000ms) | 최초 저장 기억 조각 형성 전용 |
+| `motion.duration.type` | `35ms` / 글자 | F01 대화창 문장 표시 전용. 문장당 약 1~1.5초 |
+| `motion.duration.glow` | `3000ms` (밝아짐·어두워짐 각 1500ms) | F02 기억 조각 발광 호흡 전용 |
 | `motion.easing.pixel` | `steps(2, end)` | 작은 픽셀 상태 변화 |
 | `motion.easing.settle` | `cubic-bezier(0.2, 0, 0, 1)` | Overlay와 장면의 감속 |
 
 - 일반 버튼의 Pressed는 즉시 2px 이동하며 Primary의 하단 단차를 줄입니다. 밑줄 텍스트 행동(`ghost`, `danger-text`)은 가로 이동·배경 채움 없이 아래로 2px 눌립니다. Reduced Motion에서는 이동도 0px입니다.
 - 화면 본문 `.arca-shell__content`가 mount될 때 opacity 0→1로 180ms 한 번 진입합니다. 위치·배율·퇴장 복제 없이 라우트와 포커스는 즉시 전환합니다. 탭은 밖에 남으며 입력·일반 rerender는 재생하지 않습니다. 이전·다음 화면을 겹치는 crossfade는 구현하지 않았습니다.
-- 무한 반복, 자동 깜빡임, 시차 배경과 읽기 뒤의 움직이는 별가루를 사용하지 않습니다.
+- 무한 반복, 자동 깜빡임, 시차 배경과 읽기 뒤의 움직이는 별가루를 사용하지 않습니다. 유일한 예외는 F02 기억 조각 발광(D-UI-091)입니다: 조각 둘레의 픽셀 빛 3겹만 `motion.duration.glow` 주기·`steps(6)`로 밝아지고 어두워지며, 조각 자체·텍스트·조작은 움직이지 않습니다.
 - 로딩 Placeholder에는 shimmer를 사용하지 않습니다.
-- 한 장면에서 동시에 움직이는 핵심 대상은 하나로 제한합니다.
+- 한 장면에서 동시에 움직이는 핵심 대상은 하나로 제한합니다. F01에서는 대화창 문장 표시가 그 대상이며 장면 이미지는 정지합니다.
+- F01 문장 표시는 무한 반복이 아니라 조작마다 한 번 끝나는 연출입니다. 탭·Enter·Space·진행 조작으로 즉시 완성하고, 표시 중에도 건너뛰기를 막지 않습니다. 커서 깜빡임은 사용하지 않습니다. 문장의 줄바꿈 위치는 표시 시작부터 완성까지 고정되며(글자 단위 가시성만 전환), 새 문장은 빈 상태에서 시작합니다.
 
 ### 7.2 Reduced Motion
 
 `prefers-reduced-motion: reduce`에서는 장식성 duration을 0ms로 바꾸고 transform 이동과 단계 애니메이션을 제거합니다. 상태 변화, 포커스와 콘텐츠 자체는 숨기지 않습니다.
 
-- 인트로는 정지 장면과 같은 서사 텍스트를 제공합니다.
+- 인트로는 정지 장면과 완성된 문장을 즉시 제공하고 글자 단위 표시를 생략합니다.
+- F02 기억 조각 발광은 반복을 멈추고 빛이 켜진 정지 상태로 표시합니다.
 - 질문 전환은 새 질문을 즉시 교체하고 포커스·상태를 유지합니다.
 - F10→F11의 공간 연결은 이동 없이 같은 정보·입력 가능 상태로 즉시 전환합니다. 모션이 입력 시작이나 라우트 포커스를 지연시키지 않습니다.
 - 기억 조각은 형성 과정을 생략하고 완료 정지화면과 누적 수를 즉시 표시합니다.
@@ -410,7 +414,7 @@ JOY의 얼굴·상징 형상은 탐색할 수 있지만 첫 비교안은 표정 
 | CMP-009 | `PixelField` | Label·control·help·count·error 조합 | 시각 wrapper, 실제 Label 연결 |
 | CMP-010 | `PixelTextField` | 닉네임 등 한 줄 입력 | 네이티브 `input` |
 | CMP-011 | `PixelTextarea` | 1~2,000자 응답 작성·수정 | 네이티브 `textarea` |
-| CMP-012 | `PixelCheckboxRow` | 필수 약관 한 항목의 동의와 전문 열람 | 네이티브 checkbox와 별도 link·button |
+| CMP-012 | `PixelCheckboxRow` | 필수 약관 한 항목의 동의와 전문 열람 | 네이티브 checkbox, Label 안의 밑줄 약관 이름 button(Label 요소 밖 형제) |
 | CMP-013 | `SemaSignalPanel` | 현재 질문 우선, 짧은 JOY Label·패널 상단 날짜 | ScenePanel 기반 domain composition |
 | CMP-014 | `QuestionSwitchAction` | 기본·대체 질문의 명시적 전환 | PixelButton secondary 또는 text action |
 | CMP-015 | `MemoryRow` | 질문 일부 중심, 날짜 보조 목록 항목; 응답은 상세 | 하나의 link·button hit area |
@@ -458,7 +462,7 @@ CMP의 이름·의미·상태·접근성은 출처와 무관하게 유지합니�
 | Disabled | 네이티브 `disabled`, shadow 제거, disabled 시각과 cursor 사용 |
 | Loading | 크기와 Label 영역 유지, `aria-busy`, 중복 실행 금지 |
 
-`다른 질문 보기`, `처음 질문 보기`, `삭제하기`는 밑줄 텍스트 행동입니다. 배경 채움·브라우저 tap highlight를 없애고 2px 아래 눌림만 사용하며 44px 이상 타깃과 focus-visible 링을 유지합니다.
+`다른 질문 보기`, `처음 질문 보기`, `삭제하기`는 밑줄 텍스트 행동입니다. 배경 채움을 없애고(브라우저 tap highlight는 앱 전체에서 제거) 2px 아래 눌림만 사용하며 44px 이상 타깃과 focus-visible 링을 유지합니다.
 
 위험 행동을 Primary 색으로 위장하지 않습니다. 삭제의 정확한 확인 단계와 문구는 `04`, 실행 결과와 API 오류는 `05`가 소유합니다.
 
@@ -488,7 +492,9 @@ CMP-009는 위에서 아래로 `Label → Control → Help·Draft status와 Coun
 ### 9.5 약관 Checkbox 계약
 
 - CMP-012는 네이티브 checkbox를 사용하고 시각적 24px 체크 상자와 실제 native input 44×44px 이상의 타깃을 제공합니다.
-- checkbox Label은 선택을 바꾸고, 전문 보기는 별도 44px link·button으로 열리며 선택 상태를 바꾸지 않습니다.
+- Label은 `필수` + 밑줄 약관 이름 + `에 동의해요`로 한 줄에 둡니다. 약관 이름은 전문을 여는 button이며 선택 상태를 바꾸지 않고, 나머지 Label 텍스트는 선택을 바꿉니다. 약관 이름의 세로 타깃은 줄 배치를 바꾸지 않는 padding으로 44px를 확보하고 접근성 이름은 `… 전문 보기`입니다.
+- `필수`는 본문 서체의 일반 텍스트이며 `color.brand.edge`(동의 면 위 6.7:1)를 사용합니다. `color.brand.primary`는 같은 면에서 2.4:1이라 텍스트에 쓰지 않습니다.
+- 간격: 보이는 24px 체크 상자와 텍스트 사이 12px(44px 타깃의 투명 테두리 포함), `필수`와 약관 이름 사이 8px. 체크 상자·`필수`·약관 이름의 세로 중심을 맞춥니다.
 - 서비스 이용약관과 개인정보처리방침 두 항목을 독립적으로 표시합니다.
 - 두 필수 항목이 모두 선택되기 전 주 행동은 비활성화합니다.
 - MVP에는 전체 동의, 선택 동의와 마케팅 동의를 만들지 않습니다([Rules ON-02~ON-03 · L35–36](../../docs/ARCA_MVP_RULES.md#2-최초-탑승과-승객)).
@@ -632,7 +638,7 @@ F20의 보류한 최신 목록은 CMP-020과 CMP-007의 보조 행동으로 알�
 
 현행 기준 원본은 `src/ui/tokens.css`, `ui.css`, `pixel.tsx`와 화면 JSX입니다. 2026-09-28 사용자 요청에 따라 목록 질문·날짜, 세 크기 타입 체계, 텍스트 행동 눌림, 본문 진입 fade를 채택했습니다. 393px·320px·200% 합성 데이터 비교와 Chromium·WebKit 회귀 증거는 [08 §14.1](./08_QA_AND_INTEGRATION.md#141-2026-09-28-ui-정리와-ime-카운터-검증)에 연결합니다.
 
-- 완료: 코드 기반 인트로 3장면·JOY 관측등·기록 매체·관측창, 외부 UI/아이콘/폰트 추가 없는 통합, 시스템 본문 역할·타입 세 크기, 질문·입력·내 문장 위계, 체크박스 44px·탭 확대·텍스트 행동·Reduced Motion.
+- 완료: 코드 기반 인트로 6장면·JOY 관측등·기록 매체·관측창, 외부 UI/아이콘/폰트 추가 없는 통합, 시스템 본문 역할·타입 세 크기, 질문·입력·내 문장 위계, 체크박스 44px·탭 확대·텍스트 행동·Reduced Motion.
 - 완료: 합성 데이터의 목록→상세·수정/삭제, F10 완료·F12 발췌, 오류·빈 상태·확대 비교. 이 완료 표시는 브라우저 검증 범위입니다.
 - 남음: 실제 iOS·Android 토스 WebView의 OS 키보드·IME·선택 핸들·Safe Area·VoiceOver/TalkBack, 실제 기기 장기 읽기와 성능.
 - 남음: Asset Manifest에 남은 기존 로고의 출처·운영 사용 승인. 데모 UI 채택과 운영 출시 승인은 구분합니다.

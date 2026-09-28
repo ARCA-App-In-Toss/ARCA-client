@@ -296,3 +296,24 @@ candidate 필수 행이 모두 PASS이며 [docs/ARCA_MVP_ACCEPTANCE.md §4 · �
 이전 디자인 검증의 axe 자동 위반은 0이며 CSS 배경 프레임의 일부 대비는 자동 판정 불가여서 실제 토큰 계산을 병행했습니다. 카운터 CDP 경로와 높이 축소 키보드 공간 에뮬레이션은 OS 키보드·iOS/Android IME·토스 WebView 실기기 확인을 대신하지 않습니다. 실제 기기·VoiceOver/TalkBack·운영 서버·출시 gate는 미완료입니다. Vite의 500kB 초과 청크 경고는 남아 있으며 별도 번들 분할 검토 대상입니다.
 
 `.playwright/`의 원본 캡처·로그는 Git 제외된 로컬 스크래치 자료입니다. `docs/`도 저장소의 기존 ignore 정책으로 로컬 참조이며 해당 파일의 현행 문구는 동기화했으나 추적 설정을 바꾸거나 강제 stage하지 않았습니다. 재현 가능한 회귀 테스트와 이 명세의 결과 기록을 함께 보존합니다.
+
+### 14.2 2026-09-28 인트로·탑승 흐름 정리
+
+F01 6장면 대화창, F02·F03 하단 Primary 정렬·약관 링크·기억 조각 발광, F20 빈 상태, 이동 scroll 초기화, tap highlight 제거의 로컬 검증입니다. 합성 데이터만 사용했습니다.
+
+| 범위 | 현행 결과 | 증거·재현 위치 |
+|---|---|---|
+| F01 문장 표시 | 문장 교체·즉시 완성·Reduced Motion·Enter/장면 탭·마지막 뒤 Primary 단독; 새 문장 첫 frame에 이전 길이의 일부가 보이지 않음 | `IntroScreen.test.tsx` |
+| F01 줄바꿈 고정 | 마지막 문장을 320·360·390px에서 표시하는 동안 글자별 줄 이동 0회(이전 두 덩어리 표시 방식은 Chromium 320px에서 125회) | `tests/browser-onboarding/onboarding.spec.ts` `typing never moves…` |
+| 하단 Primary 정렬 | F01 `탑승 준비하기`·F02 `동의하고 탑승하기`·F03 `첫 질문 만나기` 하단 좌표 일치(360×740·390×844). 320×568의 F02는 내용이 길어 Primary가 흐름을 따라감 | 같은 파일 `share one bottom position` |
+| 이동 scroll | 긴 F20에서 F21로 이동하면 scrollY 0, 앱 뒤로 버튼으로 F20 행 위치 복원. 초기화 제거 시 실패 확인 | `tests/browser-archive/archive.spec.ts` `scroll: a forward move…` |
+| tap highlight | F01~F03·F10·F20·F21·F30의 button·a·label·input 전부 투명. 전역 규칙 제거 시 실패 확인 | 두 browser spec의 `no native tap highlight…` |
+| F02 약관 | 밑줄 약관 이름은 전문만 열고 선택 불변, 뒷부분 Label은 선택 전환. 상자↔`필수` 12px·`필수`↔약관 8px·세 요소 세로 중심 일치(Chromium·WebKit) | `BoardingScreen.test.tsx`, 로컬 측정 |
+
+- `./node_modules/.bin/biome check .`: PASS (107 files)
+- `./node_modules/.bin/tsc -b`: PASS
+- `node .claude/hooks/checks/token-lint.mjs`: PASS
+- `./node_modules/.bin/vitest run --project unit`: PASS (22 files, 278 tests)
+- `./node_modules/.bin/vite build && ./node_modules/.bin/playwright test`: PASS (Chromium·WebKit, 46 tests)
+
+생성 이미지(AST-004)는 아직 없으며 코드 장면이 정적 대체입니다. 실기기 토스 WebView·VoiceOver/TalkBack·실제 IME에서의 타이핑·발광·tap 반응은 미검증입니다.

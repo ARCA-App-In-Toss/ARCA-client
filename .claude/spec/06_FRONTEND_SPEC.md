@@ -1,6 +1,6 @@
 # ARCA 프런트엔드 구현 명세
 
-- 문서 버전: v1.5
+- 문서 버전: v1.7
 - 최근 수정일: 2026년 9월 28일
 - 상태: 확정
 - 승인 주체: 제품 책임자
@@ -326,6 +326,8 @@ F23은 Radix AlertDialog wrapper와 route가 같은 open state를 공유합니�
 각 history entry는 로컬 `routeEpoch`만 갖습니다. generation 변경·전체 삭제 성공 시 새 route epoch를 만들고 이전 epoch entry는 guard에서 현재 안전 root로 `replace`합니다. 전체 삭제 뒤에는 메모리 completion model, NavigationContext, answer/draft ref, Query cache, Overlay·공통 장면 state를 제거한 뒤 F01로 교체합니다. WebView가 과거 history 자체를 물리적으로 제거한다고 가정하지 않으며, stale entry가 다시 열려도 bootstrap/guard가 삭제된 내용을 렌더링하지 않는 것으로 보호합니다.
 
 ### 5.6 NavigationContext의 수명과 복원
+
+앞으로 가는 이동(push·replace)은 새 화면을 맨 위에서 엽니다. 이전 화면의 scroll 위치를 넘기지 않으며, 초기화는 route outlet보다 먼저 실행되어 화면 자신의 anchor 복원(F20 행 등)이 우선합니다. 뒤로/앞으로(POP)는 브라우저 위치를 유지합니다(D-TECH-060).
 
 `NavigationContext`는 `{ownerScope, generation, routeEpoch, route, opaqueRef}`별 질문 선택·UTF-16 selection·scroll anchor/offset·복귀 대상·확인할 edit/revision 식별만 메모리에 보관합니다. 본문·발췌·질문 원문·닉네임·token·ticket과 Query/draft 정본을 복제하지 않습니다. Overlay·키보드 열림·F12 행동 위계도 옮기지 않습니다.
 
@@ -656,14 +658,14 @@ local storage 오류, protocol 오류, transport 오류, domain 오류는 합치
 | 화면 | 서버 데이터·OP | 화면 local·입력/임시본 | 진입·이탈과 성공/실패 동기화 | 추적 |
 |---|---|---|---|---|
 | F00 | OP-001, ACTIVE 뒤 OP-005 | bootstrap phase와 안전 오류 분류만 | 앱 시작·F90 재시도. session/삭제 gate 뒤 route query·대상 복구 병행, 비대상 청소 후행; 실패 F90 | ON-02·06·08, IX-009·032·036, API-V-001~002·022, Acc #2·6·29 |
-| F01 | 기능 OP 없음, OP-014 측정 | 장면 index, 원문 펼침, 건너뛰기 | PRE에서 진입, root Back 종료, 완료 F02. 이벤트 실패는 이동을 막지 않음 | ON-01, IX-020, Acc #1~2 |
+| F01 | 기능 OP 없음, OP-014 측정 | 장면 index, 건너뛰기 | PRE에서 진입, root Back 종료, 완료 F02. 이벤트 실패는 이동을 막지 않음 | ON-01, IX-020, Acc #1~2 |
 | F02 | OP-001 정책, OP-003 | 두 checkbox·외부 문서 복귀 위치; draft 없음 | 생성 input 선보관, ACTIVE session을 F03에 인계. 응답 유실은 같은 ID 복원 | ON-02·03·07·08, IX-031~032, API-V-003·022, Acc #3·6 |
 | F03 | OP-002/profile, 조건부 OP-004 | 닉네임 input·IME·편집 오류; draft 없음 | 빈 값은 무요청 F10. 성공 후 profile patch, 확정 실패 뒤 명시적 건너뛰기. 미확인 receipt 복원 | ON-04~06, IX-001~004·035, API-V-004·023, Acc #4·7 |
 | F10 | OP-005, target tracker가 있으면 OP-008·009 우선 | 질문 선택·탐색 snapshot, 도움말·지난 draft Sheet, 공통 장면 완료 action | entry/foreground/KST 힌트 재조회. 미결 daily target은 F11 복구로 연결; 수정·삭제 뒤 today/발췌 갱신 | SE-01~09, AN-09, IX-015·027·029·033·036·038, API-V-005·024~026, Acc #9~11·33~34·39 |
 | F11 | OP-006~009, 명시적 OP-015 | 선택 질문, exact input·IME·cursor, create draft, command 표시 | 질문 전환/Back/save 전 flush. terminal success 현재 화면이면 F12, NOT_APPLIED면 입력 유지, unknown은 안전 이탈 | SE-01·05~09, AN-01~05·09, IX-005~012·019·036~041, API-V-006~010·020·024·026, Acc #12~18·36~40·43 |
 | F12 | OP-008·009, 필요 시 OP-005 | completion model, 연출 1회, 첫 조작 시 action hierarchy snapshot | core success 즉시 표시. 발췌·count 독립 갱신; 늦은 조회로 버튼 위계 변경 금지. Back/행동 F10·F20 | AN-06·08, IX-020~021·039, API-V-010·025, Acc #35 |
 | F13 | 필수 OP 없음 | 선택 draft exact text, 실제 만료, copy 상태 | F10 Sheet·날짜 변경에서 진입. 만료면 원문 복원 금지; copy adapter 실패 시 직접 선택, 오늘 이동 F10 | SE-05, AN-02·05·09, IX-022·027~028·034·040~041, Acc #15·18·40 |
-| F20 | OP-010 + 누적 수 OP-005, OP-014 측정 | page chain view·보류 후보, 월 구획, 더 보기/갱신 행동, scroll anchor | entry 첫 page refresh·IX-042 명시적 적용. count 실패와 목록 독립; row F21, empty F10. 수정/삭제는 load row만 반영 | AR-01·02·09, IX-023·027~029, API-V-010·012·016, Acc #21·33·38·41 |
+| F20 | OP-010 + 누적 수 OP-005, OP-014 측정 | page chain view·보류 후보, 월 구획, 더 보기/갱신 행동, scroll anchor | entry 첫 page refresh·IX-042 명시적 적용. count 실패와 목록 독립; row F21, empty는 루트 탭으로 F10. 수정/삭제는 load row만 반영 | AR-01·02·09, IX-023·027~029, API-V-010·012·016, Acc #21·33·38·41 |
 | F21 | OP-011, 미결 answer tracker면 OP-008·009 우선 | 읽기 scroll, action focus | row/수정 복귀에서 진입. 다른 기기 변경은 최신 detail; 수정 F22, 삭제 F23, missing F20 | SE-09, AN-07·09, AR-03·09, IX-024·029·036·041, API-V-011·013·025, Acc #19·22~23·33·39 |
 | F22 | OP-011·006~009, 명시적 OP-015 | exact input·IME·cursor, answer/baseRevision draft | detail 뒤 draft load. save 전 flush/선보관; 성공 F21, conflict 최신 상세, unknown 안전 이탈. F12 없음 | AN-01~04·07·09, AR-03·09, IX-005·007~009·016·019·024·036~041, API-V-006·009·011·020·026, Acc #19·36~40·43 |
 | F23 | OP-011·012·007~009, 명시적 OP-015 | AlertDialog open/focus, delete command 상태 | F21 배경 modal. terminal 전 dismiss·선삭제 금지; 성공 F20, 실패 F21 유지, revision conflict 최신 상세 | AR-04·09, IX-025·029·041, API-V-008·013·020, Acc #22·39·43 |
