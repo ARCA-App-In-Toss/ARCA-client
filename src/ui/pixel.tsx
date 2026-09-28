@@ -335,8 +335,9 @@ export function MemoryFragment({ cell = 4 }: { cell?: number }) {
 }
 
 /* ------------------------------------------------------------------------------------------------
- * Intro scenes (AST-004, code as the adopted reference original). Three still scenes:
- * the voyage → JOY and memory → boarding. Authored with small paint helpers on a 56×30 grid.
+ * Intro scenes (AST-004, code as the adopted reference original). Six still scenes: discovery →
+ * the voyage → Soi and JOY → the reason → JOY and memory → boarding. Authored with small paint
+ * helpers on a 56×30 grid.
  * ---------------------------------------------------------------------------------------------- */
 
 const SCENE_W = 56;
@@ -397,6 +398,113 @@ function windowFrame(g: string[][]) {
   rect(g, 7, 26, 12, 1, 't');
   rect(g, 8, 26, 2, 1, 's');
   rect(g, 43, 26, 6, 1, 'R');
+}
+
+/** One passenger, 4×8, facing right; the parallel self is the same figure mirrored. */
+const figure: readonly string[] = ['.gg.', '.gg.', 'gggg', '.ggg', '.gg.', '.gg.', '.g.g', '.g.g'];
+
+/** Paints a figure whose feet rest on the highest world cell under its four columns. */
+function stand(g: string[][], x: number, mirrored: boolean, ch: string) {
+  let ground = SCENE_H;
+  for (let dx = 0; dx < 4; dx += 1) {
+    for (let y = 4; y < ground; y += 1) {
+      const cell = g[y]?.[x + dx];
+      if (cell === 'T' || cell === 't' || cell === 'N' || cell === 'n') {
+        ground = y;
+        break;
+      }
+    }
+  }
+  figure.forEach((row, dy) => {
+    const cells = mirrored ? [...row].reverse() : [...row];
+    cells.forEach((cell, dx) => {
+      if (cell !== '.') rect(g, x + dx, ground - figure.length + dy, 1, 1, ch);
+    });
+  });
+}
+
+/** Two mirrored worlds; `near` removes the rift and puts a small warm story light between the selves. */
+function sceneMirror(near: boolean): string[] {
+  const g = canvas();
+  rect(g, 1, 1, 54, 27, 'R');
+  rect(g, 2, 2, 52, 25, 'C');
+  plot(
+    g,
+    stars.filter(([x, y]) => x > 2 && y > 2 && y < 16),
+    'l',
+  );
+  for (let y = 2; y < 27; y += 1) {
+    for (let x = 2; x < 54; x += 1) {
+      const left = Math.hypot(x - 12, y - 40);
+      const right = Math.hypot(x - 43, y - 40);
+      if (left <= 21.9) rect(g, x, y, 1, 1, left > 20.7 ? 't' : 'T');
+      if (right <= 21.9) rect(g, x, y, 1, 1, right > 20.7 ? 'n' : 'N');
+    }
+  }
+  if (near) {
+    stand(g, 15, false, 'g');
+    stand(g, 37, true, 'M');
+    rect(g, 27, 13, 2, 2, 'a');
+  } else {
+    for (let y = 3; y < 26; y += 2) rect(g, 27, y, 2, 1, 'S');
+    stand(g, 9, false, 'g');
+    stand(g, 43, true, 'M');
+  }
+  return rowsOf(g);
+}
+
+/** Soi's workshop: pinned questions and answers on the wall, JOY's cabinet by the bench. */
+function sceneWorkshop(): string[] {
+  const g = canvas();
+  rect(g, 2, 2, 52, 22, 'R');
+  rect(g, 4, 4, 48, 18, 'i');
+  rect(g, 6, 5, 12, 7, 'C');
+  plot(
+    g,
+    [
+      [8, 7],
+      [14, 6],
+      [11, 10],
+    ],
+    'l',
+  );
+  rect(g, 6, 12, 12, 1, 't');
+  // Question cards, a few already turned into memory.
+  for (const [x, y, ch] of [
+    [21, 5, 'g'],
+    [25, 5, 'M'],
+    [29, 5, 'g'],
+    [21, 8, 'M'],
+    [25, 8, 'g'],
+    [29, 8, 'm'],
+  ] as const) {
+    rect(g, x, y, 3, 2, ch);
+  }
+  rect(g, 20, 4, 13, 1, 'l');
+  rect(g, 37, 5, 14, 14, 'c');
+  joyLens.forEach((row, y) => {
+    for (let x = 0; x < row.length; x += 1) {
+      const ch = row[x];
+      if (ch && ch !== '.') rect(g, 38 + x, 6 + y, 1, 1, ch);
+    }
+  });
+  rect(g, 37, 18, 14, 4, 'R');
+  rect(g, 39, 19, 2, 1, 's');
+  rect(g, 42, 19, 2, 1, 'S');
+  rect(g, 45, 19, 4, 1, 't');
+  rect(g, 4, 22, 48, 1, 'l');
+  rect(g, 4, 23, 48, 2, 'R');
+  rect(g, 0, 25, 56, 3, 'i');
+  rect(g, 8, 25, 2, 2, 'R');
+  rect(g, 46, 25, 2, 2, 'R');
+  rect(g, 10, 21, 8, 1, 't');
+  rect(g, 12, 20, 3, 1, 'a');
+  figure.forEach((row, dy) => {
+    [...row].forEach((cell, dx) => {
+      if (cell !== '.') rect(g, 31 + dx, 14 + dy, 1, 1, 'g');
+    });
+  });
+  return rowsOf(g);
 }
 
 function sceneVoyage(): string[] {
@@ -520,7 +628,14 @@ export function ObservationScene() {
   return <PixelArt rows={observation} className="arca-observation-art" />;
 }
 
-export const introScenes: readonly (readonly string[])[] = [sceneVoyage(), sceneJoy(), sceneBoarding()];
+export const introScenes: readonly (readonly string[])[] = [
+  sceneMirror(false),
+  sceneVoyage(),
+  sceneWorkshop(),
+  sceneMirror(true),
+  sceneJoy(),
+  sceneBoarding(),
+];
 
 /** One intro scene at 4 CSS px per cell (224×120): fits the 320px content width without scaling. */
 export function IntroScene({ index }: { index: number }) {

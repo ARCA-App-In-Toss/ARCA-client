@@ -635,15 +635,6 @@ h2.arca-label {
   overflow-wrap: anywhere;
 }
 
-.arca-narrative--scene {
-  font-family: var(--font-family-body);
-  font-size: var(--type-narrative-size);
-  line-height: var(--type-narrative-line);
-  font-synthesis: none;
-  text-align: start;
-  text-wrap: pretty;
-}
-
 .arca-intro-bar {
   display: flex;
   align-items: center;
@@ -682,17 +673,6 @@ h2.arca-label {
 .arca-intro-skip {
   width: auto;
   min-height: var(--layout-target-min);
-}
-
-.arca-story {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-400);
-  padding: var(--space-500);
-}
-
-.arca-story > h2 {
-  margin: 0;
 }
 
 /* Long questions use the reading face; the sender retains the pixel voice. */
@@ -1479,13 +1459,104 @@ h2.arca-label {
   align-self: center;
 }
 
-.arca-intro-art {
-  width: var(--art-scene-width);
+/* F01 layers (03 §4.2): the scene is the bottom layer and covers the whole viewport edge to edge;
+ * the progress bar and the dialog box float above it inside the content width. A bitmap scene fills
+ * the backdrop (cover) with its key subject above the dialog; the code scene is the static fallback,
+ * scaled by an integer 5→6 px per cell and centred in the part the dialog leaves visible. */
+.arca-page--intro {
+  background: var(--color-bg-canvas-deep);
 }
 
-.arca-page--intro .arca-scene-panel {
-  gap: var(--space-600);
-  padding: var(--space-500);
+.arca-intro-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-bottom: 32dvh;
+  background: var(--color-bg-canvas-deep);
+  pointer-events: none;
+}
+
+.arca-page--intro .arca-shell__content {
+  position: relative;
+  z-index: 1;
+  min-height: 100dvh;
+  gap: var(--space-400);
+  padding-block: max(var(--space-400), env(safe-area-inset-top)) max(var(--space-600), env(safe-area-inset-bottom));
+}
+
+.arca-intro-stage {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-400);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.arca-intro-view {
+  flex: 1;
+}
+
+.arca-intro-art {
+  width: calc(var(--art-scene-width) / 4 * 5);
+}
+
+@media (min-width: 400px) {
+  .arca-intro-art {
+    width: calc(var(--art-scene-width) / 4 * 6);
+  }
+}
+
+.arca-intro-dialog {
+  --px-fill: var(--color-bg-scene);
+  --px-line: var(--color-text-on-dark-secondary);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-400);
+  padding: var(--space-500) var(--space-500) var(--space-400);
+  cursor: default;
+}
+
+/* All sentences of a scene share one cell: the box takes the tallest one's height (at least two
+ * lines) for the whole scene, and a shorter sentence is centred rather than leaving an empty line. */
+.arca-intro-lines {
+  display: grid;
+  align-items: center;
+  min-height: calc(var(--type-narrative-line) * 2);
+  padding-right: var(--space-600);
+}
+
+/* Story lines: left aligned, whole-word wrapping (inherited keep-all) with balanced line lengths so
+ * a sentence never ends on a lone word; older engines fall back to plain word wrapping. */
+.arca-intro-line {
+  grid-area: 1 / 1;
+  margin: 0;
+  text-wrap: balance;
+}
+
+.arca-intro-line--ghost {
+  visibility: hidden;
+}
+
+.arca-intro-line__rest {
+  visibility: hidden;
+}
+
+.arca-intro-next {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: var(--layout-target-min);
+  min-height: var(--layout-target-min);
+  color: var(--color-signal);
+}
+
+.arca-intro-next__mark.is-waiting {
+  visibility: hidden;
 }
 
 .arca-page--compose .arca-scene-panel {
