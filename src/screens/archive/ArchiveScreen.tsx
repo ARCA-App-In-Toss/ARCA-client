@@ -137,10 +137,8 @@ export function ArchiveScreen() {
     body = (
       <StatePanel centered>
         <EmptyArchiveArt />
+        {/* The empty state ends with its title; the root tabs already lead back to today. */}
         <h2 className="arca-label">{copy['CPY-F20-011']}</h2>
-        <PixelButton variant="primary" onClick={() => navigate(paths.today)}>
-          {copy['CPY-F20-013']}
-        </PixelButton>
       </StatePanel>
     );
   } else {
