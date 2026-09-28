@@ -15,6 +15,9 @@ html {
   /* Keep the browser 100% base so user text scaling applies (02 §4.3). */
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+  /* No native tap overlay anywhere (inherited): every control draws its own pressed state and the
+   * focus ring stays separate, so labels, rows and tap areas never flash a grey rectangle. */
+  -webkit-tap-highlight-color: var(--color-tap-highlight);
 }
 
 body {
@@ -1345,8 +1348,6 @@ h2.arca-label {
 /* Text actions: 44px targets, no frame, secondary weight. */
 .arca-button--ghost,
 .arca-button--danger-text {
-  /* Suppress the native rectangular tap overlay; retain the separate focus ring. */
-  -webkit-tap-highlight-color: var(--color-tap-highlight);
   min-height: var(--layout-target-min);
   padding-block: var(--space-200);
 }
@@ -1366,7 +1367,6 @@ h2.arca-label {
   text-decoration-thickness: var(--border-default);
   text-underline-offset: var(--space-100);
   cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
 }
 
 .arca-inline-link:active {
@@ -1600,7 +1600,6 @@ h2.arca-label {
   flex-direction: column;
   gap: var(--space-400);
   cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
 }
 
 .arca-intro-view {
