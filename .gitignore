@@ -46,6 +46,11 @@ lerna-debug.log*
 /docs/
 /spec/
 
+# AST-004 generation work files (sources, references, grid PNGs, converter, prompts); the app uses export/ only
+/design/assets/AST-004/*
+!/design/assets/AST-004/export/
+/design/assets/prompts/
+
 # Editors and operating systems
 .vscode/*
 !.vscode/extensions.json
