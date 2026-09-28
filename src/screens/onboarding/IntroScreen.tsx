@@ -28,6 +28,8 @@ const totalScenes = String(scenes.length);
 const TYPE_STEP_MS = 35;
 /** 02 §7.1 `motion.duration.scene`: a new scene settles first, then its first sentence types. */
 const SCENE_SETTLE_MS = 320;
+/** 02 §7.1 `motion.duration.depart`: after the boarding Primary the intro sinks into the canvas, then F02. */
+const DEPART_MS = 900;
 
 /** Pixel ▼ shown once a sentence is complete; decorative, the control carries the name. */
 const nextMark: readonly string[] = ['#####', '.###.', '..#..'];
@@ -43,6 +45,8 @@ export function IntroScreen() {
   const [position, setPosition] = useState({ scene: 0, sentence: 0 });
   /** True once the reader moves past the last sentence: only the boarding Primary remains. */
   const [boarding, setBoarding] = useState(false);
+  /** True while the intro fades out after the boarding Primary; F02 opens when it ends. */
+  const [departing, setDeparting] = useState(false);
   const sceneSentences = scenes[position.scene] ?? [];
   const sentenceText = sceneSentences[position.sentence] ?? '';
   const characters = Array.from(sentenceText);
@@ -129,6 +133,22 @@ export function IntroScreen() {
   }, [advance]);
 
   const toJoin = () => navigate(paths.join);
+
+  // Boarding fades the whole intro into the canvas before F02 (Reduced Motion opens F02 at once). The
+  // curtain also takes every tap meanwhile, so the Primary cannot fire twice.
+  const board = () => {
+    if (departing) return;
+    if (prefersReducedMotion()) {
+      toJoin();
+      return;
+    }
+    setDeparting(true);
+  };
+  useEffect(() => {
+    if (!departing) return;
+    const timer = window.setTimeout(() => navigate(paths.join), DEPART_MS);
+    return () => window.clearTimeout(timer);
+  }, [departing, navigate]);
   const current = String(position.scene + 1);
   const progressLabel = fill(copy['CPY-F01-003'], { currentScene: current, totalScenes });
   const announcement =
@@ -169,7 +189,7 @@ export function IntroScreen() {
         <div className="arca-intro-view" />
         {boarding ? (
           <div className="arca-actions">
-            <PixelButton ref={boardRef} variant="primary" onClick={toJoin}>
+            <PixelButton ref={boardRef} variant="primary" onClick={board}>
               {copy['CPY-F01-005']}
             </PixelButton>
           </div>
@@ -208,6 +228,7 @@ export function IntroScreen() {
           </div>
         )}
       </div>
+      {departing ? <div className="arca-intro-curtain" aria-hidden="true" /> : null}
       <div className="arca-visually-hidden" role="status" aria-live="polite">
         {announcement || (deletedNotice ? copy['CPY-F31-019'] : '')}
       </div>

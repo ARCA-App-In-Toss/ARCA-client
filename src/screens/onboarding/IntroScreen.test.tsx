@@ -200,6 +200,23 @@ describe('F01 intro (IX-030, MS-ONB-003)', () => {
     expect(backdrop.querySelectorAll('img')).toHaveLength(1);
   });
 
+  test('boarding fades the intro into the canvas before F02 opens; Reduced Motion opens it at once (02 §7.1)', async () => {
+    reducedMotion(false);
+    const { router } = await bootIntro();
+    // Each press completes the typing sentence or moves on; the last one leaves the boarding Primary.
+    for (let press = 0; press < 40 && !screen.queryByRole('button', { name: copy['CPY-F01-005'] }); press += 1) {
+      await userEvent.click(button(copy['CPY-F01-004']));
+    }
+    await userEvent.click(button(copy['CPY-F01-005']));
+    // Still on F01 under a curtain that takes every tap, so the Primary cannot fire twice.
+    expect(document.querySelector('.arca-intro-curtain')).not.toBeNull();
+    expect(router.state.location.pathname).not.toBe(paths.join);
+    expect(
+      await screen.findByRole('heading', { level: 1, name: copy['CPY-F02-001'] }, { timeout: 3000 }),
+    ).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe(paths.join);
+  });
+
   test('skip on the first scene opens F02 with no confirmation step', async () => {
     await bootIntro();
     await userEvent.click(button(copy['CPY-F01-006']));

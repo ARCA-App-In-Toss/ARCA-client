@@ -144,6 +144,8 @@
   --motion-duration-fast: 120ms;
   --motion-duration-base: 180ms;
   --motion-duration-scene: 320ms;
+  /* F01 → F02: the intro sinks into the canvas after the boarding Primary. */
+  --motion-duration-depart: 900ms;
   /* F02 fragment glow: one full breath (brighten + dim). */
   --motion-duration-glow: 3000ms;
   --motion-duration-memory: 1600ms;
@@ -157,6 +159,7 @@
     --motion-duration-fast: 0ms;
     --motion-duration-base: 0ms;
     --motion-duration-scene: 0ms;
+    --motion-duration-depart: 0ms;
     --motion-duration-memory: 0ms;
   }
 }

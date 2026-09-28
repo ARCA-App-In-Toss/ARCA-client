@@ -298,6 +298,7 @@ Blur shadow, backdrop blur, glass surface, 연속 gradient glow와 hover 발광�
 | `motion.duration.fast` | `120ms` | 작은 상태·아이콘 변화 |
 | `motion.duration.base` | `180ms` | 화면 본문 진입 fade의 현행 값; Overlay 공통 duration |
 | `motion.duration.scene` | `320ms` | F01 장면 교체(다음 장면이 이전 장면 위로 겹쳐 나타남); 라우트 진입에는 base 사용 |
+| `motion.duration.depart` | `900ms` | F01 탑승 Primary 뒤 인트로가 바탕색으로 가라앉는 페이드 전용 |
 | `motion.duration.memory` | `1600ms` (제품 상한 2000ms) | 최초 저장 기억 조각 형성 전용 |
 | `motion.duration.type` | `35ms` / 글자 | F01 대화창 문장 표시 전용. 문장당 약 1~1.5초 |
 | `motion.duration.glow` | `3000ms` (밝아짐·어두워짐 각 1500ms) | F02 기억 조각 발광 호흡 전용 |
@@ -308,7 +309,7 @@ Blur shadow, backdrop blur, glass surface, 연속 gradient glow와 hover 발광�
 - 화면 본문 `.arca-shell__content`가 mount될 때 opacity 0→1로 180ms 한 번 진입합니다. 위치·배율·퇴장 복제 없이 라우트와 포커스는 즉시 전환합니다. 탭은 밖에 남으며 입력·일반 rerender는 재생하지 않습니다. 이전·다음 화면을 겹치는 crossfade는 구현하지 않았습니다.
 - 무한 반복, 자동 깜빡임, 시차 배경과 읽기 뒤의 움직이는 별가루를 사용하지 않습니다. 유일한 예외는 F02 기억 조각 발광(D-UI-091)입니다: 조각 둘레의 픽셀 빛 3겹만 `motion.duration.glow` 주기·`steps(6)`로 밝아지고 어두워지며, 조각 자체·텍스트·조작은 움직이지 않습니다.
 - 로딩 Placeholder에는 shimmer를 사용하지 않습니다.
-- 한 장면에서 동시에 움직이는 핵심 대상은 하나로 제한합니다. F01에서는 대화창 문장 표시가 그 대상이며 장면 이미지는 정지합니다. 장면이 바뀔 때만 다음 장면이 이전 장면 위로 `motion.duration.scene`·`steps(4)`로 겹쳐 나타나고, 새 장면의 첫 문장은 그 뒤에 표시를 시작합니다. Reduced Motion에서는 즉시 교체합니다.
+- 한 장면에서 동시에 움직이는 핵심 대상은 하나로 제한합니다. F01에서는 대화창 문장 표시가 그 대상이며 장면 이미지는 정지합니다. 장면이 바뀔 때만 다음 장면이 이전 장면 위로 `motion.duration.scene`·`steps(4)`로 겹쳐 나타나고, 새 장면의 첫 문장은 그 뒤에 표시를 시작합니다. 탑승 Primary를 누르면 인트로 전체가 `motion.duration.depart`·`steps(8)`로 바탕색(`color.bg.canvas`)에 가라앉은 뒤 F02가 같은 색 위에서 열리며, 그동안 추가 입력은 받지 않습니다. Reduced Motion에서는 둘 다 즉시 전환합니다.
 - F01 문장 표시는 무한 반복이 아니라 조작마다 한 번 끝나는 연출입니다. 탭·Enter·Space·진행 조작으로 즉시 완성하고, 표시 중에도 건너뛰기를 막지 않습니다. 커서 깜빡임은 사용하지 않습니다. 문장의 줄바꿈 위치는 표시 시작부터 완성까지 고정되며(글자 단위 가시성만 전환), 새 문장은 빈 상태에서 시작합니다.
 
 ### 7.2 Reduced Motion

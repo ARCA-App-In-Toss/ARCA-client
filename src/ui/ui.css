@@ -1619,6 +1619,25 @@ h2.arca-label {
   animation: arca-intro-scene-enter var(--motion-duration-scene) steps(4, end) both;
 }
 
+/* Boarding: the whole intro sinks into the canvas in flat steps (motion.duration.depart), then F02
+   opens on the same colour. The curtain takes taps so nothing fires twice. */
+.arca-intro-curtain {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  background: var(--color-bg-canvas);
+  animation: arca-intro-depart var(--motion-duration-depart) steps(8, end) both;
+}
+
+@keyframes arca-intro-depart {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 @keyframes arca-intro-scene-enter {
   from {
     opacity: 0;
