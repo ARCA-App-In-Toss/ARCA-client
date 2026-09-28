@@ -22,11 +22,13 @@ async function bootBoarding(options: Parameters<typeof bootApp>[1] = {}) {
 
 const terms = () => screen.getByRole('checkbox', { name: copy['CPY-F02-015'] });
 const privacy = () => screen.getByRole('checkbox', { name: copy['CPY-F02-016'] });
+/** The label text after the policy link ("에 동의해요") still toggles its checkbox. */
+const privacyLabel = () => screen.getAllByText(copy['CPY-F02-019'])[1] as HTMLElement;
 const boardButton = () => screen.getByRole('button', { name: copy['CPY-F02-010'] });
 
 async function agreeBoth() {
   await userEvent.click(terms());
-  await userEvent.click(screen.getByText(copy['CPY-F02-005']));
+  await userEvent.click(privacyLabel());
 }
 
 describe('F02 boarding (IX-031, MS-ONB-001/002)', () => {
@@ -40,7 +42,7 @@ describe('F02 boarding (IX-031, MS-ONB-001/002)', () => {
     await userEvent.click(boardButton());
     expect(opCount(world, 'OP-003')).toBe(0);
 
-    await userEvent.click(screen.getByText(copy['CPY-F02-005']));
+    await userEvent.click(privacyLabel());
     expect(privacy()).toBeChecked();
     expect(boardButton()).not.toHaveAttribute('aria-disabled');
     await userEvent.click(boardButton());
@@ -135,9 +137,12 @@ describe('F02 boarding (IX-031, MS-ONB-001/002)', () => {
     expect(privacy()).not.toBeChecked();
     expect(openTerms).toHaveFocus();
 
+    // The policy name itself is the underlined link inside the consent label.
+    expect(openTerms).toHaveTextContent(copy['CPY-F02-017']);
     platform.setExternalFails(true);
     await userEvent.click(screen.getByRole('button', { name: copy['CPY-F02-008'] }));
     expect(await screen.findByText(copy['CPY-F02-014'])).toBeInTheDocument();
+    expect(privacy()).not.toBeChecked();
   });
 });
 

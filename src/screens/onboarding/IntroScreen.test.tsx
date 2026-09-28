@@ -3,7 +3,6 @@ import userEvent from '@testing-library/user-event';
 import { setupServer } from 'msw/node';
 import { afterAll, afterEach, beforeAll, describe, expect, test } from 'vitest';
 import { paths } from '../../app/navigation.ts';
-import introStory from '../../content/introStory.txt?raw';
 import { bootApp, findTitle, opCount } from '../../test/boot.tsx';
 import { copy } from '../../ui/copy.ts';
 
@@ -21,19 +20,73 @@ async function bootIntro() {
 
 const button = (name: string) => screen.getByRole('button', { name });
 
+/** Reduced Motion stub: every sentence renders complete, so each Primary press moves on. */
+function reducedMotion(matches: boolean) {
+  window.matchMedia = ((query: string) => ({
+    matches: matches && query.includes('reduce'),
+    media: query,
+    onchange: null,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    addListener: () => {},
+    removeListener: () => {},
+    dispatchEvent: () => false,
+  })) as typeof window.matchMedia;
+}
+
+const readableSentence = () => document.querySelector('.arca-intro-dialog > p.arca-visually-hidden')?.textContent;
+/** The visible (typed) characters of the current line. */
+const visibleLine = () =>
+  Array.from(
+    document.querySelectorAll('.arca-intro-line:not(.arca-intro-line--ghost) > span:not(.arca-intro-line__rest)'),
+  )
+    .map((span) => span.textContent)
+    .join('');
+const sentencesOf = (
+  id: 'CPY-F01-013' | 'CPY-F01-014' | 'CPY-F01-015' | 'CPY-F01-016' | 'CPY-F01-017' | 'CPY-F01-018',
+) => copy[id].split('\n\n');
+
 describe('F01 intro (IX-030, MS-ONB-003)', () => {
-  test('scenes advance in order; the last Primary opens F02 without creating a passenger', async () => {
+  const originalMatchMedia = window.matchMedia;
+  afterEach(() => {
+    window.matchMedia = originalMatchMedia;
+  });
+
+  test('Reduced Motion: sentences replace one another, scenes advance, then only the boarding Primary remains', async () => {
+    reducedMotion(true);
     const { world, router } = await bootIntro();
-    expect(screen.getByRole('img', { name: '3개 중 1번째 장면' })).toHaveTextContent('1 / 3');
-    expect(screen.getByText(/또 다른 나를 만나면/)).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: '6개 중 1번째 장면' })).toHaveTextContent('1 / 6');
+    const [first, second] = sentencesOf('CPY-F01-013');
+    // A single newline inside a sentence is a line break shown in the same box.
+    expect(first).toBe('2999년,\n인류는 평행우주가 실재한다는 것을 확인했습니다.');
+    expect(visibleLine()).toBe(first);
 
-    await userEvent.click(button(copy['CPY-F01-004']));
-    expect(screen.getByRole('img', { name: '3개 중 2번째 장면' })).toBeInTheDocument();
-    expect(screen.getByRole('status')).toHaveTextContent(/긴 동면의 항해 동안/);
-    expect(button(copy['CPY-F01-004'])).toHaveFocus();
+    const next = button(copy['CPY-F01-004']);
+    await userEvent.click(next);
+    // (b) the box replaces the first sentence with the second one; no scene change yet.
+    expect(visibleLine()).toBe(second);
+    expect(screen.getByRole('status').textContent).toBe(second);
+    expect(screen.getByRole('img', { name: '6개 중 1번째 장면' })).toBeInTheDocument();
 
-    await userEvent.click(button(copy['CPY-F01-004']));
+    await userEvent.click(next);
+    const label = '6개 중 2번째 장면';
+    expect(screen.getByRole('img', { name: label })).toBeInTheDocument();
+    expect(screen.getByRole('status').textContent).toBe(`${label}. ${sentencesOf('CPY-F01-014')[0]}`);
+    expect(next).toHaveFocus();
+
+    // 12 sentences in all: 9 more presses reach the last sentence of scene 6.
+    for (let press = 0; press < 9; press += 1) await userEvent.click(next);
+    expect(screen.getByRole('img', { name: '6개 중 6번째 장면' })).toBeInTheDocument();
+    expect(visibleLine()).toBe(sentencesOf('CPY-F01-018')[1]);
+    expect(screen.queryByRole('button', { name: copy['CPY-F01-005'] })).toBeNull();
+    // One more press removes the dialog box; only the boarding Primary remains and takes focus.
+    await userEvent.click(next);
+    expect(document.querySelector('.arca-intro-dialog')).toBeNull();
     expect(screen.queryByRole('button', { name: copy['CPY-F01-004'] })).toBeNull();
+    expect(button(copy['CPY-F01-005'])).toHaveFocus();
+    // A stray tap on the scene does not board.
+    await userEvent.click(document.querySelector('.arca-intro-view') as HTMLElement);
+    expect(button(copy['CPY-F01-005'])).toBeInTheDocument();
     await userEvent.click(button(copy['CPY-F01-005']));
 
     expect(await findTitle(copy['CPY-F02-001'])).toHaveFocus();
@@ -41,24 +94,65 @@ describe('F01 intro (IX-030, MS-ONB-003)', () => {
     expect(opCount(world, 'OP-003')).toBe(0);
   });
 
-  test('story expand keeps the scene, collapse restores focus to the toggle, skip from story opens F02', async () => {
+  test('typing: the first press completes the sentence, the next press moves on; the full text stays readable', async () => {
+    reducedMotion(false);
+    await bootIntro();
+    const [first, second] = sentencesOf('CPY-F01-013');
+    expect(visibleLine().length).toBeLessThan(Array.from(first ?? '').length);
+    // Assistive tech reads the whole sentence, never the partial typing.
+    expect(readableSentence()).toBe(first);
+
+    await userEvent.click(button(copy['CPY-F01-004']));
+    expect(visibleLine()).toBe(first);
+    await userEvent.click(button(copy['CPY-F01-004']));
+    expect(visibleLine()).not.toBe(second);
+    expect(readableSentence()).toBe(second);
+  });
+
+  test('typing: the next sentence starts empty; no leftover slice of it paints before typing', async () => {
+    reducedMotion(false);
+    await bootIntro();
+    const [, second] = sentencesOf('CPY-F01-013');
+    await userEvent.click(button(copy['CPY-F01-004']));
+    // Each character span is created hidden; a span that is visible and then hidden again means a
+    // leftover slice of the new sentence painted before its typing started.
+    const reHidden: string[] = [];
+    const dialog = document.querySelector('.arca-intro-dialog') as HTMLElement;
+    const collect = (records: MutationRecord[]) => {
+      for (const record of records) {
+        const target = record.target as Element;
+        if (record.type !== 'attributes' || target.tagName !== 'SPAN') continue;
+        const hiddenNow = target.classList.contains('arca-intro-line__rest');
+        const hiddenBefore = record.oldValue?.includes('arca-intro-line__rest') ?? false;
+        if (hiddenNow && !hiddenBefore) reHidden.push(target.textContent ?? '');
+      }
+    };
+    const observer = new MutationObserver(collect);
+    observer.observe(dialog, { subtree: true, attributes: true, attributeFilter: ['class'], attributeOldValue: true });
+    await userEvent.click(button(copy['CPY-F01-004']));
+    collect(observer.takeRecords());
+    observer.disconnect();
+    expect(readableSentence()).toBe(second);
+    expect(reHidden).toEqual([]);
+  });
+
+  test('a tap on the stage and Enter outside a control advance like the next control', async () => {
+    reducedMotion(true);
+    await bootIntro();
+    const [, second] = sentencesOf('CPY-F01-013');
+    await userEvent.click(document.querySelector('.arca-intro-view') as HTMLElement);
+    expect(visibleLine()).toBe(second);
+    // Focus is on the screen title after mount (IX-018); Enter there advances the story.
+    screen.getByRole('heading', { level: 1, name: copy['CPY-F01-001'] }).focus();
+    await userEvent.keyboard('{Enter}');
+    expect(screen.getByRole('img', { name: '6개 중 2번째 장면' })).toBeInTheDocument();
+  });
+
+  test('skip from a middle scene opens F02 without creating a passenger', async () => {
+    reducedMotion(true);
     const { world } = await bootIntro();
     await userEvent.click(button(copy['CPY-F01-004']));
-
-    await userEvent.click(button(copy['CPY-F01-007']));
-    expect(screen.getByRole('heading', { level: 2, name: copy['CPY-F01-009'] })).toHaveFocus();
-    const story = screen.getByRole('region', { name: copy['CPY-F01-009'] });
-    expect(story.querySelector('.arca-narrative')?.textContent).toBe(introStory);
-    expect(screen.getByRole('img', { name: '3개 중 2번째 장면' })).toBeInTheDocument();
-
-    const [toggle, bottomCollapse] = screen.getAllByRole('button', { name: copy['CPY-F01-008'] });
-    expect(toggle).toHaveAttribute('aria-expanded', 'true');
-    await userEvent.click(bottomCollapse as HTMLElement);
-    expect(screen.queryByRole('region', { name: copy['CPY-F01-009'] })).toBeNull();
-    expect(button(copy['CPY-F01-007'])).toHaveFocus();
-    expect(screen.getByRole('img', { name: '3개 중 2번째 장면' })).toBeInTheDocument();
-
-    await userEvent.click(button(copy['CPY-F01-007']));
+    await userEvent.click(button(copy['CPY-F01-004']));
     await userEvent.click(button(copy['CPY-F01-006']));
     await findTitle(copy['CPY-F02-001']);
     expect(opCount(world, 'OP-003')).toBe(0);

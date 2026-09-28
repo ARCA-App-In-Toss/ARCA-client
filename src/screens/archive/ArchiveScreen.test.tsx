@@ -24,10 +24,11 @@ async function openArchive(world = createMockWorld('server.activeUnanswered')) {
 }
 
 describe('F20 first page (03 §6.1, 04 §6.9)', () => {
-  test('empty: one state panel with a single action to today', async () => {
+  test('empty: one state panel with its title only; the root tab still leads to today', async () => {
     await openArchive();
     expect(await screen.findByRole('heading', { level: 2, name: copy['CPY-F20-011'] })).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: copy['CPY-F20-013'] }));
+    expect(screen.queryByRole('button', { name: '오늘의 항해 보기' })).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: rootTabLabels.today }));
     expect(await findTitle(copy['CPY-F10-001'])).toBeInTheDocument();
   });
 
