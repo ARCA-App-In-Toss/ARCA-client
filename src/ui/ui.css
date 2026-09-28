@@ -1613,6 +1613,21 @@ h2.arca-label {
   }
 }
 
+/* Scene change: the next scene settles over the previous one in four flat steps (motion.duration.scene);
+   the previous scene stays underneath until then. Reduced Motion swaps at once (tokens set 0ms). */
+.arca-intro-scene--entering {
+  animation: arca-intro-scene-enter var(--motion-duration-scene) steps(4, end) both;
+}
+
+@keyframes arca-intro-scene-enter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 .arca-page--intro .arca-shell__content {
   position: relative;
   z-index: 1;

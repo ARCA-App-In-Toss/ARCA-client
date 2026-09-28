@@ -174,6 +174,32 @@ describe('F01 intro (IX-030, MS-ONB-003)', () => {
     expect(backdrop.querySelector('img.arca-intro-scene')?.getAttribute('src')).toContain('scene-2');
   });
 
+  test('a scene change settles the next image over the previous one; Reduced Motion swaps at once (02 §7.1)', async () => {
+    reducedMotion(false);
+    await bootIntro();
+    const backdrop = document.querySelector('.arca-intro-backdrop') as HTMLElement;
+    // Complete and pass both sentences of scene 1 (each press completes typing, then moves on).
+    for (let press = 0; press < 4; press += 1) await userEvent.click(button(copy['CPY-F01-004']));
+    expect(screen.getByRole('img', { name: '6개 중 2번째 장면' })).toBeInTheDocument();
+    const layers = backdrop.querySelectorAll('img.arca-intro-scene');
+    expect(Array.from(layers, (image) => image.getAttribute('src'))).toEqual([
+      expect.stringContaining('scene-1'),
+      expect.stringContaining('scene-2'),
+    ]);
+    expect(layers[1]).toHaveClass('arca-intro-scene--entering');
+    // jsdom has no AnimationEvent, so React listens for the prefixed name there.
+    fireEvent(layers[1] as HTMLImageElement, new Event('webkitAnimationEnd', { bubbles: true }));
+    expect(backdrop.querySelectorAll('img')).toHaveLength(1);
+
+    reducedMotion(true);
+    // One press completes the sentence typed so far, then one press per sentence of scene 2.
+    for (let press = 0; press <= sentencesOf('CPY-F01-014').length; press += 1) {
+      await userEvent.click(button(copy['CPY-F01-004']));
+    }
+    expect(screen.getByRole('img', { name: '6개 중 3번째 장면' })).toBeInTheDocument();
+    expect(backdrop.querySelectorAll('img')).toHaveLength(1);
+  });
+
   test('skip on the first scene opens F02 with no confirmation step', async () => {
     await bootIntro();
     await userEvent.click(button(copy['CPY-F01-006']));

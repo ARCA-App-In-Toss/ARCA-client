@@ -725,26 +725,46 @@ function prefetchLaterScenes(): () => void {
   return () => window.clearTimeout(timer);
 }
 
+function prefersReducedMotion(): boolean {
+  return typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
 /**
- * Full-screen intro scene. The image covers the width at a whole number of CSS px per cell, centred
- * (ui.css); a scene that fails to load falls back to its code scene.
+ * Full-screen intro scene. The image covers the width at a whole number of CSS px per cell, top-aligned
+ * and centred (ui.css). On a scene change the next image settles over the previous one, which stays
+ * underneath until the step fade ends; Reduced Motion swaps at once. A scene that fails to load falls
+ * back to its code scene.
  */
 export function IntroScene({ index }: { index: number }) {
   const src = introSceneImages[index] ?? introSceneImages[0];
   const [failed, setFailed] = useState<ReadonlySet<string>>(() => new Set());
+  const [shown, setShown] = useState(src);
+  const [previous, setPrevious] = useState<string | null>(null);
 
   useEffect(prefetchLaterScenes, []);
 
+  if (src && src !== shown) {
+    setPrevious(prefersReducedMotion() || !shown || failed.has(shown) ? null : shown);
+    setShown(src);
+  }
+
   if (!src || failed.has(src)) return <IntroSceneArt index={index} />;
   return (
-    <img
-      key={src}
-      className="arca-intro-scene"
-      src={src}
-      alt=""
-      decoding="async"
-      onError={() => setFailed((previous) => new Set(previous).add(src))}
-    />
+    <>
+      {previous ? <img key={previous} className="arca-intro-scene" src={previous} alt="" /> : null}
+      <img
+        key={src}
+        className={previous ? 'arca-intro-scene arca-intro-scene--entering' : 'arca-intro-scene'}
+        src={src}
+        alt=""
+        decoding="async"
+        onAnimationEnd={() => setPrevious(null)}
+        onError={() => {
+          setPrevious(null);
+          setFailed((current) => new Set(current).add(src));
+        }}
+      />
+    </>
   );
 }
 

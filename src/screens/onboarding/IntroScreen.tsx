@@ -26,6 +26,8 @@ const totalScenes = String(scenes.length);
 
 /** 02 §7.1 `motion.duration.type`: one character per step. */
 const TYPE_STEP_MS = 35;
+/** 02 §7.1 `motion.duration.scene`: a new scene settles first, then its first sentence types. */
+const SCENE_SETTLE_MS = 320;
 
 /** Pixel ▼ shown once a sentence is complete; decorative, the control carries the name. */
 const nextMark: readonly string[] = ['#####', '.###.', '..#..'];
@@ -51,19 +53,31 @@ export function IntroScreen() {
   const typedRef = useRef(typed);
   typedRef.current = typed;
   const boardRef = useRef<HTMLButtonElement>(null);
+  /** Set when the reader moves to a new scene; its first sentence waits for the scene to settle. */
+  const sceneEnteringRef = useRef(false);
 
   // Type the current sentence once. The start value is set in the same update as the new position
-  // (see `moveTo`), so the next sentence never paints in full for a frame before typing begins.
+  // (see `moveTo`), so the next sentence never paints in full for a frame before typing begins. After a
+  // scene change typing waits for the scene image to settle, so only one thing moves at a time (02 §7.1).
   useEffect(() => {
     const length = Array.from(scenes[position.scene]?.[position.sentence] ?? '').length;
     if (prefersReducedMotion()) return;
-    const timer = window.setInterval(() => {
-      setTyped((count) => {
-        if (count + 1 >= length) window.clearInterval(timer);
-        return Math.min(count + 1, length);
-      });
-    }, TYPE_STEP_MS);
-    return () => window.clearInterval(timer);
+    let timer: number | undefined;
+    const start = () => {
+      sceneEnteringRef.current = false;
+      timer = window.setInterval(() => {
+        setTyped((count) => {
+          if (count + 1 >= length) window.clearInterval(timer);
+          return Math.min(count + 1, length);
+        });
+      }, TYPE_STEP_MS);
+    };
+    const settle = sceneEnteringRef.current ? window.setTimeout(start, SCENE_SETTLE_MS) : undefined;
+    if (settle === undefined) start();
+    return () => {
+      window.clearTimeout(settle);
+      window.clearInterval(timer);
+    };
   }, [position]);
 
   // The next control leaves with the box, so focus moves to the boarding Primary that replaces it.
@@ -93,6 +107,7 @@ export function IntroScreen() {
     }
     if (position.scene < scenes.length - 1) {
       setAnnounce('scene');
+      sceneEnteringRef.current = true;
       moveTo(position.scene + 1, 0);
       return;
     }
