@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react';
-import { Navigate, Outlet, type RouteObject, useLocation } from 'react-router';
+import { type ReactNode, useLayoutEffect } from 'react';
+import { Navigate, Outlet, type RouteObject, useLocation, useNavigationType } from 'react-router';
 import type { SessionMode } from '../data/api/models.ts';
 import { AnswerDetailScreen } from '../screens/archive/AnswerDetailScreen.tsx';
 import { ArchiveScreen } from '../screens/archive/ArchiveScreen.tsx';
@@ -29,6 +29,22 @@ const targetPath = {
 } as const;
 
 /**
+ * A forward move (push/replace) opens the next screen at its top, so the previous screen's scroll
+ * never carries over. Back/forward (POP) keeps the browser position. Rendered before the route
+ * outlet: its layout effect runs before the screen's own, so a screen that restores a position
+ * (the F20 row anchor, 06 §5.6) still wins.
+ */
+function ScrollReset() {
+  const { pathname } = useLocation();
+  const navigationType = useNavigationType();
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs once per route change only.
+  useLayoutEffect(() => {
+    if (navigationType !== 'POP') window.scrollTo(0, 0);
+  }, [pathname]);
+  return null;
+}
+
+/**
  * F00 is also the boundary in front of every route: a cold start on any URL shows F00 until
  * session, generation and local area are confirmed (06 §5.1, §5.3).
  */
@@ -47,7 +63,12 @@ function BootstrapBoundary() {
   if (bootstrap.target === 'deletion' && pathname !== paths.deleteAll) {
     return <Navigate to={paths.deleteAll} replace />;
   }
-  return <Outlet />;
+  return (
+    <>
+      <ScrollReset />
+      <Outlet />
+    </>
+  );
 }
 
 /**
