@@ -1506,6 +1506,65 @@ h2.arca-label {
   gap: var(--space-200);
 }
 
+/* F02 fragment glow: the rings brighten outward and dim back on a 3 s breath (half each way).
+ * Stepped like the other pixel motion; Reduced Motion shows the lit halo at rest. */
+.arca-fragment-glow {
+  display: block;
+}
+
+.arca-fragment-glow__ring {
+  animation: calc(var(--motion-duration-glow) / 2) steps(6, jump-none) infinite alternate both;
+}
+
+.arca-fragment-glow__ring--1 {
+  animation-name: arca-glow-ring-1;
+}
+
+.arca-fragment-glow__ring--2 {
+  animation-name: arca-glow-ring-2;
+}
+
+.arca-fragment-glow__ring--3 {
+  animation-name: arca-glow-ring-3;
+}
+
+@keyframes arca-glow-ring-1 {
+  from {
+    opacity: 0.35;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes arca-glow-ring-2 {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes arca-glow-ring-3 {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 0.7;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arca-fragment-glow__ring {
+    animation: none;
+  }
+
+  .arca-fragment-glow__ring--3 {
+    opacity: 0.7;
+  }
+}
+
 /* F01 layers (03 §4.2): the scene is the bottom layer and covers the whole viewport edge to edge;
  * the progress bar and the dialog box float above it inside the content width. A bitmap scene fills
  * the backdrop (cover) with its key subject above the dialog; the code scene is the static fallback,

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { type BoardingPolicy, useBoarding } from '../../app/AppServices.tsx';
 import { InlineStatus, PixelAppShell, PixelButton, PixelCheckboxRow, ScreenTitle } from '../../ui/components.tsx';
 import { type CopyId, copy } from '../../ui/copy.ts';
-import { MemoryFragment } from '../../ui/pixel.tsx';
+import { MemoryFragmentGlow } from '../../ui/pixel.tsx';
 
 // F02 (03 §4.3, 04 §6.3, IX-031). Two independent required consents, the recovery limit before
 // consent, then one OP-003 that creates consent records and passenger together. Success re-routes to
@@ -64,9 +64,9 @@ export function BoardingScreen() {
     <PixelAppShell className="arca-page--cta">
       <ScreenTitle>{copy['CPY-F02-001']}</ScreenTitle>
       <p className="arca-narrative">{copy['CPY-F02-002']}</p>
-      {/* The memory fragment the passenger will keep; decorative, centred in the free space. */}
+      {/* The memory fragment the passenger will keep, softly breathing; decorative, centred in the free space. */}
       <div className="arca-cta-hero">
-        <MemoryFragment cell={6} />
+        <MemoryFragmentGlow />
       </div>
       {/* Consent, the recovery limit and the Primary sit together at the bottom (03 §4.3). */}
       <div className="arca-cta-bottom">

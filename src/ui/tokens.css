@@ -144,6 +144,8 @@
   --motion-duration-fast: 120ms;
   --motion-duration-base: 180ms;
   --motion-duration-scene: 320ms;
+  /* F02 fragment glow: one full breath (brighten + dim). */
+  --motion-duration-glow: 3000ms;
   --motion-duration-memory: 1600ms;
   --motion-easing-pixel: steps(2, end);
   --motion-easing-settle: cubic-bezier(0.2, 0, 0, 1);
