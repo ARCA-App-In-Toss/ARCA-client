@@ -1,11 +1,11 @@
 # ARCA 프런트엔드 구현 명세
 
-- 문서 버전: v1.4
-- 최근 수정일: 2026년 9월 27일
+- 문서 버전: v1.5
+- 최근 수정일: 2026년 9월 28일
 - 상태: 확정
 - 승인 주체: 제품 책임자
-- 구현·검증 상태: 구조와 실행 순서 승인. 단계 1 인테이크로 저장소·toolchain·package script·API 파생을 고정(§2.2·§2.4). Mock·실서버·실기기 구현 및 검증은 미착수
-- 편집: 중복 인계·설명을 줄이고 작업별 참조 위치를 추가했습니다. 필수 계약은 유지합니다.
+- 구현·검증 상태: 로컬 Mock·핵심 UI 구현 및 단위/브라우저 회귀 실행 완료(08 §14.1). 실서버·실제 토스 WebView·운영 출시는 별도 미검증
+- 편집: 현행 UI·정보 위계·입력 표시를 코드와 동기화했습니다. 문구·라우트·서버 계약은 유지합니다.
 
 승인된 계약을 구현하는 경계·상태 소유권·실행 순서의 원본입니다. 실제 앱·설치·API host·하네스·실기기 증거가 있다는 뜻은 아닙니다.
 
@@ -52,7 +52,7 @@ composition root·레이어/port·route/guard·상태/cache·session epoch/gener
 
 ### 2.1 구현 전제
 
-실제 프런트엔드 source·package·lockfile·하네스·검증 명령은 아직 제공되지 않았습니다. 이 문서는 구현할 경계와 순서를 정의합니다. 설치·실기기 확인 항목은 §14, 서버·법무·운영 연결값은 [05 §13.2 · L733–747](./05_API_SPEC.md#132-실제-값구현-확인-필요)를 따릅니다.
+현재 저장소에 source·package·lockfile·하네스가 있으며 로컬 Mock·정적·단위·브라우저 검증을 실행했습니다(08 §14.1). 이 문서는 구현 경계와 남은 운영 연결을 구분합니다. 설치·실기기 확인 항목은 §14, 서버·법무·운영 연결값은 [05 §13.2 · L733–747](./05_API_SPEC.md#132-실제-값구현-확인-필요)를 따릅니다.
 
 ### 2.2 선택한 스택과 설치 상태
 
@@ -66,7 +66,7 @@ composition root·레이어/port·route/guard·상태/cache·session epoch/gener
 | HTTP·검증 | native `fetch`, Zod 4, `ArcaApi` adapter | Axios 없음. Zod 4.6.5, `@hey-api/openapi-ts` 0.99.0(typescript+zod plugin)을 `scripts/api-generate.mjs`로 `src/data/api/generated`에 생성. `additionalProperties: false`는 plugin resolver로 `z.strictObject` 매핑(생성물 수기 patch 없음). contract 예시 58건 일치, orval 8.38.0은 schema 단위 validator·closed object 미지원으로 제외 |
 | UI·스타일 | native HTML의 의미 보존, ARCA 의미 기반 CSS 변수, 픽셀 UI 컴포넌트 선별 도입 | Tailwind 사용 허용, Emotion은 필요한 범위에 한정. 후보·설치 상태는 §2.4, 스타일 소유는 §2.5 |
 | 복합 Overlay | `@radix-ui/react-dialog`·`@radix-ui/react-alert-dialog`만 ARCA wrapper 뒤에서 사용 | `@radix-ui/react-alert-dialog` 1.1.23(MIT, React 19 peer)을 `src/ui/PixelAlertDialog.tsx` wrapper 안에서만 사용(단계 3, F11 이탈 확인). `@radix-ui/react-dialog` 1.1.23(MIT)을 `src/ui/PixelSheet.tsx` wrapper 안에서만 사용(단계 5, F10 지난 임시본 Sheet). Sheet는 Dialog를 시각 변형해 사용 |
-| 아이콘·서체 | Pixelarticons 기본 후보와 필요한 외부/자체 아이콘 선별, Neo둥근모 self-host·시스템 본문 | [02 §8.2 · L346–366](./02_DESIGN_SYSTEM.md#82-아이콘-체계)의 시각 통일과 Asset Manifest 적용. 실제 목록·import 미확인 |
+| 아이콘·서체 | 자체 12×12 격자 SVG·Neo둥근모 self-host·시스템 본문 | `src/ui/pixel.tsx`, `public/fonts/neodgm/`, Asset Manifest AST-004~011. 외부 아이콘 팩 미포함, 실기기 확인 남음 |
 | 모션·날짜 | CSS/Web Animations API, `Intl.DateTimeFormat`, 주입 `Clock` | Motion/date utility library 없음 |
 | Mock·검증 | AIT Devtools, MSW 2, Vitest 5, RTL, user-event, axe-core, Playwright Chromium·WebKit, 실제 iOS·Android QR | MSW 2.15.0(postinstall 비허용, worker는 사용 slice에서 생성), Vitest 5.0.2(jsdom 30.1.1, `unit`·`contract` project), RTL 16.3.3, user-event 14.6.7, jest-dom 7.0.1, axe-core 4.13.0, Playwright 1.63.0(Chromium·WebKit). AIT Devtools는 Vite plugin 연결. 기기 QR 미실행 |
 | 정적 품질·패키지 | TypeScript strict 옵션, Biome 2, Node 24 LTS, 고정 pnpm·lockfile | strict·`noUncheckedIndexedAccess`·`exactOptionalPropertyTypes`(`tsc -b`, noEmit), Biome 2.5.14 recommended, pnpm 12.6.0(`packageManager`)·`pnpm-lock.yaml`, `.nvmrc`=24·`engines` ≥24. 로컬 확인 Node는 25.2.1이며 Node 24 실행 증거·CI 없음 |
@@ -113,10 +113,13 @@ SDK 출시 제약은 [플랫폼 기준 §3 · L30–34](../../spec/platform/ARCA
 
 - 각 CMP를 채택할 때 이 표의 해당 행에 **실제 출처 URL·package/원본 경로·정확 버전 또는 commit·도입 방식·로컬 구현 경로·수정 이유·검증 증거**를 연결합니다. 한 행의 출처가 갈리면 해당 CMP만 나눕니다. 별도 출처 문서나 전체 라이브러리 코드를 명세에 생성하지 않습니다.
 - package 사용은 공개 export와 CSS 진입점·React peer·전이 의존성을 확인합니다. 소스 편입은 필요한 component/helper/style만 가져오고 원문 라이선스·저작권 고지·upstream 위치를 보존합니다. 문서 사이트와 예제 앱의 의존성을 그대로 옮기지 않습니다.
-- 단계 1 인테이크(2026-09-27, CMP 채택 아님): `@pxlkit/ui-kit` 2.1.1은 MIT·React ^18.2‖^19 peer, 단일 root export와 Tailwind v4 `styles.css`(`@import "tailwindcss"`·`--retro-*` 테마)를 제공합니다. `react-table`·`embla-carousel`·`react-hook-form`·`@pxlkit/gamification`이 직접 의존성이고 `sideEffects` 선언이 없어, Vite 8 production에서 `PixelButton` 하나만 import해도 JS가 +343 KB(min)·+97 KB(gzip) 늘었습니다. 따라서 root package import는 쓰지 않고 필요한 component 소스 편입을 기본으로 비교합니다. Pixelact UI는 npm 배포가 아닌 shadcn registry 소스(MIT, commit `165eacd`, 2026-07-29)이며 Radix·Tailwind v4·`class-variance-authority`를 사용합니다. 두 후보 모두 Tailwind v4 구성을 요구하므로 첫 CMP 채택 slice에서 `@tailwindcss/vite`와 §2.5 layer 순서를 함께 고정합니다.
-- 단계 3 구현(2026-09-27): CMP-001·002·004·005·006·007·008·009/011·015·016·020·021·022·025는 외부 소스 편입 없이 네이티브 HTML과 ARCA 토큰으로 `src/ui/components.tsx`·`ui.css`에 구현했고, CMP-017은 위 Radix wrapper입니다. 선택 이유는 네이티브 의미·IME·ref 계약 보존과 인테이크의 번들 측정입니다. 계단형 모서리·픽셀 아이콘(AST-008)·Neo둥근모 self-host·CMP-024 형성 연출은 [02 §13.3 · L613–629](./02_DESIGN_SYSTEM.md#133-남은-시각-채택-작업)의 시각 채택 전이며, 외부 후보 편입은 그 비교에서 CMP별로 결정합니다.
+- 단계 1 인테이크(2026-09-27, CMP 채택 아님): `@pxlkit/ui-kit` 2.1.1은 MIT·React ^18.2‖^19 peer, 단일 root export와 Tailwind v4 `styles.css`(`@import "tailwindcss"`·`--retro-*` 테마)를 제공합니다. `react-table`·`embla-carousel`·`react-hook-form`·`@pxlkit/gamification`이 직접 의존성이고 `sideEffects` 선언이 없어, Vite 8 production에서 `PixelButton` 하나만 import해도 JS가 +343 KB(min)·+97 KB(gzip) 늘었습니다. 따라서 root package import는 쓰지 않고 필요한 component 소스 편입을 기본으로 비교합니다. Pixelact UI는 npm 배포가 아닌 shadcn registry 소스(MIT, commit `165eacd`, 2026-07-29)이며 Radix·Tailwind v4·`class-variance-authority`를 사용합니다. 두 후보 모두 Tailwind v4 구성을 요구합니다. 현행 자체 CSS 구현에는 도입하지 않았고, 추후 후보를 실제 도입할 때만 §2.5의 layer를 검토합니다.
+- 단계 3 구현(2026-09-27): CMP-001·002·004·005·006·007·008·009/011·015·016·020·021·022·025는 외부 소스 편입 없이 네이티브 HTML과 ARCA 토큰으로 `src/ui/components.tsx`·`ui.css`에 구현했고, CMP-017은 위 Radix wrapper입니다. 선택 이유는 네이티브 의미·IME·ref 계약 보존과 인테이크의 번들 측정입니다. 계단형 모서리·자체 픽셀 아이콘(AST-008)·Neo둥근모 self-host·CMP-024 형성은 2026-09-28 현행 UI에 통합됐으며 별도 외부 후보 편입 없이 유지합니다(02 §13.3).
+- 현행 UI 채택(2026-09-28, 운영 출시 승인과 구분): 외부 소스 편입 없이 `ui.css`에 계단형 픽셀 프레임(`.arca-px`: 2px 선·1셀 계단, background 레이어로 그려 포커스 링·hit area를 자르지 않음)과 plain 2단 실루엣(`.arca-plain`)을 구현하고 CMP-007/010/011/012/017/018/025에 적용했습니다. Neo둥근모는 `public/fonts/neodgm/` self-host·`font-display: swap`이며 F00 종료 조건이 아닙니다. 아이콘·JOY·기억 조각·인트로 장면은 `src/ui/pixel.tsx`의 격자→SVG 코드 원본(AST-004~008 `검토 중`)입니다. CMP-024는 CSS `steps(4)` 장식 연출로 결과 표시를 지연시키지 않습니다. 브라우저 전후 비교·현행 값은 02 §13.3·08 §14.1에 기록했으며 실기기 검증은 남아 있습니다.
 - 선택 기준은 필요한 상태/컴포넌트 충족, 실제 React·WebView 호환, 최근 유지보수·테스트와 알려진 문제, 수정 부담·접근성·실제 번들 비용·사용 조건입니다. 패키지 크기나 컴포넌트 개수만으로 성능·품질을 판단하지 않습니다.
 - 패키지 갱신과 편입 소스의 upstream 변경은 채택본·로컬 수정과 비교해 반영합니다. 업데이트마다 해당 CMP의 입력/Overlay/시각 회귀를 확인하며 편입 소스가 자동 갱신된 것으로 취급하지 않습니다(D-TECH-054).
+
+2026-09-28 현행 표현은 `src/ui/tokens.css`·`ui.css`·`components.tsx`·`pixel.tsx`와 화면 JSX를 기준 원본으로 사용합니다. 직접 제작한 격자 SVG와 self-host Neo둥근모를 사용하며 이번 정리에서 외부 UI·폰트·아이콘 의존성을 추가하지 않았습니다. 화면 진입은 공통 shell의 CSS opacity 애니메이션만 사용하고 라우트·상태·포커스 timing을 변경하지 않습니다. 수치·역할의 원본은 02 §3~§9, 비교·실행 증거는 08 §14.1입니다.
 
 ### 2.5 공통 스타일과 의존성 경계
 
@@ -371,6 +374,8 @@ F20 목록은 generation별 하나의 infinite page chain입니다. OP-010의 cu
 - 새 후보는 이전 후보를 대체합니다. mutation·주체/generation 변경·cursor 무효화로 낡은 후보는 폐기하고 재조회합니다. 후보 부재/실패에는 안내를 숨기고 새 기록의 수나 존재를 추정하지 않습니다. 확인된 첫 page의 identity·revision·순서가 같으면 반복 갱신 안내를 만들지 않으며 새 cursor를 기존 tail에 섞지 않습니다(D-TECH-048).
 - `CMP-016 MemoryCount`는 OP-010에서 추정하거나 row 수로 계산하지 않습니다. F20은 OP-005의 `activeAnswerCount`를 독립 조회하고 목록은 count 실패와 무관하게 표시합니다.
 
+F20은 OP-010의 `question`·`createdDateKst`로 질문·날짜만 그립니다. 기존 STANDARD 발췌 DTO·요청·캐시·revision 동기화는 호환을 위해 유지하며 목록 DOM/접근성 이름에 본문을 넣지 않습니다. 상세를 선택했을 때 기존 OP-011 경로로 응답 전문을 읽습니다.
+
 ### 6.4 terminal mutation 뒤 동기화
 
 공통 순서는 `terminal 검증 → 최소 proof 로컬 반영 → 적용 가능한 현재 view patch → 필요한 query 무효화/재조회 예약 → 민감 로컬 정리 → ack`입니다. 단계별 재개는 §8.7을 따르며 읽기 재조회 성공을 ack의 선행 조건으로 만들지 않습니다.
@@ -402,7 +407,8 @@ receipt 발췌는 proof revision과 `sourceRevision`이 같을 때만 사용합�
 
 - input state는 사용자가 만든 UTF-16 문자열을 그대로 유지합니다. trim, NFC/NFKC 정규화, CR/LF 외관 재작성, 연속 공백 축약을 하지 않습니다.
 - Unicode 확장 grapheme count는 `Intl.Segmenter` capability wrapper로 계산합니다. 실제 iOS·Android에서 미지원이면 code point count로 낮추지 않고 standards-compatible fallback library를 고정한 뒤 진행합니다.
-- `compositionstart~compositionend` 동안 초과 오류·debounce commit을 확정하지 않습니다. composition 종료 뒤 전체 문자열을 다시 셉니다.
+- 표시용 `currentCount`는 현재 input state를 EGC로 세어 매 변경 즉시 갱신합니다. F11·F22는 `draft.text`, F03·F30은 `value.trim()`으로 계산하며 조합 종료·blur·Storage debounce를 기다리지 않습니다.
+- `settledText` / `committed`는 조합 완료값의 오류·저장 가능 판정에만 사용합니다. `compositionstart~compositionend` 동안 초과 오류·제출·debounce commit은 확정하지 않고 종료 뒤 전체 문자열을 다시 검증합니다. 숫자 표시를 앞당겨도 저장 guard·draftWriter·이탈 보호는 변경하지 않습니다.
 - 붙여넣기를 자동 절단하지 않습니다. 2,000 EGC를 넘으면 원문을 유지하고 오류와 초과 수를 표시하며 서버 저장만 막습니다.
 - draft 복원 뒤 selection/cursor는 DOM 적용 다음 frame에 가능한 범위로 복원합니다. grapheme count와 cursor offset을 혼용하지 않습니다.
 - F30 닉네임은 별도 draft를 만들지 않으며 04의 정규화·빈 값 의미만 적용합니다. 응답 원문 규칙을 닉네임에 역적용하지 않습니다.
@@ -638,7 +644,7 @@ local storage 오류, protocol 오류, transport 오류, domain 오류는 합치
 ### 10.6 선별 입력·상태 컴포넌트 연결
 
 - CMP-009~012는 실제 input/textarea/checkbox와 label·ref·composition/selection 이벤트를 보존합니다. 값은 기존 React state와 §7의 draft 경로가 소유하고 외부 내부 state나 form store에 정본을 복제하지 않습니다.
-- 라이브러리의 UTF-16 `length` 카운터·native `maxLength`·자동 trim/절단·조합 중 검증을 그대로 사용하지 않습니다. ARCA의 EGC 계산·IME 종료 판정·초과 원문 보존과 닉네임의 별도 규칙을 연결합니다. 저장 잠금·readonly·disabled는 04가 정한 상태에서만 적용하고 선택·복사 가능성을 검증합니다.
+- 라이브러리의 UTF-16 `length` 카운터·native `maxLength`·자동 trim/절단·조합 중 검증을 그대로 사용하지 않습니다. ARCA의 실시간 EGC 카운터·IME 종료 후 검증·초과 원문 보존과 닉네임의 별도 규칙을 연결합니다. 저장 잠금·readonly·disabled는 04가 정한 상태에서만 적용하고 선택·복사 가능성을 검증합니다.
 - 오류 발생 시 helper를 일괄 숨기는 기본값을 점검하고 기기 보관 실패·복구 위험의 필수 안내를 유지합니다. live region·Toast를 중복 발표하지 않으며 카운터가 매 키 입력을 읽게 하지 않습니다. 라이브러리 기본 문구는 04의 의미·조건·채택 문구로 연결합니다.
 - autosize·최소 높이·native checkbox 시각 변경은 긴 입력, 320px·200%·키보드에서 검증합니다. 지원이 불확실한 자동 크기 CSS에는 실제 DOM을 유지하는 fallback을 두고 값/커서/포커스 복원과 단일 저장 조작을 보존합니다.
 - 이 연결은 D-TECH-052의 구현 보완이며 입력 유효성·저장/삭제 결과·복구 정책을 새로 정의하지 않습니다.

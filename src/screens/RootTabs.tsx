@@ -22,7 +22,7 @@ export function RootHeader({ title }: { title: string }) {
   return (
     <div className="arca-root-header">
       <ScreenTitle>{title}</ScreenTitle>
-      <PixelIconButton label={copy['CPY-F10-002']} glyph="⚙" onClick={() => navigate(paths.settings)} />
+      <PixelIconButton label={copy['CPY-F10-002']} icon="settings" onClick={() => navigate(paths.settings)} />
     </div>
   );
 }

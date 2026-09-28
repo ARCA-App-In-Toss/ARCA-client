@@ -9,7 +9,7 @@ import type { AnswerDetail } from '../../data/api/models.ts';
 import { DomainFailure } from '../../data/failures.ts';
 import type { UpdateDraftIdentity } from '../../domain/drafts/draftRepository.ts';
 import type { KeepStatus } from '../../domain/drafts/draftWriter.ts';
-import { measureAnswer } from '../../domain/text/graphemes.ts';
+import { countGraphemes, measureAnswer } from '../../domain/text/graphemes.ts';
 import {
   InlineStatus,
   PixelAppShell,
@@ -18,12 +18,12 @@ import {
   PixelPlaceholder,
   PixelTextareaField,
   RecordPanel,
-  ScenePanel,
   ScreenTitle,
 } from '../../ui/components.tsx';
 import { copy, fill } from '../../ui/copy.ts';
 import { formatCount, formatDateKst } from '../../ui/format.ts';
 import { PixelAlertDialog } from '../../ui/PixelAlertDialog.tsx';
+import { PixelIcon } from '../../ui/pixel.tsx';
 
 function keepLabel(status: KeepStatus): string | null {
   switch (status.kind) {
@@ -82,7 +82,7 @@ export function EditScreen() {
 
 function EditLoading() {
   return (
-    <PixelAppShell>
+    <PixelAppShell className="arca-page--compose">
       <div className="arca-screen-header">
         <ScreenTitle>{copy['CPY-F22-001']}</ScreenTitle>
       </div>
@@ -181,6 +181,8 @@ function EditForm({
   }, [blocker.state]);
 
   const measured = measureAnswer(text);
+  // Keep the visible count current without validating or committing an unfinished IME value.
+  const currentCount = settledText === null ? measured.count : countGraphemes(draft.text);
   const overflow = measured.overCount > 0;
   const loading = draft.load.kind === 'loading';
   const unreadable = draft.load.kind === 'unreadable';
@@ -299,24 +301,21 @@ function EditForm({
   const helpId = 'f22-help';
 
   return (
-    <PixelAppShell>
+    <PixelAppShell className="arca-page--compose">
       <div className="arca-screen-header">
-        <PixelIconButton label={copy['CPY-COM-005']} glyph="‹" buttonRef={backButtonRef} onClick={onLeave} />
+        <PixelIconButton label={copy['CPY-COM-005']} icon="back" buttonRef={backButtonRef} onClick={onLeave} />
         <ScreenTitle>{copy['CPY-F22-001']}</ScreenTitle>
       </div>
-      <ScenePanel labelledBy="f22-question-label">
-        <p className="arca-label" id="f22-question-label">
+      <section className="arca-preface" aria-labelledby="f22-question-label">
+        <p className="arca-visually-hidden" id="f22-question-label">
           {copy['CPY-F22-002']}
         </p>
-        <p className="arca-question">{base.question.text}</p>
-        <p className="arca-text-secondary">
+        <p className="arca-question arca-question--quiet">{base.question.text}</p>
+        <p className="arca-label">
           {fill(copy['CPY-F21-006'], { createdDateKst: formatDateKst(base.createdDateKst) })}
         </p>
-      </ScenePanel>
+      </section>
       <RecordPanel>
-        <p className="arca-text-secondary" id="f22-privacy">
-          {copy['CPY-F22-005']} {copy['CPY-F22-006']}
-        </p>
         {loading ? (
           <PixelPlaceholder />
         ) : (
@@ -346,13 +345,19 @@ function EditForm({
             />
             <div className="arca-field-help" id={helpId}>
               <span>{keepLabel(draft.status) ?? ''}</span>
-              <span>{fill(copy['CPY-F22-007'], { currentCount: formatCount(measured.count) })}</span>
+              <span>{fill(copy['CPY-F22-007'], { currentCount: formatCount(currentCount) })}</span>
             </div>
             {overflow && (
               <p className="arca-field-error" id="f22-error">
                 {fill(copy['CPY-F22-008'], { overCount: formatCount(measured.overCount) })}
               </p>
             )}
+            <p className="arca-privacy" id="f22-privacy">
+              <PixelIcon name="lock" />
+              <span>
+                {copy['CPY-F22-005']} {copy['CPY-F22-006']}
+              </span>
+            </p>
           </>
         )}
       </RecordPanel>

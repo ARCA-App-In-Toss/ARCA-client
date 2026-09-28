@@ -17,6 +17,7 @@ import {
 } from '../../ui/components.tsx';
 import { copy, fill } from '../../ui/copy.ts';
 import { formatCount, formatDateKst } from '../../ui/format.ts';
+import { EmptyArchiveArt } from '../../ui/pixel.tsx';
 import { RootHeader, RootTabs } from '../RootTabs.tsx';
 
 /** Question part for rows: 80 EGC / 2 logical lines, prefix only (04 §5.10 #6). */
@@ -134,7 +135,8 @@ export function ArchiveScreen() {
       );
   } else if (view.items.length === 0) {
     body = (
-      <StatePanel>
+      <StatePanel centered>
+        <EmptyArchiveArt />
         <h2 className="arca-label">{copy['CPY-F20-011']}</h2>
         <PixelButton variant="primary" onClick={() => navigate(paths.today)}>
           {copy['CPY-F20-013']}
@@ -267,7 +269,6 @@ function ArchiveList({
         const heading = month.key !== previousMonth ? month.label : null;
         previousMonth = month.key;
         const question = prefixExcerpt(item.question.text, QUESTION_PART.maxGraphemes, QUESTION_PART.maxLogicalLines);
-        const excerpt = item.excerpt.state === 'AVAILABLE' ? item.excerpt.value : null;
         return (
           <Fragment key={item.answerId}>
             {heading && (
@@ -287,17 +288,14 @@ function ArchiveList({
                   if (row) onSelect(item.answerId, row);
                 }}
               >
-                <span className="arca-label">{excerpt?.isTruncated ? copy['CPY-F20-005'] : copy['CPY-F20-004']}</span>
-                <span className="arca-user-text">
-                  {excerpt?.text}
-                  {excerpt?.isTruncated && <span aria-hidden="true">…</span>}
-                </span>
-                <span className="arca-label">{copy['CPY-F20-007']}</span>
-                <span className="arca-text-secondary">
+                <span className="arca-visually-hidden">{copy['CPY-F20-007']}</span>
+                <span className="arca-memory-row__question">
                   {question.text}
                   {question.isTruncated && <span aria-hidden="true">…</span>}
                 </span>
-                <span className="arca-label">{formatDateKst(item.createdDateKst)}</span>
+                <span className="arca-memory-row__meta">
+                  <span>{formatDateKst(item.createdDateKst)}</span>
+                </span>
               </MemoryRow>
             </li>
           </Fragment>

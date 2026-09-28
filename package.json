@@ -9,6 +9,7 @@
   },
   "scripts": {
     "dev": "vite",
+    "dev:demo": "VITE_ARCA_MOCK_SCENARIO=demo vite",
     "build": "tsc -b && vite build && ait build",
     "preview": "vite preview",
     "deploy": "ait deploy",

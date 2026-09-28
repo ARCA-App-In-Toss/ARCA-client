@@ -1,7 +1,7 @@
 # ARCA 에셋 매니페스트
 
-- 문서 버전: v1.6
-- 최근 수정일: 2026년 9월 14일
+- 문서 버전: v1.8
+- 최근 수정일: 2026년 9월 28일
 - 상태: 확정
 - 승인 주체: 제품 책임자
 
@@ -28,14 +28,14 @@
 | AST-001 | ARCA 마스터 로고 | P0 | 검토 중 | [`design/logo/ARCA_LOGO.png`](../logo/ARCA_LOGO.png), 1254×1254 PNG, RGB, alpha 없음 | 제작자·생성 방식·ARCA 서비스 및 홍보 사용 권리 확인 필요 | 편집 가능한 원본 또는 생성 이력 보존, 색상 기준 추출 | 장식 사용 시 대체 텍스트 없음, 브랜드 식별 시 `ARCA` |
 | AST-002 | 앱인토스 앱 아이콘 | P0 | 검토 중 | [`design/logo/ARCA_LOGO_FOR_APP_IN_TOSS.png`](../logo/ARCA_LOGO_FOR_APP_IN_TOSS.png), 600×600 PNG, RGB, alpha 없음 | AST-001과 같은 권리 확인 필요 | 최신 앱인토스 콘솔 아이콘 규격과 실제 축소 노출 확인 | 콘솔·내비게이션에서 서비스명과 함께 인식 확인 |
 | AST-003 | 화면용 투명 심볼·워드마크 | P1 | 제작 필요 | AST-001을 기준으로 새 원본 제작 | AST-001 권리 확인 후 파생 제작 승인 | 투명 배경, 밝은·어두운 장면용 최소 변형만 제공 | 로고 텍스트를 본문 정보 대신 사용하지 않음 |
-| AST-004 | F01 인트로 3장면 시작안 픽셀 세트 | P0 | 제작 필요 | [인트로 서사](../../docs/ARCA_INTRO_STORY.txt), [Screens Spec F01](../../.claude/spec/03_SCREENS_SPEC.md#42-f01--인트로), 제작 후 선택할 스토리보드·코드 기준 원본 | ARCA 전용 신규 제작, 제작자와 생성 도구 기록 | `항해 이유 → JOY와 기억 → 탑승` 3장면을 권장 시작안으로 제작·비교하고 채택 장면 수를 기록. 배경·전경 분리, 정수 배율·기준 위치·허용 crop·실제 컨테이너 안전 영역, 파일당 150KB·초기 eager 레이어 합계 300KB 이하, 이후 지연 로딩 | 진행 정보·핵심 서사·펼쳐 읽는 원문은 실제 텍스트로 제공. 원문을 이미지에 굽지 않고 Loading·실패·Reduced Motion에서 정적 fallback 유지 |
-| AST-005 | JOY·SEMA 신호 표현 | P0 | 제작 필요 | [D-UI-037·D-UI-058](../../.claude/spec/DECISIONS.md)의 비교 시안, 기준 원본 미채택 | ARCA 전용 신규 제작 | 작은 기계 얼굴·관측등 등 JOY 인격과 F10→F11의 질문 위치·폭·JOY 문맥 연결 비교, 신호 도착·실제 저장 사건에만 상태 연결, 기능 아이콘은 24×24, 정적 fallback | `JOY가 매일 보내는 신호`라는 첫 설명을 텍스트로 제공 |
-| AST-006 | F12 기억 조각 연출·완료 정지화면과 F10 완료 기록편 | P0 | 제작 필요 | [D-UI-038·D-UI-058·D-UI-062](../../.claude/spec/DECISIONS.md)의 비교 시안, 기준 원본 미채택 | ARCA 전용 신규 제작 | 작성 공간의 빛이 기록편으로 이어지는 안 비교. 원문 일부는 앱의 실제 텍스트로 조합하고 에셋에 넣지 않음. F10 완료는 정적 기록편만 재사용. 개수·단계·실루엣 고정 없음, 최대 2초, sprite 파일당 500KB 이하 | 탭·명시적 조작·키보드 건너뛰기, Reduced Motion에서는 즉시 완료 상태. 합성 데이터로만 시안 검증 |
-| AST-007 | F20 기록 없음 보조 이미지 | P1 | 제작 필요 | 제작 후 선택할 Figma 또는 코드 기준 원본 | ARCA 전용 신규 제작 | 장면별 정수 배율·컨테이너 안전 영역 규격 적용, 없어도 행동과 의미가 완결 | 장식이면 대체 텍스트 없음, 빈 상태 문구를 대체하지 않음 |
-| AST-008 | 기본 조작 픽셀 아이콘 | P0 | 검토 중 | [Pixelarticons Free Base](https://pixelarticons.com/docs/) `2.4.1`은 기존 기본 후보; 추가 외부·자체 아이콘의 실제 목록 미채택 | 출처별 원문 라이선스·버전·저작권/표시 의무 보존; 코드 라이선스로 에셋 권리를 추정하지 않음 | Back·Close·Settings·Edit·Delete·Copy·Retry·Check·Chevron·Today·Archive를 선별. 02 §8.2에 따라 원본 격자·표시 크기·선 굵기·광학적 크기 통일; 실제 import는 06 | 텍스트 동반 아이콘은 장식 처리, 아이콘 전용 버튼은 의미 이름과 44px 타깃 제공 |
-| AST-009 | 인트로·F10~F12 공간 연결·기억 조각 모션 소스 | P0 | 제작 필요 | 프런트엔드 코드의 CSS·Web Animations API와 필요한 승인 sprite | ARCA 코드와 에셋의 권리 기준 적용 | CSS·WAAPI와 승인 sprite로 구현. 질문→작성 공간 연결은 입력·포커스를 지연시키지 않음. 작은 상태 타이밍은 기본값, 기억 연출 최대 2,000ms와 무한 반복 금지는 필수, 채택 원본·버전 기록 | `prefers-reduced-motion`에서 같은 정보의 즉시 정적 전환, 기억 연출의 탭·Button·키보드 건너뛰기 필수 |
+| AST-004 | F01 인트로 3장면 픽셀 세트 | P0 | 검토 중 | [인트로 서사](../../docs/ARCA_INTRO_STORY.txt), [Screens Spec F01](../../.claude/spec/03_SCREENS_SPEC.md#42-f01--인트로). 2026-09-28 현행 코드 원본: `src/ui/pixel.tsx`의 `introScenes`(56×30 격자 SVG, 4 CSS px/셀, 224×120px, `항해 → JOY와 기억 → 탑승`), 토큰 색만 사용·정적·텍스트 미포함 | ARCA 전용 신규 제작, 제작자와 생성 도구 기록 | `항해 이유 → JOY와 기억 → 탑승` 3장면을 권장 시작안으로 제작·비교하고 채택 장면 수를 기록. 배경·전경 분리, 정수 배율·기준 위치·허용 crop·실제 컨테이너 안전 영역, 파일당 150KB·초기 eager 레이어 합계 300KB 이하, 이후 지연 로딩 | 진행 정보·핵심 서사·펼쳐 읽는 원문은 실제 텍스트로 제공. 원문을 이미지에 굽지 않고 Loading·실패·Reduced Motion에서 정적 fallback 유지 |
+| AST-005 | JOY·SEMA 신호 표현 | P0 | 검토 중 | [D-UI-037·D-UI-058](../../.claude/spec/DECISIONS.md)의 비교 시안. 2026-09-28 현행 코드: `src/ui/pixel.tsx`의 `JoyMark`(12×12 관측등 렌즈, F00 4px/셀·48px, F11 2px/셀·24px). F10은 `ObservationScene`(56×18, 4px/셀·224×72px)의 정적 관측창을 사용하며 표정·감정 반응 없음 | ARCA 전용 신규 제작 | 작은 기계 얼굴·관측등 등 JOY 인격과 F10→F11의 질문 위치·폭·JOY 문맥 연결 비교, 신호 도착·실제 저장 사건에만 상태 연결, 기능 아이콘은 24×24, 정적 fallback | `JOY가 매일 보내는 신호`라는 첫 설명을 텍스트로 제공 |
+| AST-006 | F12 기억 조각 연출·완료 정지화면과 F10 완료 기록편 | P0 | 검토 중 | [D-UI-038·D-UI-058·D-UI-062](../../.claude/spec/DECISIONS.md)의 비교 시안. 2026-09-28 현행 코드: `MemoryFragment`(14×12 격자 기록 매체, Violet 단계 명도; F12 4px/셀, F10 완료·누적 수 2px/셀)와 CSS `steps(4)` 1,600ms 형성(`.arca-formation`, Reduced Motion 0ms, 결과·누적 수는 첫 프레임부터 표시) | ARCA 전용 신규 제작 | 작성 공간의 빛이 기록편으로 이어지는 안 비교. 원문 일부는 앱의 실제 텍스트로 조합하고 에셋에 넣지 않음. F10 완료는 정적 기록편만 재사용. 개수·단계·실루엣 고정 없음, 최대 2초, sprite 파일당 500KB 이하 | 탭·명시적 조작·키보드 건너뛰기, Reduced Motion에서는 즉시 완료 상태. 합성 데이터로만 시안 검증 |
+| AST-007 | F20 기록 없음 보조 이미지 | P1 | 검토 중 | 2026-09-28 현행 코드: `EmptyArchiveArt`(32×9 격자 빈 동면 포드, 4 CSS px/셀), 없어도 문구·행동 완결 | ARCA 전용 신규 제작 | 장면별 정수 배율·컨테이너 안전 영역 규격 적용, 없어도 행동과 의미가 완결 | 장식이면 대체 텍스트 없음, 빈 상태 문구를 대체하지 않음 |
+| AST-008 | 기본 조작 픽셀 아이콘 | P0 | 검토 중 | Pixelarticons는 이전 후보이며 추가하지 않음. 2026-09-28 현행 ARCA 자체 제작 12×12 격자 아이콘 12종(back·chevron-right·settings·today·archive·memory·edit·delete·copy·check·close·lock)을 `src/ui/pixel.tsx`에 코드 원본으로 두고 24px(2 CSS px/셀)로 표시; 이 자체 격자 아이콘을 현행 UI에 사용 | ARCA 전용 신규 코드 제작(Codex), 외부 팩 미포함 | Back·Close·Settings·Edit·Delete·Copy·Retry·Check·Chevron·Today·Archive를 선별. 02 §8.2에 따라 원본 격자·표시 크기·선 굵기·광학적 크기 통일; 실제 import는 06 | 텍스트 동반 아이콘은 장식 처리, 아이콘 전용 버튼은 의미 이름과 44px 타깃 제공 |
+| AST-009 | 화면 진입·기억 조각 모션 소스 | P0 | 검토 중 | `src/ui/ui.css`: `arca-screen-enter` 180ms opacity 진입, `arca-fragment-form` 1,600ms·4단계 1회; Reduced Motion 0ms | ARCA 코드와 에셋의 권리 기준 적용 | CSS·WAAPI와 승인 sprite로 구현. 질문→작성 공간 연결은 입력·포커스를 지연시키지 않음. 작은 상태 타이밍은 기본값, 기억 연출 최대 2,000ms와 무한 반복 금지는 필수, 채택 원본·버전 기록 | `prefers-reduced-motion`에서 같은 정보의 즉시 정적 전환, 기억 연출의 탭·Button·키보드 건너뛰기 필수 |
 | AST-010 | 사운드·음악 | 제외 | 사용 안 함 | 없음 | 해당 없음 | MVP 번들에 음원과 자동 재생 코드 미포함 | 시각·촉각만으로 모든 상태를 이해 가능하게 함 |
-| AST-011 | Neo둥근모 브랜드·조작 서체 | P0 | 검토 중 | [Neo둥근모 공식 저장소](https://github.com/neodgm/neodgm) `v1.601` Regular WOFF2, 44,352 bytes | SIL Open Font License 1.1과 저작권 고지를 font 파일과 함께 보존 | 픽셀 역할에 공식 WOFF2를 self-host, 외부 CDN·Bold·Italic 합성 금지, 본문은 별도 시스템 서체, preload는 06에서 결정 | 픽셀·본문 역할 조합, 시스템 fallback·200% 글자·한글·영문·숫자·이모지 실제 기기 검증 |
+| AST-011 | Neo둥근모 브랜드·조작 서체 | P0 | 검토 중 | [Neo둥근모 공식 저장소](https://github.com/neodgm/neodgm) `v1.601` Regular WOFF2, 44,352 bytes. 2026-09-28 저장소에 self-host: `public/fonts/neodgm/neodgm.woff2`(SHA-256 `0c0ca9cd…ef0a33bf`)와 `LICENSE.txt`(OFL 1.1 원문), `src/ui/tokens.css`의 `@font-face`·`font-display: swap` | SIL Open Font License 1.1과 저작권 고지를 font 파일과 함께 보존 | 픽셀 역할에 공식 WOFF2를 self-host, 외부 CDN·Bold·Italic 합성 금지, 본문은 별도 시스템 서체, preload는 06에서 결정 | 픽셀·본문 역할 조합, 시스템 fallback·200% 글자·한글·영문·숫자·이모지 실제 기기 검증 |
 
 <br>
 
@@ -44,6 +44,12 @@
 핵심 비교 시안과 시각 채택은 아직 완료되지 않았습니다. [01 §10](../../.claude/spec/01_UI_OVERVIEW.md)의 비교 증거와 기준 원본이 준비되면 이 표에 실제 경로·버전·채택일을 연결합니다. 방향 승인만으로 에셋을 `사용 승인`으로 전환하지 않습니다.
 
 <br>
+
+### 2.1 현행 코드 UI 채택과 남은 검증
+
+2026-09-28 기준 AST-004~009는 Codex가 ARCA용 격자 문자열·SVG rect·CSS로 직접 제작한 코드 원본입니다. 외부 이미지 생성·아이콘 팩·UI 라이브러리를 추가하지 않았습니다. 장면은 정수 셀과 토큰 팔레트를 사용하고 본문 뒤에 배치하지 않습니다. F01 3장면은 224×120px, F10 관측창은 224×72px로 작은 컨테이너에도 비정수 축소 없이 표시합니다. 장식 SVG는 `aria-hidden`이며 실제 질문·답변은 DOM 텍스트입니다.
+
+현재 SVG는 JS 모듈로 함께 묶이며 별도 bitmap export·후속 장면 lazy loading은 구현하지 않았습니다. 아래 로딩 절의 분할 방향과 현재 구현을 구분합니다. UI는 채택됐으나 표의 `검토 중`은 실제 토스 WebView·운영 사용 확인이 남았다는 뜻입니다. 기존 로고 출처/권리 미확인은 AST-001·002에 유지합니다. 합성 브라우저 증거와 제약은 [08 §14.1](../../.claude/spec/08_QA_AND_INTEGRATION.md#141-2026-09-28-ui-정리와-ime-카운터-검증)에 기록합니다.
 
 ## 3. 파일과 권리 기록 규칙
 
@@ -103,3 +109,4 @@ AST-004 후속 장면·AST-006 형성 자원·AST-007·AST-009의 비필수 moti
 | v1.4 | 2026-09-12 | D-UI-055·D-UI-058·D-UI-062 | F01 3장면 시작안, 질문부터 저장까지의 공간 연결과 완료 홈 정적 기록편 반영; 실제 응답은 에셋과 분리한 텍스트로 조합 |
 | v1.5 | 2026-09-14 | D-TECH-039·049 | 공통 장면·최소 자원/후속 장식 로딩 경계·실패 격리·slice별 성능 검증 연결; 사용 승인 상태는 유지 |
 | v1.6 | 2026-09-14 | D-TECH-053~054 | 아이콘 출처 확장·코드/에셋 권리 분리·생성 배경과 UI 통합 기준 반영; 실제 사용 승인 미완료 유지 |
+| v1.7 | 2026-09-28 | 02 §13.3 탐색 | Neo둥근모 WOFF2·OFL self-host 경로, 자체 제작 아이콘·JOY 관측등·기억 조각·인트로 3장면·빈 상태의 코드 원본 시작안을 기록; 상태는 `검토 중`이며 사용 승인·실기기 검증 미완료 |

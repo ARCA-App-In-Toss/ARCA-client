@@ -6,6 +6,7 @@ import type { Availability, Excerpt } from '../../data/api/models.ts';
 import { InlineStatus, PixelAppShell, PixelButton, ScenePanel } from '../../ui/components.tsx';
 import { copy, fill } from '../../ui/copy.ts';
 import { formatCount } from '../../ui/format.ts';
+import { MemoryFragment } from '../../ui/pixel.tsx';
 
 type Hierarchy = 'archive-first' | 'today-first';
 
@@ -65,23 +66,27 @@ export function SavedScreen() {
   );
 
   return (
-    <PixelAppShell>
+    <PixelAppShell className="arca-page--saved">
       <h1 className="arca-visually-hidden">{copy['CPY-F12-001']}</h1>
-      <ScenePanel labelledBy="f12-result">
-        <h2 ref={resultRef} tabIndex={-1} className="arca-screen-title" id="f12-result">
+      <ScenePanel labelledBy="f12-result" art>
+        {/* CMP-024: the fragment's light settles in steps; purely decorative and skippable by nature. */}
+        <div className="arca-formation" aria-hidden="true">
+          <MemoryFragment cell={4} />
+        </div>
+        <h2 ref={resultRef} tabIndex={-1} className="arca-screen-title arca-screen-title--result" id="f12-result">
           {copy['CPY-F12-004']}
         </h2>
-        {repeatShown && <p>{copy['CPY-F12-006']}</p>}
+        {repeatShown && <p className="arca-text-secondary">{copy['CPY-F12-006']}</p>}
         {excerpt?.state === 'AVAILABLE' ? (
-          <>
+          <div className="arca-excerpt arca-plain-small">
             <p className="arca-label" id="f12-excerpt-label">
               {excerpt.value.isTruncated ? copy['CPY-F12-010'] : copy['CPY-F12-009']}
             </p>
-            <p className="arca-user-text" aria-describedby="f12-excerpt-label">
+            <p className="arca-user-text arca-user-text--reading" aria-describedby="f12-excerpt-label">
               {excerpt.value.text}
               {excerpt.value.isTruncated && <span aria-hidden="true">…</span>}
             </p>
-          </>
+          </div>
         ) : null}
         {/* The label is named once: aria-label for a known count, the visible Label otherwise (IX-039). */}
         {count?.state === 'AVAILABLE' ? (

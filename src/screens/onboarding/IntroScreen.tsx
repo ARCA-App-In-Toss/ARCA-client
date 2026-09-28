@@ -2,8 +2,9 @@ import { useLayoutEffect, useRef, useState } from 'react';
 import { useAllDeletedNotice } from '../../app/AppServices.tsx';
 import { paths, useArcaNavigate } from '../../app/navigation.ts';
 import introStory from '../../content/introStory.txt?raw';
-import { PixelAppShell, PixelButton, PixelPlaceholder, ScenePanel, ScreenTitle } from '../../ui/components.tsx';
+import { PixelAppShell, PixelButton, ScenePanel, ScreenTitle } from '../../ui/components.tsx';
 import { copy, fill } from '../../ui/copy.ts';
+import { IntroScene } from '../../ui/pixel.tsx';
 
 // F01 (03 §4.2, 04 §6.2, IX-030): bundled narrative only — no input, no server change. Finishing or
 // skipping the intro only opens F02; it never creates a passenger (ON-01).
@@ -53,9 +54,14 @@ export function IntroScreen() {
   };
 
   return (
-    <PixelAppShell>
+    <PixelAppShell className="arca-page--intro">
       <div className="arca-intro-bar">
         <p className="arca-intro-progress" role="img" aria-label={progressLabel}>
+          <span className="arca-intro-dots" aria-hidden="true">
+            {scenes.map((text, index) => (
+              <i key={text} className={index === scene ? 'is-current' : undefined} />
+            ))}
+          </span>
           {fill(copy['CPY-F01-002'], { currentScene: current, totalScenes })}
         </p>
         <PixelButton variant="ghost" className="arca-intro-skip" onClick={toJoin}>
@@ -63,23 +69,30 @@ export function IntroScreen() {
         </PixelButton>
       </div>
       <ScreenTitle>{copy['CPY-F01-001']}</ScreenTitle>
-      <ScenePanel>
-        <PixelPlaceholder />
-        <p className="arca-narrative">{scenes[scene]}</p>
+      <ScenePanel art>
+        <IntroScene index={scene} />
+        <p className="arca-narrative arca-narrative--scene">{scenes[scene]}</p>
       </ScenePanel>
       <div className="arca-visually-hidden" role="status" aria-live="polite">
         {announce ? `${progressLabel}. ${scenes[scene]}` : deletedNotice ? copy['CPY-F31-019'] : ''}
       </div>
-      <PixelButton ref={toggleRef} aria-expanded={storyOpen} onClick={storyOpen ? closeStory : openStory}>
+      <PixelButton
+        ref={toggleRef}
+        variant="ghost"
+        aria-expanded={storyOpen}
+        onClick={storyOpen ? closeStory : openStory}
+      >
         {storyOpen ? copy['CPY-F01-008'] : copy['CPY-F01-007']}
       </PixelButton>
       {storyOpen ? (
-        <section className="arca-story" aria-labelledby="arca-story-title">
+        <section className="arca-story arca-plain-small" aria-labelledby="arca-story-title">
           <h2 id="arca-story-title" ref={storyTitleRef} tabIndex={-1} className="arca-label">
             {copy['CPY-F01-009']}
           </h2>
           <p className="arca-narrative">{introStory}</p>
-          <PixelButton onClick={closeStory}>{copy['CPY-F01-008']}</PixelButton>
+          <PixelButton variant="ghost" onClick={closeStory}>
+            {copy['CPY-F01-008']}
+          </PixelButton>
         </section>
       ) : null}
       <div className="arca-actions">

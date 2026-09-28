@@ -119,14 +119,14 @@ export function DeleteAllScreen() {
   return (
     <PixelAppShell>
       <div className="arca-screen-header">
-        {!recovery && <PixelIconButton label={copy['CPY-COM-005']} glyph="‹" onClick={leave} />}
+        {!recovery && <PixelIconButton label={copy['CPY-COM-005']} icon="back" onClick={leave} />}
         <ScreenTitle>{copy['CPY-F31-001']}</ScreenTitle>
       </div>
       <RecordPanel labelledBy="f31-scope">
         <h2 className="arca-label" id="f31-scope">
           {copy['CPY-F31-002']}
         </h2>
-        <ul className="arca-list">
+        <ul className="arca-list arca-list--bullets">
           <li>{copy['CPY-F31-020']}</li>
           <li>{copy['CPY-F31-021']}</li>
           <li>{copy['CPY-F31-022']}</li>
@@ -135,7 +135,7 @@ export function DeleteAllScreen() {
       <InsetPanel>
         <h2 className="arca-label">{copy['CPY-F31-004']}</h2>
         <p className="arca-text-secondary">{copy['CPY-F31-023']}</p>
-        <ul className="arca-list">
+        <ul className="arca-list arca-list--bullets">
           <li>{copy['CPY-F31-024']}</li>
           <li>{copy['CPY-F31-025']}</li>
         </ul>

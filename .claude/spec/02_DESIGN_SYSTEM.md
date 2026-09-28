@@ -1,11 +1,11 @@
 # ARCA Design System
 
-- 문서 버전: v1.7
-- 최근 수정일: 2026년 9월 22일
+- 문서 버전: v1.8
+- 최근 수정일: 2026년 9월 28일
 - 상태: 확정
 - 승인 주체: 제품 책임자
-- 시각 검증: 새 방향·기본안 승인, 비교 시안·실기기 검증 및 시각 채택은 미완료
-- 편집: 중복 인계·설명을 줄이고 작업별 참조 위치를 추가했습니다. 필수 계약은 유지합니다.
+- 시각 검증: 현행 코드 UI 채택·합성 브라우저 비교 완료, 실제 토스 WebView 검증은 남음(08 §14.1)
+- 편집: 현행 UI·정보 위계·입력 표시를 코드와 동기화했습니다. 문구·라우트·서버 계약은 유지합니다.
 
 토큰·CMP·픽셀아트·모션·접근성의 원본입니다. 실제 에셋 권리·확보 상태는 [Asset Manifest · L1–11](../../design/assets/ASSET_MANIFEST.md)가 소유합니다.
 
@@ -102,22 +102,32 @@
 
 | 토큰 | 값 | 용도 |
 |---|---:|---|
-| `color.bg.canvas` | `#071426` | 앱 셸과 깊은 우주 배경 |
-| `color.bg.scene` | `#10233F` | ScenePanel과 장면 전경 surface |
-| `color.bg.record` | `#182B3C` | 작성·기록의 잉크색 surface 기본안 |
+| `color.bg.canvas` | `#090F1D` | 앱 셸과 깊은 우주 배경 |
+| `color.bg.scene` | `#111E32` | ScenePanel과 장면 전경 surface |
+| `color.bg.record` | `#19263A` | 작성·기록의 잉크색 surface 기본안 |
 | `color.bg.document` | `#F4F7FB` | 정책·장문 등에 선택하는 밝은 surface |
-| `color.bg.inset-dark` | `#0C1B30` | 어두운 surface 안 보조 그룹 |
+| `color.bg.inset-dark` | `#0D1728` | 어두운 surface 안 보조 그룹 |
 | `color.bg.inset-light` | `#E7EDF5` | 밝은 surface 안 보조 그룹 |
 | `color.text.on-dark.primary` | `#F4F7FB` | 어두운 surface의 본문 |
-| `color.text.on-dark.secondary` | `#AAB9CF` | 어두운 surface의 보조 정보 |
-| `color.text.on-light.primary` | `#071426` | 밝은 surface의 본문 |
+| `color.text.on-dark.secondary` | `#AFBDD0` | 어두운 surface의 보조 정보 |
+| `color.text.on-light.primary` | `#090F1D` | 밝은 surface의 본문 |
 | `color.text.on-light.secondary` | `#425574` | 밝은 surface의 보조 정보 |
 | `color.border.on-dark` | `#607795` | 어두운 문맥에서 식별이 필요한 조작 경계 |
 | `color.border.on-light` | `#7890AD` | 밝은 문맥에서 식별이 필요한 조작 경계 |
-| `color.brand.primary` | `#2457E6` | Primary 행동과 브랜드 식별 |
-| `color.signal` | `#67E8F9` | JOY·SEMA 신호 |
-| `color.memory` | `#9A78FF` | 기록편·저장 완료의 제한된 빛, 조형은 §7.3에서 탐색 |
+| `color.brand.primary` | `#3659BC` | Primary 행동과 브랜드 식별 |
+| `color.signal` | `#9ADBDC` | JOY·SEMA 신호 |
+| `color.memory` | `#B4A0EF` | 기록편·저장 완료의 제한된 빛, 현행 조형은 §7.3 |
 | `color.warmth` | `#C98A3D` | 제한된 온기 강조, 기능 상태에 사용 금지 |
+| `color.signal.step-1 / 2 / 3` | `#509DAB / #265367 / #172F43` | 신호 장면의 불투명 명도 단계 |
+| `color.memory.step-1 / 2 / 3` | `#8068BF / #493B76 / #282541` | 기억 기록편의 불투명 명도 단계 |
+| `color.brand.primary.deep` | `#253C79` | Primary의 낮은 단차 |
+| `color.bg.scene.raised` | `#22354E` | 장면 안 control |
+| `color.bg.canvas.deep` | `#050B15` | 장면의 먼 배경 |
+| `color.border.subtle` | `#2D4059` | 비상호작용 구분선 |
+| `color.brand.edge` | `#91ABE9` | Primary 외곽 |
+| `color.tap-highlight` | `transparent` | 텍스트 행동의 브라우저 tap 배경 제거 |
+
+위 값은 `src/ui/tokens.css`의 현행 채택값입니다. 네이비 바탕 → 장면 → 기록 면의 명도 차이로 깊이를 만들며 브랜드 블루는 주 행동, 시안은 JOY·신호·포커스, 바이올렛은 기억 표식에 제한합니다. 단계 색은 본문색이나 감정·기능 상태색으로 사용하지 않습니다.
 
 `color.signal`, `color.memory`, `color.warmth`는 각각 도메인 경험을 나타내며 Success, Warning, Danger의 대체색으로 사용하지 않습니다. 넓은 본문 배경이나 긴 본문 글자에도 사용하지 않습니다.
 
@@ -140,7 +150,7 @@
 | 큰 텍스트 | 3:1 | WCAG 큰 텍스트 조건을 만족하는 Display |
 | 아이콘·테두리·포커스 | 3:1 | 조작 경계와 선택·포커스 상태 |
 
-기존 밝은 조합의 기준은 `on-light primary / document` 17.19:1, `on-light secondary / document` 7.02:1, `border.on-light / document` 3.06:1입니다. 잉크색 record에는 on-dark 텍스트·상태·경계를 사용합니다. 2026년 9월 12일 토큰 계산 결과 `on-dark primary / record` 13.48:1, `on-dark secondary / record` 7.28:1, `border.on-dark / record` 3.15:1로 기준을 충족했습니다. 이는 불투명 토큰 쌍의 계산이며 시각 채택본·실제 WebView의 본문·커서·포커스·오류 검증은 별도로 수행합니다. 색을 조정해도 이 절의 필수 대비를 낮추지 않습니다.
+2026-09-28 현행 불투명 토큰 기준으로 Primary 버튼의 흰 텍스트는 5.90:1, record 위 보조 텍스트는 7.98:1입니다. 기능상 필요한 경계에는 `border.on-dark`를 사용하고 낮은 대비의 `border.subtle`은 장식 구분선에만 사용합니다. 픽셀 프레임의 CSS 배경 레이어로 axe 색 대비 일부는 자동 판정 불가이며, 토큰 계산을 병행했습니다. 실제 iOS·Android WebView 읽기·커서·포커스 검증은 별도입니다.
 
 ## 4. 타이포그래피
 
@@ -162,29 +172,31 @@
 
 ### 4.2 역할별 서체
 
-[D-UI-032 · L90](./DECISIONS.md#6-시각-표현과-탐색)에 따라 아래 두 목소리를 구분합니다.
+두 서체만 사용합니다. 픽셀 서체는 짧은 표지와 조작에, 시스템 서체는 계속 읽는 문장에 적용합니다.
 
-| 역할 | 서체 | 예 |
+| 역할 | 서체 | 적용 |
 |---|---|---|
-| 브랜드·JOY의 짧은 말·조작 | `font.family.pixel` | 짧은 인트로 문장, 화면 제목, 질문, Button·Label·날짜·SEMA 코드 |
-| 사용자의 말·지속해서 읽는 본문 | `font.family.body` | 응답 입력·발췌·상세, 닉네임 입력값, 장문 설명·정책·오류 설명 |
+| 브랜드·화면 제목·짧은 Label·조작 | `font.family.pixel` | ARCA, 화면 제목, JOY 발신자, 버튼·탭 |
+| 질문·사용자 입력·응답·설명·메타 | `font.family.body` | 오늘 질문·질문 서문, 인트로 설명, 목록 질문, 날짜·글자 수·보관 안내 |
 
-같은 Field에서도 Label과 입력값의 역할을 구분할 수 있습니다. 두 서체의 크기·행간·기준선은 합성된 한글·영문·숫자·이모지·장문으로 비교하고 실제 iOS·Android에서 채택합니다.
+질문도 길어질 수 있으므로 짧은 JOY Label과 분리해 시스템 본문 서체로 읽습니다. 답변·닉네임·문장에는 픽셀 서체를 강제하지 않습니다. Bold·Italic 합성 없이 크기·여백·색으로 위계를 만듭니다.
 
 ### 4.3 타입 스케일
 
-| 토큰 | CSS 크기 | 행간 | 용도 |
-|---|---:|---:|---|
-| `type.display` | `2rem` / 32px 기준 | `2.75rem` / 44px 기준 | 인트로의 짧은 핵심 문장 |
-| `type.screen-title` | `1.5rem` / 24px 기준 | `2.25rem` / 36px 기준 | 콘텐츠 내부 화면 제목 |
-| `type.question` | `1.25rem` / 20px 기준 | `2rem` / 32px 기준 | 오늘의 질문과 저장 당시 질문 |
-| `type.body` | `1rem` / 16px 기준 | `1.75rem` / 28px 기준 | 본문, 입력, 설명 |
-| `type.control` | `1rem` / 16px 기준 | `1.5rem` / 24px 기준 | Button, Label, 상태, 날짜·코드 |
+실제 글자 크기는 **20 / 16 / 14px의 세 종류**입니다. 기준은 브라우저 기본 16px이며 CSS에는 rem을 사용합니다. 의미별 alias가 늘어나도 새 크기를 만들지 않습니다.
 
-- `html` 글자 크기를 px로 잠그지 않고 브라우저 기본 100%를 유지합니다.
-- 질문과 응답 전문은 한 줄 말줄임을 사용하지 않습니다. CMP-015의 원문 발췌는 전문이 아닌 미리보기로 구분하고 일부 생략을 허용합니다. 표시 길이·줄바꿈·정확한 안내 문구는 03·04가 [Rules AR-09 · L91](../../docs/ARCA_MVP_RULES.md#5-항해-기록과-삭제)를 소비해 정의합니다.
-- 날짜·SEMA 코드·누적 개수는 `type.control`을 사용하고 고정 폭 정렬을 위해 문자 폭을 추정하지 않습니다.
-- 200% 글자 확대에서 Button label과 Metadata는 줄바꿈할 수 있으며 잘리거나 겹치지 않아야 합니다.
+| 기반 토큰 | CSS 크기 | 기본 행간 | 의미별 alias·용도 |
+|---|---:|---:|---|
+| `type.size.title` | `1.25rem` / 20px | `2rem` / 32px | display·screen-title·question·question-lead: 화면 제목, 오늘 미응답의 주 질문 |
+| `type.size.body` | `1rem` / 16px | `1.75rem` / 28px | body·reading·narrative: 입력, 답변, 목록 질문, 인트로·설명 |
+| `type.size.caption` | `0.875rem` / 14px | `1.25rem` / 20px | caption: 날짜·코드·보관 상태·글자 수·보조 Label |
+
+`type.control`은 body 크기와 `1.5rem` / 24px 행간을 사용합니다. 작성·수정·상세·완료 홈의 질문은 body 크기의 조용한 서문으로 낮춰 입력·응답에 집중시킵니다. ARCA 워드마크도 title 크기를 사용합니다.
+
+- `html` 글자 크기를 px로 잠그지 않습니다. 기본 100%, 검증 200%를 사용합니다.
+- 질문·응답 전문을 말줄임하지 않습니다. F20 목록 질문만 04 IX-027의 일부 표시 규칙을 사용하며 답변은 상세에서 읽습니다.
+- 날짜·코드·카운터는 caption을 쓰며 고정 문자 폭을 추정하지 않습니다.
+- 큰 글자에서 버튼·메타는 줄바꿈하고 높이가 늘어나며 잘리거나 겹치지 않습니다. 서체 미지원 글리프는 시스템 fallback으로 읽습니다.
 
 ## 5. 간격·크기·레이아웃 토큰
 
@@ -246,7 +258,7 @@
 | `corner.none` | `0` | 별도 모서리 장식이 없는 읽기·보조 영역 |
 | `focus.width` | `2px` | 키보드 포커스 선 |
 | `focus.offset` | `2px` | 외곽선과 컴포넌트 사이 간격 |
-| `shadow.raised` | `4px 4px 0` | Primary와 선택된 raised surface에만 사용. 그림자 색은 해당 요소의 전경색(`currentColor`, on-dark primary)을 현재 채택값으로 사용 |
+| `shadow.raised` | `4px 4px 0` | Primary와 선택된 raised surface에만 사용. 현재 Primary는 brand edge 외곽과 brand deep 하단 단차로 표현 |
 | `shadow.pressed` | `2px 2px 0` | Pressed 상태 |
 
 주요 행동·도메인 장면·outlined surface의 모서리는 1~3셀을 직각으로 잘라낸 계단형 실루엣을 기본으로 합니다. 읽기·보조 영역은 `plain` 표현으로 외곽선·모서리 장식을 생략하고 면·여백으로 구분할 수 있습니다. 비상호작용 면마다 테두리를 요구하지 않습니다([D-UI-034 · L92](./DECISIONS.md#6-시각-표현과-탐색)). 입력 경계·포커스·선택 상태는 독립적으로 식별 가능해야 하며 구현 기법은 `06`이 정합니다.
@@ -261,7 +273,7 @@ Blur shadow, backdrop blur, glass surface, 연속 gradient glow와 hover 발광�
 | `opacity.disabled` | `0.48` | Disabled 의미를 Label·cursor·상태와 함께 전달 |
 | `opacity.dimmer` | `0.72` | `rgba(3, 8, 18, 0.72)`에만 사용 |
 
-본문이나 오류 문구를 opacity만 낮춰 보조색으로 만들지 않습니다. Disabled도 opacity만으로 구분하지 않고 shadow 제거, cursor와 네이티브 `disabled` 속성을 함께 적용합니다.
+본문이나 오류 문구를 opacity만 낮춰 보조색으로 만들지 않습니다. Disabled에서는 전체 텍스트 opacity를 낮추지 않습니다. 채움·경계·shadow 제거·cursor와 네이티브 `disabled`로 구분하고 글자의 대비를 유지합니다.
 
 ### 6.3 레이어
 
@@ -284,13 +296,14 @@ Blur shadow, backdrop blur, glass surface, 연속 gradient glow와 hover 발광�
 |---|---:|---|
 | `motion.duration.instant` | `0ms` | Pressed 위치·shadow 변화 |
 | `motion.duration.fast` | `120ms` | 작은 상태·아이콘 변화 |
-| `motion.duration.base` | `180ms` | Dialog·Sheet·Toast 진입과 이탈 |
-| `motion.duration.scene` | `320ms` | 질문·장면 전환 |
-| `motion.duration.memory` | 최대 `2000ms` | 최초 저장 기억 조각 형성 전용 |
+| `motion.duration.base` | `180ms` | 화면 본문 진입 fade의 현행 값; Overlay 공통 duration |
+| `motion.duration.scene` | `320ms` | 장면 전환용 예약값; 현재 라우트 진입에는 base 사용 |
+| `motion.duration.memory` | `1600ms` (제품 상한 2000ms) | 최초 저장 기억 조각 형성 전용 |
 | `motion.easing.pixel` | `steps(2, end)` | 작은 픽셀 상태 변화 |
 | `motion.easing.settle` | `cubic-bezier(0.2, 0, 0, 1)` | Overlay와 장면의 감속 |
 
-- Pressed는 즉시 2px 이동하고 hard shadow를 4px에서 2px로 줄입니다.
+- 일반 버튼의 Pressed는 즉시 2px 이동하며 Primary의 하단 단차를 줄입니다. 밑줄 텍스트 행동(`ghost`, `danger-text`)은 가로 이동·배경 채움 없이 아래로 2px 눌립니다. Reduced Motion에서는 이동도 0px입니다.
+- 화면 본문 `.arca-shell__content`가 mount될 때 opacity 0→1로 180ms 한 번 진입합니다. 위치·배율·퇴장 복제 없이 라우트와 포커스는 즉시 전환합니다. 탭은 밖에 남으며 입력·일반 rerender는 재생하지 않습니다. 이전·다음 화면을 겹치는 crossfade는 구현하지 않았습니다.
 - 무한 반복, 자동 깜빡임, 시차 배경과 읽기 뒤의 움직이는 별가루를 사용하지 않습니다.
 - 로딩 Placeholder에는 shimmer를 사용하지 않습니다.
 - 한 장면에서 동시에 움직이는 핵심 대상은 하나로 제한합니다.
@@ -309,7 +322,7 @@ Blur shadow, backdrop blur, glass surface, 연속 gradient glow와 hover 발광�
 
 `CMP-024 MemoryFormation`은 최초 저장 성공에만 실행합니다([Rules AN-06 · L71](../../docs/ARCA_MVP_RULES.md#4-응답과-기억-조각)). 표현 목표는 **내가 남긴 말이 보존되는 연결감**입니다([D-UI-038 · L96](./DECISIONS.md#6-시각-표현과-탐색)).
 
-- 첫 비교안은 F10의 질문 위치·폭을 F11의 작성 공간으로 이어받고, F12에서 작성 영역의 빛이 작은 기록편으로 접혀 남는 장면입니다. 저장한 응답의 시작부터 이어지는 일부를 기록편 옆의 읽을 수 있는 실제 텍스트로 함께 남깁니다. 03·04가 발췌의 위치·길이·일부 표시를, 05가 저장 정본 확인을 소유합니다([D-UI-058 · L121](./DECISIONS.md#8-핵심-경험과-화면별-위계), [Rules AR-09 · L91](../../docs/ARCA_MVP_RULES.md#5-항해-기록과-삭제)).
+- 현행 구현은 F10 관측 장면 → F11의 조용한 질문 서문과 입력 → F12의 작은 기록편·저장 문장으로 연결합니다. 라우트 사이 오브젝트를 이동시키지 않으며 F12의 기록 매체 실루엣이 4단계·1,600ms로 한 번 나타납니다. 저장한 응답의 시작부터 이어지는 일부를 기록편 옆의 읽을 수 있는 실제 텍스트로 함께 남깁니다. 03·04가 발췌의 위치·길이·일부 표시를, 05가 저장 정본 확인을 소유합니다([D-UI-058 · L121](./DECISIONS.md#8-핵심-경험과-화면별-위계), [Rules AR-09 · L91](../../docs/ARCA_MVP_RULES.md#5-항해-기록과-삭제)).
 - Violet 픽셀의 개수·4단계 형성·비대칭 결정 실루엣을 고정하지 않습니다. 얇은 기록편의 형태·빛·움직임은 탐색 가능한 표현이고 채택본을 에셋 원본으로 기록합니다.
 - 감정·작성 길이에 따른 등급·희귀도·보상 차이를 만들지 않습니다. 실제 사용자 본문을 연출 에셋이나 외부 생성 도구에 전달하지 않습니다.
 - 서버 저장 성공 뒤에만 시작하고 최대 2초 안에 완료 정지화면·성공 문구·누적 수를 제공합니다. 성공 여부를 연출 재생 완료에 의존시키지 않습니다.
@@ -329,8 +342,8 @@ Blur shadow, backdrop blur, glass surface, 연속 gradient glow와 hover 발광�
 | 표시 배율 | 기본 1 source px = 4 CSS px, 채택본의 정수 배율 기록 |
 | 구도 | 공유 배경과 핵심 전경 분리, 장면별 기준 위치·허용 crop 명시 |
 | 안전 영역 | viewport가 아닌 gutter·panel padding을 제외한 실제 장면 컨테이너에서 검증 |
-| 원본 | 편집 가능한 레이어 원본과 lossless PNG |
-| 운영 export | lossless WebP 우선, 필요할 때 PNG fallback |
+| 원본 | 현행은 `src/ui/pixel.tsx`의 편집 가능한 격자 문자열 → SVG rect; 외부 bitmap 도입 시 레이어 원본·lossless PNG |
+| 운영 export | 현행은 코드 생성 SVG; bitmap 도입 시 lossless WebP·PNG fallback |
 | 보간 | `image-rendering: pixelated`, smooth interpolation 금지 |
 | 정적 장면 상한 | 파일당 150KB |
 | sprite·모션 상한 | 파일당 500KB |
@@ -345,18 +358,18 @@ Blur shadow, backdrop blur, glass surface, 연속 gradient glow와 hover 발광�
 
 ### 8.2 아이콘 체계
 
-일반 조작 아이콘은 Pixelarticons Free Base를 기본 후보로 필요한 외부·자체 아이콘을 선별합니다. JOY·SEMA·기억 조각의 도메인 의미는 ARCA가 소유합니다. 출처가 달라도 화면에서는 아래 문법을 통일합니다(D-TECH-053; D-UI-021의 출처 제한 대체).
+일반 조작 아이콘은 `src/ui/pixel.tsx`에서 직접 제작한 12×12 격자 12종을 사용합니다. 외부 아이콘 팩을 추가하지 않습니다. Pixelarticons는 이전 후보로만 남습니다. JOY·SEMA·기억 조각의 도메인 의미는 ARCA가 소유합니다. 출처가 달라도 화면에서는 아래 문법을 통일합니다(D-TECH-053; D-UI-021의 출처 제한 대체).
 
 | 토큰·규칙 | 값 |
 |---|---|
-| 기준 제작 격자 | ARCA 신규 제작 기본 `24 × 24`; 외부 원본은 원래 격자를 기록하고 표시 크기에서 정수 배율·선명도 검증 |
+| 기준 제작 격자 | 현행 원본 `12 × 12`, 2 CSS px/셀로 24px 표시 |
 | `icon.size.default` | `24px` |
 | `icon.size.emphasis` | `48px` |
 | 색상 | `currentColor` |
 | 일반 스타일 | outline을 기본으로 같은 픽셀 밀도·선 굵기·광학적 크기·상태 표현으로 통일; 출처 혼합 허용 |
 | 활성 상태 | 별도 게임형 badge가 아니라 배경·텍스트·테두리 토큰으로 표시 |
 
-예정된 일반 의미는 Back, Close, Settings, Edit, Delete, Copy, Retry, Check, Chevron, Today, Archive입니다. 실제 package export 이름과 Free 포함 여부는 `06`에서 확인하고, 운영에 쓰는 개별 목록과 버전·라이선스는 Asset Manifest `AST-008`에 승인합니다.
+현행 아이콘은 back·chevron-right·settings·today·archive·memory·edit·delete·copy·check·close·lock입니다. 원본·격자·채택 크기는 Asset Manifest AST-008에 기록합니다.
 
 - 아이콘 font는 사용하지 않고 SVG 또는 React SVG 컴포넌트를 사용합니다.
 - 외부 원본을 무조건 24px에 늘려 맞추지 않습니다. 정수 배율로 맞지 않으면 표시 박스 안의 여백 조정·격자에 맞춘 수정·다른 원본을 비교하고 채택 크기를 기록합니다.
@@ -370,11 +383,11 @@ Blur shadow, backdrop blur, glass surface, 연속 gradient glow와 hover 발광�
 | 개념 | 승인 방향·기본안 | 함께 표시할 정보 | 필수 제약 |
 |---|---|---|---|
 | JOY | Cyan을 중심으로 한 작은 기계 얼굴 또는 관측등 등 기억 가능한 시각적 인격 | 발신자 Label, 최초 1회 설명 | 감정 추정·친밀도·출석 압박·대화 기능으로 확장하지 않음 |
-| SEMA | 미응답은 질문과 작성 행동이 먼저, 완료는 응답 발췌 뒤 보조 문맥 | 현재 또는 저장 당시 질문, JOY·실제 KST 날짜·SEMA 코드 | 스캔선·진단 그래프·무한 파동 금지 |
+| SEMA | 미응답은 질문과 작성 행동이 먼저, 완료는 질문 서문 뒤 응답 발췌에 집중 | 현재 또는 저장 당시 질문, 짧은 JOY Label·질문 위 KST 날짜 | 스캔선·진단 그래프·무한 파동 금지 |
 | 응답 | 잉크색 RecordPanel 기본안, 본문 서체와 작은 시작 공간 | 입력·글자 수·비공개·기기 임시 보관·오류 | 감정 분석색·점수 금지, 서버 기록 저장과 구분 |
-| 기억 조각 | 작성 공간에서 이어지는 작은 기록편, Violet 빛은 기본안 | 실제 텍스트 원문 일부·저장 완료 문구·누적 수 | 희귀도·등급·보상 상자 금지 |
+| 기억 조각 | 작성 공간에서 이어지는 작은 기록편, Violet 빛은 기본안 | F10·F12의 원문 일부·저장 완료 문구·누적 수 | 희귀도·등급·보상 상자 금지 |
 | 누적 수 | 채택된 기록편의 작은 아이콘과 숫자 | 단순 누적 개수 | 진행률·연속 출석·순위 금지 |
-| 항해 기록 | 원문 발췌 중심의 한 열 MemoryRow와 실제 연월 구획 | 응답 일부·질문 일부·날짜 | 인벤토리·수집 타일·AI 요약·미작성 기간 빈칸 금지 |
+| 항해 기록 | 흰 질문 중심의 한 열 MemoryRow와 실제 연월 구획 | 저장 당시 질문 일부·날짜; 응답은 상세 | 인벤토리·수집 타일·AI 요약·미작성 기간 빈칸 금지 |
 
 JOY의 얼굴·상징 형상은 탐색할 수 있지만 첫 비교안은 표정 변화 없는 작은 기계 얼굴 또는 관측등입니다. 상태 변화는 신호 도착·실제 저장 성공 등 확인 가능한 사건에만 연결합니다. 응답 내용이나 추정 감정에 반응하지 않으며 생성형 대화 기능을 추가하지 않습니다([D-UI-037 · L95](./DECISIONS.md#6-시각-표현과-탐색)).
 
@@ -398,9 +411,9 @@ JOY의 얼굴·상징 형상은 탐색할 수 있지만 첫 비교안은 표정 
 | CMP-010 | `PixelTextField` | 닉네임 등 한 줄 입력 | 네이티브 `input` |
 | CMP-011 | `PixelTextarea` | 1~2,000자 응답 작성·수정 | 네이티브 `textarea` |
 | CMP-012 | `PixelCheckboxRow` | 필수 약관 한 항목의 동의와 전문 열람 | 네이티브 checkbox와 별도 link·button |
-| CMP-013 | `SemaSignalPanel` | 현재 질문 우선, JOY·날짜·SEMA 코드 보조 조합 | ScenePanel 기반 domain composition |
+| CMP-013 | `SemaSignalPanel` | 현재 질문 우선, 짧은 JOY Label·패널 상단 날짜 | ScenePanel 기반 domain composition |
 | CMP-014 | `QuestionSwitchAction` | 기본·대체 질문의 명시적 전환 | PixelButton secondary 또는 text action |
-| CMP-015 | `MemoryRow` | 원문 발췌 중심, 질문 일부·날짜 보조 목록 항목 | 하나의 link·button hit area |
+| CMP-015 | `MemoryRow` | 질문 일부 중심, 날짜 보조 목록 항목; 응답은 상세 | 하나의 link·button hit area |
 | CMP-016 | `MemoryCount` | 채택된 기록편의 작은 아이콘과 누적 숫자 | 읽을 수 있는 텍스트, 진행률 역할 금지 |
 | CMP-017 | `PixelAlertDialog` | 비가역·파괴 행동 확인 | headless modal 동작, ARCA 시각 |
 | CMP-018 | `PixelSheet` | 문맥 선택·설명·복사 등 보조 흐름 | headless modal 동작, swipe만으로 닫지 않음 |
@@ -425,6 +438,7 @@ CMP의 이름·의미·상태·접근성은 출처와 무관하게 유지합니�
 | CMP-005 RecordPanel | record / on-dark, 문서용 document / on-light | 20px | plain 기본, 필요 시 8px step·outlined |
 | CMP-006 InsetPanel | inset-light 또는 inset-dark | 16px | plain 기본, 필요 시 4px step·outlined |
 
+- F11·F22의 입력 바깥 RecordPanel과 F12의 큰 바깥 면은 배경·padding을 제거해 중첩 면을 줄입니다. 입력 경계와 저장 문장 면은 유지합니다.
 - Surface의 의미와 light/dark 문맥, 장식 강도 plain/outlined를 구분합니다. 같은 위계의 surface를 반복 중첩하지 않습니다.
 - 읽기·보조 영역은 border·shadow 없이 면과 여백으로 구분할 수 있습니다. 입력 control의 경계·포커스는 별도로 유지합니다.
 - ScenePanel 안의 입력은 RecordPanel의 기록 문맥으로 분리하되 밝은 색이나 외곽선으로만 구분하도록 강제하지 않습니다.
@@ -434,15 +448,17 @@ CMP의 이름·의미·상태·접근성은 출처와 무관하게 유지합니�
 
 | 항목 | 계약 |
 |---|---|
-| Variant | `primary`, `secondary`, `danger`, `ghost` |
+| Variant | `primary`, `secondary`, `danger`, `ghost`, `danger-text`, `row` |
 | 높이 | 최소 52px, IconButton은 44×44px |
 | Padding·gap | inline 20px, icon gap 8px |
-| Primary | 화면당 최대 하나, `color.brand.primary`, 2px border, 4px hard shadow |
+| Primary | 화면당 최대 하나, `color.brand.primary`, 2px border, 4px의 흐림 없는 하단 단차 |
 | Pressed | 즉시 2px 이동, shadow 2px로 축소 |
 | Hover | fine pointer 환경에서만 경계 명도 변화, glow 없음 |
 | Focus | 2px·3:1 이상 focus ring과 2px offset |
 | Disabled | 네이티브 `disabled`, shadow 제거, disabled 시각과 cursor 사용 |
 | Loading | 크기와 Label 영역 유지, `aria-busy`, 중복 실행 금지 |
+
+`다른 질문 보기`, `처음 질문 보기`, `삭제하기`는 밑줄 텍스트 행동입니다. 배경 채움·브라우저 tap highlight를 없애고 2px 아래 눌림만 사용하며 44px 이상 타깃과 focus-visible 링을 유지합니다.
 
 위험 행동을 Primary 색으로 위장하지 않습니다. 삭제의 정확한 확인 단계와 문구는 `04`, 실행 결과와 API 오류는 `05`가 소유합니다.
 
@@ -463,15 +479,15 @@ CMP-009는 위에서 아래로 `Label → Control → Help·Draft status와 Coun
 
 - Placeholder는 예시일 뿐 Label이나 요구사항을 대신하지 않습니다.
 - 응답은 1~2,000자, 닉네임은 정규화 후 보이는 문자 2~12자라는 제품 규칙을 표시·검증합니다. 정확한 계산과 오류 노출 시점은 `04`, 서버 계약은 `05`가 소유합니다.
-- 글자 수는 입력과 같은 접근성 설명에 연결하되 매 키 입력마다 live announcement를 만들지 않습니다.
+- 글자 수는 IME 조합 중에도 현재 입력값의 EGC 수를 즉시 표시합니다. 검증·저장·임시 보관의 확정 시점과 분리하며 매 키 입력마다 live announcement를 만들지 않습니다(04 IX-001).
 - 임시 저장 상태는 오류와 같은 위치를 경쟁하지 않도록 Help row에 표시합니다.
 - 응답 입력 가까이에 짧은 비공개 설명을 제공합니다. 기기 임시 보관 성공과 서버 기록 저장 성공을 구분하며 실제 쓰기 성공을 확인하기 전에 보관 완료를 표시하지 않습니다. 실패 시 본문을 유지하고 미보관 상태를 알립니다. 정상 상태는 짧은 Label로 표시하며 긴 보관 원리 설명은 첫 작성·펼쳐 읽기 조건을 적용합니다. 높은 오류와 함께 발생한 미보관 위험을 숨기지 않습니다. 정확한 문구와 설명 연결은 04 IX-037~038이 소유합니다([D-UI-060 · L123](./DECISIONS.md#8-핵심-경험과-화면별-위계)).
-- Textarea는 초기 3~4줄의 기본 공간에서 시작하고, 복원된 임시본·기존 긴 응답은 첫 표시부터 내용에 맞춰 확장합니다. 고정 px 상한 뒤 내부 스크롤로 전환하지 않습니다([D-UI-036 · L94](./DECISIONS.md#6-시각-표현과-탐색)).
+- Textarea는 초기 4줄의 기본 공간에서 시작하고, 복원된 임시본·기존 긴 응답은 첫 표시부터 내용에 맞춰 확장합니다. 고정 px 상한 뒤 내부 스크롤로 전환하지 않습니다([D-UI-036 · L94](./DECISIONS.md#6-시각-표현과-탐색)).
 - 키보드가 열린 실제 공간과 사용자 글자 크기를 기준으로 페이지를 스크롤하며 커서·오류·글자 수·저장 행동에 도달할 수 있어야 합니다. 1자·2,000자·한글 조합·붙여넣기·줄바꿈·큰 글자·키보드 열고 닫기에서 커서와 스크롤을 검증합니다.
 
 ### 9.5 약관 Checkbox 계약
 
-- CMP-012는 네이티브 checkbox를 사용하고 시각적 24px 체크 상자와 전체 행 44px 이상의 타깃을 제공합니다.
+- CMP-012는 네이티브 checkbox를 사용하고 시각적 24px 체크 상자와 실제 native input 44×44px 이상의 타깃을 제공합니다.
 - checkbox Label은 선택을 바꾸고, 전문 보기는 별도 44px link·button으로 열리며 선택 상태를 바꾸지 않습니다.
 - 서비스 이용약관과 개인정보처리방침 두 항목을 독립적으로 표시합니다.
 - 두 필수 항목이 모두 선택되기 전 주 행동은 비활성화합니다.
@@ -480,12 +496,12 @@ CMP-009는 위에서 아래로 `Label → Control → Help·Draft status와 Coun
 
 ### 9.6 질문·기억 계약
 
-- CMP-013의 내부에서는 현재 질문이 메타보다 먼저 읽히며, F10 미응답·F11에서는 질문이 화면의 첫 콘텐츠입니다. F10 미응답의 작성·질문 전환 묶음은 질문 가까이 두고 메타는 그 뒤에 둡니다. F10 완료에서는 RecordPanel의 응답 발췌가 먼저이고, 선택 질문·JOY·실제 날짜·SEMA 코드는 보조 문맥입니다. 필수 메타데이터를 숨기지 않습니다([D-UI-057·D-UI-062 · L120–125](./DECISIONS.md#8-핵심-경험과-화면별-위계)).
+- CMP-013의 내부에서는 현재 질문이 메타보다 먼저 읽히며, F10 미응답·F11에서는 질문이 화면의 첫 콘텐츠입니다. F10 미응답의 날짜는 질문 패널 안쪽 상단의 JOY Label 옆에 보조색 caption으로 두며 좁은 폭·큰 글자에서는 줄바꿈합니다. 작성·질문 전환 묶음은 질문 바로 뒤에 둡니다. F10 완료에서는 라벨 없는 선택 질문 서문을 먼저 두고 RecordPanel의 응답 발췌에 읽기 무게를 둡니다. 완료 상태의 날짜도 질문 서문 안쪽 위에 둡니다. 하단 발신자·날짜·SEMA 코드 목록은 제거하며 누적 수는 유지합니다([D-UI-057·D-UI-062 · L120–125](./DECISIONS.md#8-핵심-경험과-화면별-위계)).
 - CMP-014는 질문 아래에서 기본·대체 질문을 명시적으로 전환합니다. Segmented control, swipe, carousel과 추가 질문 무한 요청을 사용하지 않습니다([Rules SE-08 · L56](../../docs/ARCA_MVP_RULES.md#3-오늘의-sema)).
-- CMP-015는 사용자 본문 서체의 응답 원문 발췌를 중심으로 질문 일부·날짜를 보조 배치하는 전체 너비 행입니다. SEMA 코드는 필요한 경우 보조 정보로 둡니다. 행은 여백·면 또는 구분선으로 구별하며 2px 선을 의무화하지 않습니다. 한 열과 전체 행 hit area를 유지하고 인벤토리·수집 타일로 표현하지 않습니다([D-UI-039 · L97](./DECISIONS.md#6-시각-표현과-탐색)).
-- 발췌의 원문·비공개·수정·삭제 규칙은 [Rules AR-01·AR-09 · L83–91](../../docs/ARCA_MVP_RULES.md#5-항해-기록과-삭제)를 따르며 F10·F12·F20에 동일하게 적용합니다. 발췌임을 표시하고 전문은 상세에서 제공합니다. 길이·줄바꿈·문구는 03·04, 발췌 필드·생략 여부·수정/삭제/날짜 변경 갱신 계약은 05, 캐시 동기화는 06에 연결합니다. 발췌를 위해 목록의 행마다 상세 API를 추가 호출하는 구조에 의존하지 않습니다.
+- CMP-015는 저장 당시 질문 일부를 흰 시스템 본문체로, 날짜를 보조색 caption으로 표시하는 전체 너비 행입니다. 응답 발췌·응답 Label은 시각 및 접근성 이름에서 제외하고 선택 후 F21에서 읽습니다. SEMA 코드도 목록에는 표시하지 않습니다. 행은 여백·면 또는 구분선으로 구별하며 2px 선을 의무화하지 않습니다. 한 열과 전체 행 hit area를 유지하고 인벤토리·수집 타일로 표현하지 않습니다([D-UI-039 · L97](./DECISIONS.md#6-시각-표현과-탐색)).
+- 발췌의 원문·비공개·수정·삭제 규칙은 [Rules AR-01·AR-09 · L83–91](../../docs/ARCA_MVP_RULES.md#5-항해-기록과-삭제)를 따르며 F10·F12의 보이는 발췌와 API/캐시의 비공개 발췌에 적용합니다. F20은 질문·날짜만 표시합니다. 발췌임을 표시하고 전문은 상세에서 제공합니다. 길이·줄바꿈·문구는 03·04, 발췌 필드·생략 여부·수정/삭제/날짜 변경 갱신 계약은 05, 캐시 동기화는 06에 연결합니다. 발췌를 위해 목록의 행마다 상세 API를 추가 호출하는 구조에 의존하지 않습니다.
 - F20의 월 제목은 MemoryRow 바깥의 목록 그룹 heading으로 제공하고 행별 날짜·전체 행 hit area를 유지합니다. 실제 KST 작성 연월의 경계만 표시하며 페이지를 나눠 읽어도 같은 월 제목을 중복하지 않습니다. 빈 날·월을 만들지 않습니다([D-UI-064 · L127](./DECISIONS.md#8-핵심-경험과-화면별-위계)).
-- F21은 질문 전문을 서문 위계로 먼저 두고 응답 전문을 주 읽기 영역으로 둡니다. 질문을 접거나 말줄임하지 않으며, 본문 아래 수정·삭제는 읽기를 마친 뒤 선택하는 보조 행동입니다([D-UI-065~D-UI-066 · L128–129](./DECISIONS.md#8-핵심-경험과-화면별-위계)).
+- F21은 질문 서문 안쪽 상단에 작성 날짜만 표시하고 그 아래 질문 전문을 둡니다. `작성일` 접두 문구 없이 F10과 같은 날짜 caption을 사용하며 응답 전문을 주 읽기 영역으로 둡니다. `수정됨`은 해당 기록에서만 본문 아래에 유지합니다. 질문을 접거나 말줄임하지 않으며, 본문 아래 수정·삭제는 읽기를 마친 뒤 선택하는 보조 행동입니다([D-UI-065~D-UI-066 · L128–129](./DECISIONS.md#8-핵심-경험과-화면별-위계)).
 - CMP-016은 채택된 기록편의 작은 아이콘과 누적 수를 텍스트로 읽으며 `progressbar`, 등급과 streak 의미를 부여하지 않습니다.
 
 ### 9.7 Overlay·상태 계약
@@ -502,6 +518,8 @@ CMP-009는 위에서 아래로 `Label → Control → Help·Draft status와 Coun
 동일 영역의 InlineStatus는 주 오류와 유실 위험·복사 필요성을 하나의 읽기·발표 단위로 결합할 수 있습니다. 복사 실패의 직접 선택 방법은 시각 UI와 접근성 모두에 제공합니다. 정확한 발생 조건, 유지 시간, 우선순위와 한국어 문구는 `04`가 소유합니다. 오류 종류와 복구 가능성은 `05`를 참조합니다.
 
 ### 9.8 루트 탭 계약
+
+현행 두 탭은 사용 가능한 콘텐츠 폭을 나눠 쓰고 큰 글자에서도 이름을 읽을 수 있게 합니다. 불투명 canvas 하단 영역과 글자 크기에 맞춘 bottom 여유·scroll margin을 두어 마지막 기록·행동과 겹치지 않게 합니다. 목록의 `window.scrollY` 복원을 유지하기 위해 별도 중첩 스크롤 컨테이너를 만들지 않습니다.
 
 - CMP-025는 F10과 F20에서만 표시하고 탭 수는 `오늘`, `기록` 두 개로 고정합니다.
 - 앱인토스가 제공한 최신 플로팅 외곽 형태, 위치와 Safe Area 규격을 우선합니다.
@@ -612,21 +630,14 @@ F20의 보류한 최신 목록은 CMP-020과 CMP-007의 보조 행동으로 알�
 
 ### 13.3 남은 시각 채택 작업
 
-에셋별 확보·권리·사용 승인 상태는 [Asset Manifest · L1–11](../../design/assets/ASSET_MANIFEST.md), 화면별 시작안·검증 결과는 [03 §10 · L931–957](./03_SCREENS_SPEC.md#10-권장-시작안검증할-결과채택-상태)에서 관리합니다.
+현행 기준 원본은 `src/ui/tokens.css`, `ui.css`, `pixel.tsx`와 화면 JSX입니다. 2026-09-28 사용자 요청에 따라 목록 질문·날짜, 세 크기 타입 체계, 텍스트 행동 눌림, 본문 진입 fade를 채택했습니다. 393px·320px·200% 합성 데이터 비교와 Chromium·WebKit 회귀 증거는 [08 §14.1](./08_QA_AND_INTEGRATION.md#141-2026-09-28-ui-정리와-ime-카운터-검증)에 연결합니다.
 
-- [ ] 기존 로고 2종의 출처·사용 권리 확인과 인트로 스토리보드·장면, JOY·SEMA·기억 조각 에셋 제작·사용 승인
-- [ ] 선별 아이콘·Neo둥근모 파일의 출처·라이선스·실제 표시 품질 확인
-- [ ] 픽셀·본문 서체 조합의 한글·영문·숫자·이모지 fallback과 iOS·Android 읽기 품질 검증
-- [ ] F01 장면·원문 읽기, F03 단일 진행, F13 복사 우선 검증; 320px·큰 글자·Reduced Motion 상태를 채택 원본에 포함
-- [ ] 선별 CMP와 생성 배경의 §1.4 통합, 전 상태·아이콘 격자·장식 실패 시 픽셀 정체성과 Acceptance #53 검증
-- [ ] F10 → F11 → F12의 공간 연결·서체 역할·입력 명도·실제 텍스트와 기록편 연출 비교
-- [ ] 작은 초기 입력과 긴 응답 확장, inline/조건부 저장 바, 200% 글자·키보드·단일 주 스크롤·단일 저장 조작 검증
-- [ ] JOY의 기계 얼굴/관측등 후보와 사건에 한정한 상태 표현 채택
-- [ ] F10 완료·F12·F20의 발췌, 첫 기억/반복 기록, 월 구획과 F21 질문 서문·읽기 위계를 합성 데이터로 검증
-- [ ] 실제 장면 컨테이너의 전경 위치·crop·대체 구도 검증
-- [ ] iOS·Android 실제 토스 환경에서 검증하고 기준 원본·채택값·증거 기록
+- 완료: 코드 기반 인트로 3장면·JOY 관측등·기록 매체·관측창, 외부 UI/아이콘/폰트 추가 없는 통합, 시스템 본문 역할·타입 세 크기, 질문·입력·내 문장 위계, 체크박스 44px·탭 확대·텍스트 행동·Reduced Motion.
+- 완료: 합성 데이터의 목록→상세·수정/삭제, F10 완료·F12 발췌, 오류·빈 상태·확대 비교. 이 완료 표시는 브라우저 검증 범위입니다.
+- 남음: 실제 iOS·Android 토스 WebView의 OS 키보드·IME·선택 핸들·Safe Area·VoiceOver/TalkBack, 실제 기기 장기 읽기와 성능.
+- 남음: Asset Manifest에 남은 기존 로고의 출처·운영 사용 승인. 데모 UI 채택과 운영 출시 승인은 구분합니다.
 
-이 항목은 열린 제품 계약과 구분합니다. 독립된 계약·상태·접근성 구현과 비운영 탐색을 계속할 수 있지만, 시각 검증·에셋 사용 승인을 완료한 것으로 표시하지 않습니다.
+키보드 공간 축소 에뮬레이션과 Chromium CDP composition은 OS 키보드 실기기 검증을 대신하지 않습니다.
 
 ## 14. 관련 계약과 후속 검증
 

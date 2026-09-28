@@ -8,14 +8,23 @@ import {
   useLayoutEffect,
   useRef,
 } from 'react';
+import { type IconName, MemoryFragment, PixelIcon } from './pixel.tsx';
 
-// Native-HTML CMP baselines (02 §9). External pixel UI adoption replaces the visuals per CMP in
-// step 3 without changing these semantics.
+// Native-HTML CMP baselines (02 §9) with the ARCA pixel grammar applied in ui.css. Semantics, native
+// controls and accessible names are unchanged by the visual pass.
 
 /** CMP-001 PixelAppShell + CMP-003 PixelCanvas. */
-export function PixelAppShell({ children, tabs }: { children: ReactNode; tabs?: ReactNode }) {
+export function PixelAppShell({
+  children,
+  tabs,
+  className,
+}: {
+  children: ReactNode;
+  tabs?: ReactNode;
+  className?: string;
+}) {
   return (
-    <div className="arca-shell">
+    <div className={['arca-shell', className].filter(Boolean).join(' ')}>
       <main className={tabs ? 'arca-shell__content arca-shell__content--with-tabs' : 'arca-shell__content'}>
         {children}
       </main>
@@ -37,18 +46,40 @@ export function ScreenTitle({ children }: { children: ReactNode }) {
   );
 }
 
-/** CMP-004 ScenePanel. */
-export function ScenePanel({ children, labelledBy }: { children: ReactNode; labelledBy?: string | undefined }) {
+/** CMP-004 ScenePanel: plain 2-step silhouette; `art` centres a scene raster above its text. */
+export function ScenePanel({
+  children,
+  labelledBy,
+  art = false,
+  hero = false,
+}: {
+  children: ReactNode;
+  labelledBy?: string | undefined;
+  /** Centres a scene raster above its text. */
+  art?: boolean;
+  /** The screen's reading focus: more air around the content. */
+  hero?: boolean;
+}) {
   return (
-    <section className="arca-scene-panel" aria-labelledby={labelledBy}>
+    <section
+      className={[
+        'arca-scene-panel',
+        'arca-plain',
+        art ? 'arca-scene-panel--art' : null,
+        hero ? 'arca-scene-panel--hero' : null,
+      ]
+        .filter(Boolean)
+        .join(' ')}
+      aria-labelledby={labelledBy}
+    >
       {children}
     </section>
   );
 }
 
-/** CMP-006 InsetPanel (dark, plain). */
+/** CMP-006 InsetPanel (dark, plain, 1-step). */
 export function InsetPanel({ children }: { children: ReactNode }) {
-  return <div className="arca-inset-panel">{children}</div>;
+  return <div className="arca-inset-panel arca-plain-small">{children}</div>;
 }
 
 /** CMP-021 PixelPlaceholder: decorative outline only; state is announced elsewhere. */
@@ -61,29 +92,46 @@ export function PixelPlaceholder() {
   );
 }
 
-type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost';
+type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'danger-text' | 'ghost' | 'row';
 
 export interface PixelButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'type'> {
   variant?: ButtonVariant;
   /** Keeps size and label, exposes aria-busy, blocks duplicate activation, stays focusable. */
   loading?: boolean;
+  /** Decorative leading icon (the label carries the meaning). */
+  icon?: IconName;
   ref?: Ref<HTMLButtonElement>;
 }
 
-/** CMP-007 PixelButton. */
-export function PixelButton({ variant = 'secondary', loading = false, onClick, className, ...rest }: PixelButtonProps) {
+/** CMP-007 PixelButton. `row` is a list action: left text with a trailing chevron (F30). */
+export function PixelButton({
+  variant = 'secondary',
+  loading = false,
+  icon,
+  onClick,
+  className,
+  children,
+  ...rest
+}: PixelButtonProps) {
+  const framed = variant !== 'ghost' && variant !== 'danger-text';
   return (
     <button
       {...rest}
       type="button"
-      className={['arca-button', `arca-button--${variant}`, className].filter(Boolean).join(' ')}
+      className={['arca-button', `arca-button--${variant}`, framed ? 'arca-px' : null, className]
+        .filter(Boolean)
+        .join(' ')}
       aria-busy={loading || undefined}
       aria-disabled={loading || rest['aria-disabled'] || undefined}
       onClick={(event) => {
         if (loading) return;
         onClick?.(event);
       }}
-    />
+    >
+      {icon ? <PixelIcon name={icon} /> : null}
+      {variant === 'row' ? <span>{children}</span> : children}
+      {variant === 'row' ? <PixelIcon name="chevron-right" /> : null}
+    </button>
   );
 }
 
@@ -111,7 +159,7 @@ export function PixelCheckboxRow({
       <input
         id={id}
         type="checkbox"
-        className="arca-checkbox"
+        className="arca-checkbox arca-px"
         aria-label={accessibleName}
         checked={checked}
         onChange={(event) => onChange(event.target.checked)}
@@ -146,18 +194,30 @@ export function InlineStatus({
 }
 
 /** CMP-022 StatePanel: title/description/at most one recovery action live in the children. */
-export function StatePanel({ children }: { children: ReactNode }) {
+export function StatePanel({ children, centered = false }: { children: ReactNode; centered?: boolean }) {
   return (
     <InsetPanel>
-      <div className="arca-state-panel">{children}</div>
+      <div className={centered ? 'arca-state-panel arca-state-panel--centered' : 'arca-state-panel'}>{children}</div>
     </InsetPanel>
   );
 }
 
 /** CMP-005 RecordPanel: ink surface for the user's own words. */
-export function RecordPanel({ children, labelledBy }: { children: ReactNode; labelledBy?: string | undefined }) {
+export function RecordPanel({
+  children,
+  labelledBy,
+  hero = false,
+}: {
+  children: ReactNode;
+  labelledBy?: string | undefined;
+  /** The screen's main reading area (F10 done, F21): wider padding. */
+  hero?: boolean;
+}) {
   return (
-    <section className="arca-record-panel" aria-labelledby={labelledBy}>
+    <section
+      className={hero ? 'arca-record-panel arca-record-panel--hero arca-plain' : 'arca-record-panel arca-plain'}
+      aria-labelledby={labelledBy}
+    >
       {children}
     </section>
   );
@@ -165,24 +225,29 @@ export function RecordPanel({ children, labelledBy }: { children: ReactNode; lab
 
 /** CMP-016 MemoryCount: readable full name, never a progress role; unknown counts are not shown as 0. */
 export function MemoryCount({ text }: { text: string }) {
-  return <p className="arca-memory-count">{text}</p>;
+  return (
+    <p className="arca-memory-count">
+      <MemoryFragment cell={2} />
+      <span>{text}</span>
+    </p>
+  );
 }
 
-/** CMP-008 PixelIconButton: 44×44 target with a required accessible name; the glyph is decorative. */
+/** CMP-008 PixelIconButton: 44×44 target with a required accessible name; the icon is decorative. */
 export function PixelIconButton({
   label,
-  glyph,
+  icon,
   onClick,
   buttonRef,
 }: {
   label: string;
-  glyph: string;
+  icon: IconName;
   onClick: () => void;
   buttonRef?: Ref<HTMLButtonElement>;
 }) {
   return (
     <button ref={buttonRef} type="button" className="arca-icon-button" aria-label={label} onClick={onClick}>
-      <span aria-hidden="true">{glyph}</span>
+      <PixelIcon name={icon} />
     </button>
   );
 }
@@ -229,7 +294,7 @@ export function PixelTextareaField({
         ref={ref}
         id={id}
         value={value}
-        className="arca-textarea"
+        className="arca-textarea arca-px"
         aria-describedby={describedBy}
         aria-invalid={invalid || undefined}
       />
@@ -268,13 +333,15 @@ export function PixelTextField({
         id={id}
         type="text"
         value={value}
-        className="arca-text-input"
+        className="arca-text-input arca-px"
         aria-describedby={describedBy}
         aria-invalid={invalid || undefined}
       />
     </div>
   );
 }
+
+const tabIcons: Record<'today' | 'archive', IconName> = { today: 'today', archive: 'archive' };
 
 /** CMP-025 RootFloatingTabs: F10/F20 only; current tab exposed as aria-current, not colour alone. */
 export function RootFloatingTabs({
@@ -285,23 +352,24 @@ export function RootFloatingTabs({
   tabs: { id: 'today' | 'archive'; label: string; onSelect: () => void }[];
 }) {
   return (
-    <nav className="arca-root-tabs">
+    <nav className="arca-root-tabs arca-px">
       {tabs.map((tab) => (
         <button
           key={tab.id}
           type="button"
-          className="arca-root-tab"
+          className="arca-root-tab arca-px"
           aria-current={tab.id === current ? 'page' : undefined}
           onClick={tab.id === current ? undefined : tab.onSelect}
         >
-          {tab.label}
+          <PixelIcon name={tabIcons[tab.id]} />
+          <span>{tab.label}</span>
         </button>
       ))}
     </nav>
   );
 }
 
-/** CMP-015 MemoryRow: one full-width hit area; excerpt → question part → date (03 §6.1). */
+/** CMP-015 MemoryRow: one full-width hit area for the supplied record context. */
 export function MemoryRow({ onSelect, children }: { onSelect: () => void; children: ReactNode }) {
   return (
     <button type="button" className="arca-memory-row" onClick={onSelect}>

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useBlocker } from 'react-router';
 import { useBoardedPassenger, useFinishBoarding, useNicknameSave } from '../../app/AppServices.tsx';
 import { paths, useArcaNavigate } from '../../app/navigation.ts';
+import { countGraphemes } from '../../domain/text/graphemes.ts';
 import { checkNickname, type NicknameError } from '../../domain/text/nickname.ts';
 import {
   InlineStatus,
@@ -49,6 +50,7 @@ export function BoardedScreen() {
   }, [blocker]);
 
   const check = checkNickname(committed);
+  const currentCount = countGraphemes(value.trim());
   // Forbidden/over-limit show right after composition; one character waits for blur or an attempt (04 §4.2).
   const visibleError = check.error === 'too-short' && !shortRevealed ? null : check.error;
 
@@ -146,7 +148,7 @@ export function BoardedScreen() {
       />
       <div className="arca-field-help">
         <span id="f03-help">{copy['CPY-F03-008']}</span>
-        <span id="f03-count">{fill(copy['CPY-F03-009'], { currentCount: String(check.count) })}</span>
+        <span id="f03-count">{fill(copy['CPY-F03-009'], { currentCount: String(currentCount) })}</span>
       </div>
       {visibleError ? (
         <p className="arca-field-error" id="f03-error">

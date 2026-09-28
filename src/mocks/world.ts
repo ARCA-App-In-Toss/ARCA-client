@@ -188,23 +188,25 @@ export function excerptOf(content: string, profile: ExcerptProfile) {
   return { profile, limits, text, isTruncated: text.length < content.length };
 }
 
+/* Fixture text below is fictional demo content (07 §3.5 synthetic/non-user): realistic wording so
+   screens read naturally, never real user or production data. Identities and codes stay opaque. */
 export const SYNTHETIC_SEMA: MockSema = {
   dailySemaId: 'synthetic-day',
   semaId: 'synthetic-sema',
   version: '1',
-  semaCode: 'SYN-001',
+  semaCode: 'SEMA-0270',
   dateKst: '2026-09-27',
   primaryQuestion: {
     questionId: 'synthetic-q1',
     version: '1',
     role: 'PRIMARY',
-    text: '합성 기본 질문 (synthetic/non-user)',
+    text: '오늘 하루를 색으로 표현한다면 어떤 색인가요?',
   },
   alternateQuestion: {
     questionId: 'synthetic-q2',
     version: '1',
     role: 'ALTERNATE',
-    text: '합성 대체 질문 (synthetic/non-user)',
+    text: '요즘 나를 가장 자주 웃게 하는 것은 무엇인가요?',
   },
 };
 
@@ -213,17 +215,17 @@ export const SYNTHETIC_NEXT_DAY_SEMA: MockSema = {
   ...SYNTHETIC_SEMA,
   dailySemaId: 'synthetic-day-2',
   semaId: 'synthetic-sema-2',
-  semaCode: 'SYN-002',
+  semaCode: 'SEMA-0271',
   dateKst: '2026-09-28',
   primaryQuestion: {
     ...SYNTHETIC_SEMA.primaryQuestion,
     questionId: 'synthetic-q3',
-    text: '다음 날 합성 질문 (synthetic/non-user)',
+    text: '요즘 자꾸 미루게 되는 일이 있다면, 그 일의 어떤 부분이 무거운가요?',
   },
   alternateQuestion: {
     ...SYNTHETIC_SEMA.alternateQuestion,
     questionId: 'synthetic-q4',
-    text: '다음 날 합성 대체 질문 (synthetic/non-user)',
+    text: '오늘 하루 중 가장 조용했던 순간은 언제였나요?',
   },
 };
 
@@ -231,11 +233,11 @@ export const SYNTHETIC_NEXT_DAY_SEMA: MockSema = {
 export const SYNTHETIC_REPLACED_SEMA: MockSema = {
   ...SYNTHETIC_SEMA,
   semaId: 'synthetic-sema-replaced',
-  semaCode: 'SYN-001R',
+  semaCode: 'SEMA-0270R',
   primaryQuestion: {
     ...SYNTHETIC_SEMA.primaryQuestion,
     questionId: 'synthetic-q5',
-    text: '교체된 합성 질문 (synthetic/non-user)',
+    text: '오늘 나에게 가장 오래 남은 소리는 무엇이었나요?',
   },
 };
 
@@ -276,13 +278,14 @@ export interface MockWorld {
 
 export type ServerBase = 'server.prePassenger' | 'server.activeUnanswered' | 'server.activeAnswered';
 
-export const SYNTHETIC_ANSWER_TEXT = '합성 응답입니다.\n두 번째 줄 (synthetic/non-user)';
+export const SYNTHETIC_ANSWER_TEXT =
+  '옅은 회청색. 비가 올 듯 말 듯한 하늘이 하루 종일 이어졌다.\n우산을 안 들고 나갔는데 결국 비는 오지 않았다.';
 
 export function createMockWorld(base: ServerBase): MockWorld {
   const passengers = new Map<string, Passenger>();
   if (base !== 'server.prePassenger') {
     passengers.set(SYNTHETIC_KEYS.registered, {
-      passengerCode: 'SYN-0001',
+      passengerCode: 'ARC-2417',
       nickname: null,
       revision: 'p-r1',
       dataGeneration: 'gen-synthetic-1',

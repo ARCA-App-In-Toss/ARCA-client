@@ -8,6 +8,7 @@ import {
   useSettingsLinks,
 } from '../../app/AppServices.tsx';
 import { paths, useArcaNavigate, useRouteState } from '../../app/navigation.ts';
+import { countGraphemes } from '../../domain/text/graphemes.ts';
 import { checkNickname, type NicknameError } from '../../domain/text/nickname.ts';
 import {
   InlineStatus,
@@ -57,7 +58,7 @@ export function SettingsScreen() {
 
   const header = (
     <div className="arca-screen-header">
-      <PixelIconButton label={copy['CPY-COM-005']} glyph="‹" onClick={back} />
+      <PixelIconButton label={copy['CPY-COM-005']} icon="back" onClick={back} />
       <ScreenTitle>{copy['CPY-F30-001']}</ScreenTitle>
     </div>
   );
@@ -93,13 +94,13 @@ export function SettingsScreen() {
           {copy['CPY-F30-025']}
         </h2>
         <div className="arca-actions">
-          <PixelButton variant="ghost" onClick={() => void open('terms')}>
+          <PixelButton variant="row" onClick={() => void open('terms')}>
             {copy['CPY-F30-026']}
           </PixelButton>
-          <PixelButton variant="ghost" onClick={() => void open('privacy')}>
+          <PixelButton variant="row" onClick={() => void open('privacy')}>
             {copy['CPY-F30-027']}
           </PixelButton>
-          <PixelButton variant="ghost" onClick={() => void open('support')}>
+          <PixelButton variant="row" onClick={() => void open('support')}>
             {copy['CPY-F30-028']}
           </PixelButton>
         </div>
@@ -148,6 +149,7 @@ function PassengerGroup({ passengerCode, nickname }: { passengerCode: string; ni
 
   const stored = nickname ?? '';
   const check = checkNickname(committed);
+  const currentCount = countGraphemes(value.trim());
   const unchanged = check.normalized === stored;
   const visibleError = check.error === 'too-short' && !shortRevealed ? null : check.error;
 
@@ -260,7 +262,7 @@ function PassengerGroup({ passengerCode, nickname }: { passengerCode: string; ni
           />
           <div className="arca-field-help">
             <span id="f30-help">{copy['CPY-F30-010']}</span>
-            <span id="f30-count">{fill(copy['CPY-F30-011'], { currentCount: String(check.count) })}</span>
+            <span id="f30-count">{fill(copy['CPY-F30-011'], { currentCount: String(currentCount) })}</span>
           </div>
           {visibleError ? (
             <p className="arca-field-error" id="f30-error">

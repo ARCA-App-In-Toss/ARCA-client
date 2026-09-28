@@ -40,11 +40,30 @@ async function openSettings(options: { nickname?: string | null; from?: 'today' 
 }
 
 describe('F30 settings (03 §7.1, 04 §6.13)', () => {
+  test('nickname count updates during IME without premature validation or submission', async () => {
+    const { world } = await openSettings({ nickname: null });
+    await userEvent.click(screen.getByRole('button', { name: copy['CPY-F30-007'] }));
+    const input = screen.getByRole('textbox', { name: copy['CPY-F30-008'] });
+    fireEvent.compositionStart(input);
+    fireEvent.change(input, { target: { value: ' 가나 ' } });
+    expect(document.getElementById('f30-count')).toHaveTextContent('2/12자');
+    fireEvent.change(input, { target: { value: '가나👩‍👩‍👧' } });
+    expect(document.getElementById('f30-count')).toHaveTextContent('3/12자');
+    fireEvent.change(input, { target: { value: '가'.repeat(13) } });
+    expect(document.getElementById('f30-count')).toHaveTextContent('13/12자');
+    expect(input).not.toHaveAttribute('aria-invalid', 'true');
+    fireEvent.click(screen.getByRole('button', { name: copy['CPY-F30-015'] }));
+    fireEvent.keyDown(input, { key: 'Enter', isComposing: true });
+    expect(opCount(world, 'OP-004')).toBe(0);
+    fireEvent.compositionEnd(input, { target: { value: '가'.repeat(13) } });
+    expect(input).toHaveAttribute('aria-invalid', 'true');
+  });
+
   test('read: nickname or passenger code as the name, the code, no tabs; Back returns to the entering root', async () => {
     const { router } = await openSettings({ nickname: '합성 승객', from: 'archive' });
     expect(router.state.location.pathname).toBe(paths.settings);
     expect(displayName()).toBe('합성 승객');
-    expect(within(passengerGroup()).getByText('SYN-0001')).toBeInTheDocument();
+    expect(within(passengerGroup()).getByText('ARC-2417')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: rootTabLabels.today })).toBeNull();
     expect(screen.queryByRole('button', { name: copy['CPY-F10-002'] })).toBeNull();
     expect(document.body.textContent).not.toContain(SYNTHETIC_KEYS.registered);
@@ -87,12 +106,12 @@ describe('F30 settings (03 §7.1, 04 §6.13)', () => {
     await screen.findByText(copy['CPY-F30-019']);
     expect(world.passengers.get(SYNTHETIC_KEYS.registered)?.nickname).toBeNull();
     expect(world.nicknameReceipts.at(-1)?.fingerprint).toContain('[null,');
-    expect(displayName()).toBe('SYN-0001');
+    expect(displayName()).toBe('ARC-2417');
   });
 
   test('cancel discards the edit at once, sends nothing, and returns focus to the trigger', async () => {
     const { world } = await openSettings({ nickname: null });
-    expect(displayName()).toBe('SYN-0001');
+    expect(displayName()).toBe('ARC-2417');
     await userEvent.click(screen.getByRole('button', { name: copy['CPY-F30-007'] }));
     const field = screen.getByRole('textbox', { name: copy['CPY-F30-008'] });
     expect(field).toHaveValue('');

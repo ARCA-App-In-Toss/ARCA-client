@@ -81,17 +81,38 @@ describe('F11 writing and device keeping (IX-001, IX-002, IX-005)', () => {
     expect(screen.getByRole('button', { name: copy['CPY-F11-018'] })).toBeEnabled();
   });
 
-  test('count and errors do not settle mid-composition', async () => {
+  test('count follows each IME update before blur, including combined emoji', async () => {
     const { textarea } = await openWrite();
     fireEvent.change(textarea, { target: { value: '합성' } });
     expect(help()).toContain('2/2,000자');
     fireEvent.compositionStart(textarea);
     fireEvent.change(textarea, { target: { value: '합성ㅎ' } });
+    expect(help()).toContain('3/2,000자');
     fireEvent.change(textarea, { target: { value: '합성하' } });
-    expect(help()).toContain('2/2,000자');
+    expect(help()).toContain('3/2,000자');
+    fireEvent.change(textarea, { target: { value: '합성한👩‍👩‍👧' } });
+    expect(help()).toContain('4/2,000자');
     fireEvent.compositionEnd(textarea, { target: { value: '합성한' } });
     expect(help()).toContain('3/2,000자');
   });
+});
+
+test('IME live count does not commit a draft or validate/save unfinished input', async () => {
+  const storage = createFakeStorage();
+  const { world, textarea } = await openWrite({ storage });
+  fireEvent.change(textarea, { target: { value: '가'.repeat(2_000) } });
+  fireEvent.compositionStart(textarea);
+  fireEvent.change(textarea, { target: { value: '가'.repeat(2_001) } });
+  expect(help()).toContain('2,001/2,000자');
+  expect(textarea).not.toHaveAttribute('aria-invalid', 'true');
+  expect(screen.queryByText('1자를 줄여 주세요.')).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: copy['CPY-F11-018'] }));
+  expect(world.requests.some((r) => r.op === 'OP-007')).toBe(false);
+  await act(() => new Promise((resolve) => setTimeout(resolve, 550)));
+  expect(draftRecords(storage)).toHaveLength(0);
+  fireEvent.compositionEnd(textarea, { target: { value: '가'.repeat(2_001) } });
+  expect(screen.getByText('1자를 줄여 주세요.')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: copy['CPY-F11-018'] })).toBeDisabled();
 });
 
 describe('F11 question switch (IX-006)', () => {

@@ -32,6 +32,24 @@ const nickname = (world: ReturnType<typeof bootApp>['world']) =>
   world.passengers.get(SYNTHETIC_KEYS.registered)?.nickname ?? null;
 
 describe('F03 nickname (IX-003·IX-035, MS-NICK-001/002)', () => {
+  test('nickname count updates during IME without premature validation or submission', async () => {
+    const { world } = await bootBoarded();
+    const input = field();
+    fireEvent.compositionStart(input);
+    fireEvent.change(input, { target: { value: ' 가나 ' } });
+    expect(document.getElementById('f03-count')).toHaveTextContent('2/12자');
+    fireEvent.change(input, { target: { value: '가나👩‍👩‍👧' } });
+    expect(document.getElementById('f03-count')).toHaveTextContent('3/12자');
+    fireEvent.change(input, { target: { value: '가'.repeat(13) } });
+    expect(document.getElementById('f03-count')).toHaveTextContent('13/12자');
+    expect(input).not.toHaveAttribute('aria-invalid', 'true');
+    fireEvent.click(primary());
+    fireEvent.keyDown(input, { key: 'Enter', isComposing: true });
+    expect(opCount(world, 'OP-004')).toBe(0);
+    fireEvent.compositionEnd(input, { target: { value: '가'.repeat(13) } });
+    expect(input).toHaveAttribute('aria-invalid', 'true');
+  });
+
   test('empty value proceeds to F10 with no OP-004 (API-V-004)', async () => {
     const { world, router } = await bootBoarded();
     type('   ');

@@ -43,7 +43,7 @@ export function PixelSheet({
       <Dialog.Portal>
         <Dialog.Overlay className="arca-dimmer" />
         <Dialog.Content
-          className="arca-sheet"
+          className="arca-sheet arca-px"
           onPointerDownOutside={(event) => event.preventDefault()}
           onInteractOutside={(event) => event.preventDefault()}
           onCloseAutoFocus={(event) => {
@@ -57,7 +57,7 @@ export function PixelSheet({
           <Dialog.Description className="arca-text-secondary">{description}</Dialog.Description>
           {children}
           <Dialog.Close asChild>
-            <button type="button" className="arca-button arca-button--secondary">
+            <button type="button" className="arca-button arca-button--secondary arca-px">
               {closeLabel}
             </button>
           </Dialog.Close>

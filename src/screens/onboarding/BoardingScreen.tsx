@@ -1,13 +1,6 @@
 import { useState } from 'react';
 import { type BoardingPolicy, useBoarding } from '../../app/AppServices.tsx';
-import {
-  InlineStatus,
-  InsetPanel,
-  PixelAppShell,
-  PixelButton,
-  PixelCheckboxRow,
-  ScreenTitle,
-} from '../../ui/components.tsx';
+import { InlineStatus, PixelAppShell, PixelButton, PixelCheckboxRow, ScreenTitle } from '../../ui/components.tsx';
 import { type CopyId, copy } from '../../ui/copy.ts';
 
 // F02 (03 §4.3, 04 §6.3, IX-031). Two independent required consents, the recovery limit before
@@ -67,27 +60,27 @@ export function BoardingScreen() {
     <PixelAppShell>
       <ScreenTitle>{copy['CPY-F02-001']}</ScreenTitle>
       <p className="arca-narrative">{copy['CPY-F02-002']}</p>
-      <InsetPanel>
-        <p className="arca-text-secondary">{copy['CPY-F02-003']}</p>
-      </InsetPanel>
-      {policies.map((policy) => {
-        const texts = textsFor(policy);
-        return (
-          <div key={policy.policyId} className="arca-consent">
-            <PixelCheckboxRow
-              id={`arca-consent-${policy.policyId}`}
-              label={texts.label}
-              badge={copy['CPY-F02-006']}
-              accessibleName={texts.name}
-              checked={agreed.has(agreementKey(policy))}
-              onChange={(checked) => toggle(policy, checked)}
-            />
-            <PixelButton variant="ghost" onClick={() => void open(policy.policyId)}>
-              {texts.open}
-            </PixelButton>
-          </div>
-        );
-      })}
+      <p className="arca-caption arca-text-secondary">{copy['CPY-F02-003']}</p>
+      <div className="arca-consent-group arca-plain-small">
+        {policies.map((policy) => {
+          const texts = textsFor(policy);
+          return (
+            <div key={policy.policyId} className="arca-consent">
+              <PixelCheckboxRow
+                id={`arca-consent-${policy.policyId}`}
+                label={texts.label}
+                badge={copy['CPY-F02-006']}
+                accessibleName={texts.name}
+                checked={agreed.has(agreementKey(policy))}
+                onChange={(checked) => toggle(policy, checked)}
+              />
+              <PixelButton variant="ghost" onClick={() => void open(policy.policyId)}>
+                {texts.open}
+              </PixelButton>
+            </div>
+          );
+        })}
+      </div>
       <InlineStatus message={message} tone={status.kind === 'message' ? 'danger' : 'neutral'} />
       <div className="arca-actions">
         {allAgreed ? null : (

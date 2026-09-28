@@ -55,12 +55,14 @@ describe('F20 first page (03 §6.1, 04 §6.9)', () => {
     const headings = await screen.findAllByRole('heading', { level: 2 });
     expect(headings.map((h) => h.textContent)).toEqual(['2026년 9월', '2026년 8월']);
     const rows = screen.getAllByRole('button').filter((b) => b.classList.contains('arca-memory-row'));
-    expect(rows.map((r) => r.querySelector('.arca-user-text')?.textContent)).toEqual([
-      '9월 둘째 합성',
-      '9월 첫 합성',
-      '8월 합성',
+    expect(rows.map((r) => r.querySelector('.arca-memory-row__meta')?.textContent)).toEqual([
+      '2026년 9월 2일',
+      '2026년 9월 1일',
+      '2026년 8월 31일',
     ]);
-    const lastQuestion = rows[2]?.querySelector('.arca-text-secondary')?.textContent ?? '';
+    expect(rows[0]).toHaveTextContent(world.sema.primaryQuestion.text);
+    expect(screen.queryByText('9월 둘째 합성')).not.toBeInTheDocument();
+    const lastQuestion = rows[2]?.querySelector('.arca-memory-row__question')?.textContent ?? '';
     expect(lastQuestion).toBe(`${'질'.repeat(80)}…`);
     expect(screen.getByText('기억 조각 3개')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: rootTabLabels.archive })).toHaveAttribute('aria-current', 'page');
@@ -72,7 +74,7 @@ describe('F20 first page (03 §6.1, 04 §6.9)', () => {
     expect(screen.getByRole('region', { name: copy['CPY-F21-004'] })).toHaveTextContent('9월 첫 합성');
   });
 
-  test('a saved answer appears in F20 after F12 → 항해 기록 보기', async () => {
+  test('a saved record shows its question in F20 and its answer after opening F21', async () => {
     const booted = bootApp(server);
     await act(() => booted.started);
     await findTitle(copy['CPY-F10-001']);
@@ -85,7 +87,12 @@ describe('F20 first page (03 §6.1, 04 §6.9)', () => {
 
     await findTitle(copy['CPY-F20-001']);
     const list = await screen.findByRole('list');
-    expect(within(list).getByText('목록에 보일 합성')).toBeInTheDocument();
+    expect(within(list).queryByText('목록에 보일 합성')).not.toBeInTheDocument();
+    const row = within(list).getByRole('button');
+    expect(within(row).getByText(copy['CPY-F20-007'])).toBeInTheDocument();
+    await userEvent.click(row);
+    expect(await findTitle(copy['CPY-F21-001'])).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: copy['CPY-F21-004'] })).toHaveTextContent('목록에 보일 합성');
   });
 });
 
@@ -100,6 +107,7 @@ function seedMany(world: MockWorld, n: number, newest = '2026-09-27') {
         dailySemaId: `d-${i}`,
         createdAt: at,
         createdDateKst: at.slice(0, 10),
+        question: { ...world.sema.primaryQuestion, text: `합성 질문 ${i + 1}` },
       }),
     );
   }
@@ -110,7 +118,7 @@ const rowTexts = () =>
   screen
     .queryAllByRole('button')
     .filter((b) => b.classList.contains('arca-memory-row'))
-    .map((r) => r.querySelector('.arca-user-text')?.textContent);
+    .map((r) => r.querySelector('.arca-memory-row__question')?.textContent);
 const liveText = () => document.querySelector('.arca-visually-hidden[role="status"]')?.textContent ?? '';
 const setScrollY = (value: number) => Object.defineProperty(window, 'scrollY', { value, configurable: true });
 
@@ -144,7 +152,7 @@ describe('F20 page chain (06 §6.3, IX-023·IX-042)', () => {
     await userEvent.click(more);
 
     await vi.waitFor(() => expect(rowTexts()).toHaveLength(21));
-    expect(rowTexts()).toEqual(Array.from({ length: 21 }, (_, i) => `합성 기록 ${i + 1}`));
+    expect(rowTexts()).toEqual(Array.from({ length: 21 }, (_, i) => `합성 질문 ${i + 1}`));
     const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
     expect(headings).toEqual(['2027년 1월', '2026년 12월']);
     expect(screen.getByText(copy['CPY-F20-021'])).toBeInTheDocument();
@@ -175,6 +183,7 @@ describe('F20 page chain (06 §6.3, IX-023·IX-042)', () => {
     await vi.waitFor(() => expect(rowTexts()).toHaveLength(20));
     // Another device: a new answer (newest) and a deletion on the second page.
     world.seedAnswer(SYNTHETIC_KEYS.registered, '다른 기기 새 합성', {
+      question: { ...world.sema.primaryQuestion, text: '다른 기기 새 질문' },
       dailySemaId: 'd-new',
       createdAt: '2026-09-28T01:00:00Z',
       createdDateKst: '2026-09-28',
@@ -183,9 +192,9 @@ describe('F20 page chain (06 §6.3, IX-023·IX-042)', () => {
     await userEvent.click(screen.getByRole('button', { name: copy['CPY-F20-016'] }));
     await vi.waitFor(() => expect(rowTexts()).toHaveLength(21));
     const texts = rowTexts();
-    expect(texts).not.toContain('다른 기기 새 합성');
-    expect(texts).not.toContain('합성 기록 21');
-    expect(texts.at(-1)).toBe('합성 기록 22');
+    expect(texts).not.toContain('다른 기기 새 질문');
+    expect(texts).not.toContain('합성 질문 21');
+    expect(texts.at(-1)).toBe('합성 질문 22');
     expect(new Set(texts).size).toBe(texts.length);
   });
 
@@ -200,12 +209,13 @@ describe('F20 page chain (06 §6.3, IX-023·IX-042)', () => {
     expect(rowTexts()).toHaveLength(20);
     expect(screen.queryByRole('button', { name: copy['CPY-F20-016'] })).toBeNull();
     world.seedAnswer(SYNTHETIC_KEYS.registered, '새 첫 page 합성', {
+      question: { ...world.sema.primaryQuestion, text: '새 첫 page 질문' },
       dailySemaId: 'd-new',
       createdAt: '2026-09-28T01:00:00Z',
       createdDateKst: '2026-09-28',
     });
     await userEvent.click(screen.getByRole('button', { name: copy['CPY-F20-024'] }));
-    await vi.waitFor(() => expect(rowTexts()[0]).toBe('새 첫 page 합성'));
+    await vi.waitFor(() => expect(rowTexts()[0]).toBe('새 첫 page 질문'));
     expect(rowTexts()).toHaveLength(20);
     expect(document.activeElement).toBe(
       screen.getAllByRole('button').find((b) => b.classList.contains('arca-memory-row')),
@@ -230,6 +240,7 @@ describe('F20 page chain (06 §6.3, IX-023·IX-042)', () => {
     await userEvent.click(screen.getByRole('button', { name: rootTabLabels.today }));
     await findTitle(copy['CPY-F10-001']);
     world.seedAnswer(SYNTHETIC_KEYS.registered, '후보 합성', {
+      question: { ...world.sema.primaryQuestion, text: '후보 질문' },
       dailySemaId: 'd-new',
       createdAt: '2026-09-28T01:00:00Z',
       createdDateKst: '2026-09-28',
@@ -238,10 +249,10 @@ describe('F20 page chain (06 §6.3, IX-023·IX-042)', () => {
     await findTitle(copy['CPY-F20-001']);
     expect(await screen.findByText(copy['CPY-F20-023'], { selector: 'p' })).toBeInTheDocument();
     expect(liveText()).toBe(copy['CPY-F20-023']);
-    expect(rowTexts()).toEqual(['합성 기록 1', '합성 기록 2']);
+    expect(rowTexts()).toEqual(['합성 질문 1', '합성 질문 2']);
 
     await userEvent.click(screen.getByRole('button', { name: copy['CPY-F20-024'] }));
-    await vi.waitFor(() => expect(rowTexts()[0]).toBe('후보 합성'));
+    await vi.waitFor(() => expect(rowTexts()[0]).toBe('후보 질문'));
     expect(screen.queryByText(copy['CPY-F20-023'], { selector: 'p' })).toBeNull();
     expect(window.scrollTo).toHaveBeenCalledWith(0, 0);
     expect(document.activeElement?.classList.contains('arca-memory-row')).toBe(true);
@@ -256,6 +267,7 @@ describe('F20 page chain (06 §6.3, IX-023·IX-042)', () => {
     await userEvent.click(screen.getByRole('button', { name: rootTabLabels.today }));
     await findTitle(copy['CPY-F10-001']);
     world.seedAnswer(SYNTHETIC_KEYS.registered, '후보 합성', {
+      question: { ...world.sema.primaryQuestion, text: '후보 질문' },
       dailySemaId: 'd-new',
       createdAt: '2026-09-28T01:00:00Z',
       createdDateKst: '2026-09-28',
@@ -265,7 +277,7 @@ describe('F20 page chain (06 §6.3, IX-023·IX-042)', () => {
     const focused = document.activeElement;
     setScrollY(0);
     fireEvent.scroll(window);
-    await vi.waitFor(() => expect(rowTexts()[0]).toBe('후보 합성'));
+    await vi.waitFor(() => expect(rowTexts()[0]).toBe('후보 질문'));
     expect(document.activeElement).toBe(focused);
 
     // Refresh failure: rows stay, no candidate notice, the refresh failure is stated.

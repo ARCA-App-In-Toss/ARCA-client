@@ -38,7 +38,7 @@ export function PastDraftScreen() {
   const toToday = () => navigate(paths.today);
   const header = (title: string) => (
     <div className="arca-screen-header">
-      <PixelIconButton label={copy['CPY-COM-005']} glyph="‹" onClick={() => goBack(-1)} />
+      <PixelIconButton label={copy['CPY-COM-005']} icon="back" onClick={() => goBack(-1)} />
       <ScreenTitle>{title}</ScreenTitle>
     </div>
   );

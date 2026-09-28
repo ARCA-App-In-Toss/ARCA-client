@@ -1,6 +1,6 @@
 # ARCA Mock 시나리오 명세
 
-- v1.2 · 2026-09-22 · 제품 책임자 승인 설계; fixture·코드·실행은 미완료. 중복 설명을 줄이고 선택 읽기·줄 포인터로 정리.
+- v1.3 · 2026-09-28 · 제품 책임자 승인 설계; 로컬 Mock 구현·회귀 실행 증거는 08 §14.1, 실서버·실기기는 별도 미검증.
 - 소유 범위: 합성 시작 상태·장애·사건 순서·기대 결과. 실행 방법과 완료 판정은 [.claude/spec/08_QA_AND_INTEGRATION.md §3 · 약 L50–76](08_QA_AND_INTEGRATION.md#3-07-시나리오-실행-전략).
 
 ## 1. 범위와 권위
@@ -59,6 +59,8 @@
 - API 불변식: [.claude/spec/05_API_SPEC.md §2.2 · 약 L66–79](05_API_SPEC.md#22-핵심-불변식); 호환성/오류: [.claude/spec/05_API_SPEC.md §7.6 · 약 L494–502](05_API_SPEC.md#76-wire-호환성) 및 [.claude/spec/05_API_SPEC.md §8.2 · 약 L512–546](05_API_SPEC.md#82-안정-오류-registry).
 
 ### 3.5 합성 콘텐츠와 민감정보
+
+F03·F11·F22·F30의 한글 조합 중 1→2글자, 조합 자모 변화, 결합 이모지 1 EGC, 상한을 넘나드는 입력을 검증합니다. blur/`compositionend` 전에도 표시 카운터는 현재 값과 같아야 하며 오류·저장 요청·임시 보관 commit은 앞당기지 않습니다. F20에는 합성 응답도 목록에 노출하지 않고 해당 질문을 선택한 F21에서 원문을 검증합니다.
 
 중립 합성 질문·응답·닉네임만 사용하고 `synthetic/non-user`로 표시합니다. 실제 사용자·운영 콘텐츠·키·token·식별자·외부 저작물을 복사하지 않습니다.
 
@@ -192,14 +194,14 @@ P0-core는 질문→작성→저장→다시 읽기와 입력/응답 유실, P0-
 |---|---|---|---|
 | `MS-CORE-001` | ACTIVE·오늘 미응답·기억 0개. 기본 질문 선택, 합성 짧은 답 입력, draft read-back, 정상 prepare/execute SUCCEEDED | F10→F11→F12. 입력 원문과 저장 snapshot이 같고 F20 1행·F21 전문이 같은 문장을 표시. count 1이면 F12 첫 조작 시 기록 우선, 임시본 제거 | OP-005~011; [API-V-005 · API-V-006 · API-V-010 · API-V-012, L841, L843 · 약 L773–780](05_API_SPEC.md#15-계약-검증-추적); [Acc #9 · #10 · #11 · #12 · #13 · #14 · #15 · #16 · #21 · #23 · #33 · #34 · #35 · #36 · #52, L75–77, L87, L89, L109, L111–113, L142 · 약 L65–142](../../docs/ARCA_MVP_ACCEPTANCE.md#질문-선택) |
 | `MS-CORE-002` | corpus의 공백 전용·연속 공백·빈 줄·결합 이모지·정확 2,000 EGC를 각각 저장 | trim·정규화·공백 축약·자동 절단 없이 F21까지 왕복. EGC/논리적 줄 경계와 발췌 prefix 일치 | OP-006~008·011; [API-V-006 · API-V-016, L847 · 약 L774–784](05_API_SPEC.md#15-계약-검증-추적); [Acc #16 · #23 · #33, L89, L109 · 약 L77–109](../../docs/ARCA_MVP_ACCEPTANCE.md#응답과-날짜) |
-| `MS-CORE-003` | 계속 입력, 499/500ms, 최초 변경 후 2초, 긴 IME composition, 느린 write와 새 editVersion | IME 중 확정 없음. trailing/maxWait 뒤 최신 완료 입력만 보관 요청, 오래된 write 성공으로 최신 persisted 표시 금지 | local; [API-V-017 · 약 L785–785](05_API_SPEC.md#15-계약-검증-추적); [Acc #14 · #36 · #40 · #49, L113, L122, L139 · 약 L75–139](../../docs/ARCA_MVP_ACCEPTANCE.md#응답과-날짜) |
+| `MS-CORE-003` | 계속 입력, 499/500ms, 최초 변경 후 2초, 긴 IME composition, 느린 write와 새 editVersion | IME 중 카운터는 현재 값으로 즉시 갱신하되 검증·보관 commit 확정 없음. trailing/maxWait 뒤 최신 완료 입력만 보관 요청, 오래된 write 성공으로 최신 persisted 표시 금지 | local; [API-V-017 · 약 L785–785](05_API_SPEC.md#15-계약-검증-추적); [Acc #14 · #36 · #40 · #49, L113, L122, L139 · 약 L75–139](../../docs/ARCA_MVP_ACCEPTANCE.md#응답과-날짜) |
 | `MS-CORE-004` | 최신 draft 성공, command meta 또는 payload read-back 실패 | 첫 mutation 또는 OP-007을 보내지 않음. 입력·선택·복사·재보관 유지, 안전 이탈을 허위 제공하지 않음 | OP-006~007 미전송; [API-V-009 · 약 L777–777](05_API_SPEC.md#15-계약-검증-추적); [Acc #17 · #39 · #40 · #51, L121–122, L141 · 약 L78–141](../../docs/ARCA_MVP_ACCEPTANCE.md#응답과-날짜) |
 | `MS-CORE-005` | OP-006이 PREPARED를 수락한 뒤 response 유실. 같은 operation/input으로 재전송 | 같은 ticket/current result 복원, payload가 확인됐을 때만 같은 ticket 실행. 새 operation·중복 답변 없음 | OP-006~008; [API-V-008 · API-V-009 · API-V-020, L851 · 약 L776–788](05_API_SPEC.md#15-계약-검증-추적); [Acc #16 · #39 · #43, L121, L128 · 약 L77–128](../../docs/ARCA_MVP_ACCEPTANCE.md#응답과-날짜) |
 | `MS-CORE-006` | OP-007 payload 수락 또는 terminal commit 뒤 response 유실 | 실패로 표시·새 저장하지 않고 OP-008로 EXECUTING/terminal 확인. 효과 1회, 동일 원문·proof 유지 | OP-007~009; [API-V-008 · API-V-009 · API-V-010 · API-V-020, L851 · 약 L776–788](05_API_SPEC.md#15-계약-검증-추적); [Acc #16 · #35 · #39 · #43, L112, L121, L128 · 약 L77–128](../../docs/ARCA_MVP_ACCEPTANCE.md#응답과-날짜) |
-| `MS-CORE-007` | 본문·tracker 보관 확인 후 결과 조회 중 F11 이탈, background에서 terminal 성공, F10 재진입 | 이탈은 취소가 아님. 강제 F12·연출·햅틱 없이 성공 알림 1회와 today/cache 동기화, 관련 draft 정리·ack 재개 | OP-008~009; [API-V-009 · API-V-010 · API-V-026, L857 · 약 L777–794](05_API_SPEC.md#15-계약-검증-추적); [Acc #35 · #39 · #51, L121, L141 · 약 L112–141](../../docs/ARCA_MVP_ACCEPTANCE.md#항해-기록의-원문-발췌) |
-| `MS-CORE-008` | SUCCEEDED proof, excerpt unavailable, count unavailable 후 서로 다른 시점에 보강 | 완료 heading·두 이동 유지, 저장 재실행 없음. 첫 조작 가능 시 오늘 우선으로 고정하고 늦은 count로 버튼 위계·focus 변경 금지 | OP-005·008; [API-V-010 · API-V-025, L856 · 약 L778–793](05_API_SPEC.md#15-계약-검증-추적); [Acc #35 · 약 L112–112](../../docs/ARCA_MVP_ACCEPTANCE.md#항해-기록의-원문-발췌) |
-| `MS-CORE-009` | 완료 장면 자원 지연/실패, font 지연, Reduced Motion on/off | 질문·입력·저장 결과·이동이 자원을 기다리지 않음. layout shift나 늦은 연출 재시작 없음 | platform/local; [Acc #36 · #52 · #53, L142, L148 · 약 L113–148](../../docs/ARCA_MVP_ACCEPTANCE.md#항해-기록의-원문-발췌) |
-| `MS-CORE-010` | 기존 활성 기억 1개인 다른 날짜 world에서 오늘 신규 저장해 terminal count 2 확인 | F12 이동이 처음 가능할 때 오늘 복귀 우선, 기록 이동도 유지. 이후 count 변화·재조회가 같은 방문의 위치·이름·강조·focus를 바꾸지 않음 | OP-005·008; [API-V-010 · API-V-025, L856 · 약 L778–793](05_API_SPEC.md#15-계약-검증-추적); [Acc #35 · 약 L112–112](../../docs/ARCA_MVP_ACCEPTANCE.md#항해-기록의-원문-발췌) |
+| `MS-CORE-007` | 본문·tracker 보관 확인 후 결과 조회 중 F11 이탈, background에서 terminal 성공, F10 재진입 | 이탈은 취소가 아님. 강제 F12·연출·햅틱 없이 성공 알림 1회와 today/cache 동기화, 관련 draft 정리·ack 재개 | OP-008~009; [API-V-009 · API-V-010 · API-V-026, L857 · 약 L777–794](05_API_SPEC.md#15-계약-검증-추적); [Acc #35 · #39 · #51, L121, L141 · 약 L112–141](../../docs/ARCA_MVP_ACCEPTANCE.md#항해-기록-탐색과-원문-보호) |
+| `MS-CORE-008` | SUCCEEDED proof, excerpt unavailable, count unavailable 후 서로 다른 시점에 보강 | 완료 heading·두 이동 유지, 저장 재실행 없음. 첫 조작 가능 시 오늘 우선으로 고정하고 늦은 count로 버튼 위계·focus 변경 금지 | OP-005·008; [API-V-010 · API-V-025, L856 · 약 L778–793](05_API_SPEC.md#15-계약-검증-추적); [Acc #35 · 약 L112–112](../../docs/ARCA_MVP_ACCEPTANCE.md#항해-기록-탐색과-원문-보호) |
+| `MS-CORE-009` | 완료 장면 자원 지연/실패, font 지연, Reduced Motion on/off | 질문·입력·저장 결과·이동이 자원을 기다리지 않음. layout shift나 늦은 연출 재시작 없음 | platform/local; [Acc #36 · #52 · #53, L142, L148 · 약 L113–148](../../docs/ARCA_MVP_ACCEPTANCE.md#항해-기록-탐색과-원문-보호) |
+| `MS-CORE-010` | 기존 활성 기억 1개인 다른 날짜 world에서 오늘 신규 저장해 terminal count 2 확인 | F12 이동이 처음 가능할 때 오늘 복귀 우선, 기록 이동도 유지. 이후 count 변화·재조회가 같은 방문의 위치·이름·강조·focus를 바꾸지 않음 | OP-005·008; [API-V-010 · API-V-025, L856 · 약 L778–793](05_API_SPEC.md#15-계약-검증-추적); [Acc #35 · 약 L112–112](../../docs/ARCA_MVP_ACCEPTANCE.md#항해-기록-탐색과-원문-보호) |
 
 ### 11.3 session·탑승·닉네임
 
@@ -245,7 +247,7 @@ P0-core는 질문→작성→저장→다시 읽기와 입력/응답 유실, P0-
 | `MS-CMD-006` | prepare 또는 execute request가 server에 도착하지 않음, 이후 같은 operation/input 또는 ticket/payload로 사용자가 재시도 | 미도착 단계에는 server 효과 없음. prepare 재전송은 같은 의미 ticket을 만들거나 복원하고 execute 재전송은 같은 ticket 단일 효과. 미도착 자체를 NOT_APPLIED로 표시하지 않음 | OP-006~008; [API-V-008 · API-V-009 · API-V-020, L851 · 약 L776–788](05_API_SPEC.md#15-계약-검증-추적); [Acc #16 · #39 · #43, L121, L128 · 약 L77–128](../../docs/ARCA_MVP_ACCEPTANCE.md#응답과-날짜) |
 | `MS-EDIT-001` | F22 expected revision 일치 수정 성공 | 전문·revision·updatedAt·isEdited와 세 profile 발췌 갱신, 질문 snapshot/createdAt 유지. F12 연출 없음 | OP-006~011; [API-V-011 · API-V-016, L847 · 약 L779–784](05_API_SPEC.md#15-계약-검증-추적); [Acc #19 · #23 · #33, L89, L109 · 약 L80–109](../../docs/ARCA_MVP_ACCEPTANCE.md#응답과-날짜) |
 | `MS-EDIT-002` | 기기 A·B가 같은 base revision 수정, A commit 후 B 실행 | B는 REVISION_CONFLICT terminal 미적용, 입력 유지·최신 detail 조회. A 본문 일부로 섞이지 않음 | OP-006~008·011; [API-V-011 · API-V-013 · API-V-025, L844, L856 · 약 L779–793](05_API_SPEC.md#15-계약-검증-추적); [Acc #19 · #39 · #46, L121, L131 · 약 L80–131](../../docs/ARCA_MVP_ACCEPTANCE.md#응답과-날짜) |
-| `MS-RECEIPT-001` | write receipt 뒤 다른 기기가 수정/삭제, 과거 receipt presentation 재조회 | proof는 유지하되 RESOURCE_CHANGED. 옛 revision에 새 발췌 결합 금지, OP-005/010/011 현재 상태 사용 | OP-005·008·010·011; [API-V-025 · 약 L793–793](05_API_SPEC.md#15-계약-검증-추적); [Acc #33 · #35 · #46, L112, L131 · 약 L109–131](../../docs/ARCA_MVP_ACCEPTANCE.md#항해-기록의-원문-발췌) |
+| `MS-RECEIPT-001` | write receipt 뒤 다른 기기가 수정/삭제, 과거 receipt presentation 재조회 | proof는 유지하되 RESOURCE_CHANGED. 옛 revision에 새 발췌 결합 금지, OP-005/010/011 현재 상태 사용 | OP-005·008·010·011; [API-V-025 · 약 L793–793](05_API_SPEC.md#15-계약-검증-추적); [Acc #33 · #35 · #46, L112, L131 · 약 L109–131](../../docs/ARCA_MVP_ACCEPTANCE.md#항해-기록-탐색과-원문-보호) |
 
 ### 11.6 개별 삭제·전체 삭제
 
@@ -267,11 +269,11 @@ P0-core는 질문→작성→저장→다시 읽기와 입력/응답 유실, P0-
 
 | ID | 시작·사건 | 관찰 가능한 기대 결과 | API·수락 기준 |
 |---|---|---|---|
-| `MS-LIST-001` | 각각 0·1·2개 answer world | Empty/단일/복수 상태와 count 독립 표시. 저장되지 않은 draft·미확인 command를 row로 만들지 않음 | OP-005·010; [API-V-010 · API-V-012, L843 · 약 L778–780](05_API_SPEC.md#15-계약-검증-추적); [Acc #21 · #33 · #41, L109, L123 · 약 L87–123](../../docs/ARCA_MVP_ACCEPTANCE.md#기록과-삭제) |
+| `MS-LIST-001` | 각각 0·1·2개 answer world | Empty/단일/복수 상태와 count 독립 표시. 행에는 질문·날짜만 표시하며 응답은 상세에서 읽음. 저장되지 않은 draft·미확인 command를 row로 만들지 않음 | OP-005·010; [API-V-010 · API-V-012, L843 · 약 L778–780](05_API_SPEC.md#15-계약-검증-추적); [Acc #21 · #33 · #41, L109, L123 · 약 L87–123](../../docs/ARCA_MVP_ACCEPTANCE.md#기록과-삭제) |
 | `MS-LIST-002` | 정확히 20개, nextCursor 없음 | row 20개·중복 없음. 추가 page 행동과 `모두 불러옴` 조건을 혼동하지 않음 | OP-010; [API-V-012 · 약 L780–780](05_API_SPEC.md#15-계약-검증-추적); [Acc #21 · #41, L123 · 약 L87–123](../../docs/ARCA_MVP_ACCEPTANCE.md#기록과-삭제) |
 | `MS-LIST-003` | 21개, 첫 page 뒤 second page 요청 | 20+1, 원래 최신순·중복/누락 없음, 첫 page 상한 유지 | OP-010; [API-V-012 · 약 L780–780](05_API_SPEC.md#15-계약-검증-추적); [Acc #21 · #38, L115 · 약 L87–115](../../docs/ARCA_MVP_ACCEPTANCE.md#기록과-삭제) |
-| `MS-LIST-004` | 월 경계가 page 사이에 이어지고 연도 경계 포함 | 같은 월 heading 중복 없음, 연도 구분·행 날짜·최신순 유지, 미작성 기간 빈칸 없음 | OP-010; [API-V-012 · 약 L780–780](05_API_SPEC.md#15-계약-검증-추적); [Acc #38 · 약 L115–115](../../docs/ARCA_MVP_ACCEPTANCE.md#항해-기록의-원문-발췌) |
-| `MS-LIST-005` | 첫 page 후 다른 기기 생성·수정·삭제, 이후 next page | 신규는 기존 chain에 끼지 않음. 수정 최신 revision, 삭제 생략, 중복 row 없음. cursor invalid면 tail 유지·첫 page refresh 제공 | OP-010~011; [API-V-012 · API-V-013 · API-V-025, L856 · 약 L780–793](05_API_SPEC.md#15-계약-검증-추적); [Acc #33 · #38 · #46 · #48, L115, L131, L138 · 약 L109–138](../../docs/ARCA_MVP_ACCEPTANCE.md#항해-기록의-원문-발췌) |
+| `MS-LIST-004` | 월 경계가 page 사이에 이어지고 연도 경계 포함 | 같은 월 heading 중복 없음, 연도 구분·행 날짜·최신순 유지, 미작성 기간 빈칸 없음 | OP-010; [API-V-012 · 약 L780–780](05_API_SPEC.md#15-계약-검증-추적); [Acc #38 · 약 L115–115](../../docs/ARCA_MVP_ACCEPTANCE.md#항해-기록-탐색과-원문-보호) |
+| `MS-LIST-005` | 첫 page 후 다른 기기 생성·수정·삭제, 이후 next page | 신규는 기존 chain에 끼지 않음. 수정 최신 revision, 삭제 생략, 중복 row 없음. cursor invalid면 tail 유지·첫 page refresh 제공 | OP-010~011; [API-V-012 · API-V-013 · API-V-025, L856 · 약 L780–793](05_API_SPEC.md#15-계약-검증-추적); [Acc #33 · #38 · #46 · #48, L115, L131, L138 · 약 L109–138](../../docs/ARCA_MVP_ACCEPTANCE.md#항해-기록-탐색과-원문-보호) |
 | `MS-LIST-006` | 깊은 scroll anchor에서 새 first-page 후보 준비·실패·교체·사용자 적용 | 준비 전 안내 없음. 준비 뒤 기존 rows/scroll/focus 유지. 선택 시 유효 후보만 상단 적용, 기존 tail과 혼합 없음 | OP-010; [API-V-012 · 약 L780–780](05_API_SPEC.md#15-계약-검증-추적); [Acc #48 · 약 L138–138](../../docs/ARCA_MVP_ACCEPTANCE.md#프런트엔드-리뷰의-사용자-결과) |
 | `MS-LIST-007` | OP-010 성공+OP-005 count 실패, 이어서 OP-010 실패+OP-005 count 성공 | 성공한 영역은 유지하고 실패한 영역만 재조회. row 수로 count를 추정하거나 count 성공으로 목록을 완성 상태로 가장하지 않음 | OP-005·010; [API-V-010 · API-V-012, L843 · 약 L778–780](05_API_SPEC.md#15-계약-검증-추적); [Acc #21 · #35 · #38, L112, L115 · 약 L87–115](../../docs/ARCA_MVP_ACCEPTANCE.md#기록과-삭제) |
 | `MS-NAV-001` | F10/F11·F20/F21 왕복, 같은 revision과 변경된 revision, reload·삭제·generation 변경 | 유효 identity/version만 selection·anchor 복원. 값 변경·reload·삭제·재탑승에는 낡은 snapshot 폐기, 본문은 DraftRepository만 복원 | local/OP-005·010·011; [API-V-011 · API-V-012 · API-V-013 · 약 L779–781](05_API_SPEC.md#15-계약-검증-추적); [Acc #48 · #50, L140 · 약 L138–140](../../docs/ARCA_MVP_ACCEPTANCE.md#프런트엔드-리뷰의-사용자-결과) |
@@ -297,7 +299,7 @@ P0-core는 질문→작성→저장→다시 읽기와 입력/응답 유실, P0-
 |---|---|---|---|
 | `MS-PLATFORM-001` | Clipboard SDK→표준 API 성공/거절/미지원 조합 | 우선순위대로 한 단계씩 시도. 모두 실패하면 원문 유지·read-only 직접 선택·화면/접근성 안내 | local; [Acc #18 · #40, L122 · 약 L79–122](../../docs/ARCA_MVP_ACCEPTANCE.md#응답과-날짜) |
 | `MS-PLATFORM-002` | Safe Area·network·server time·haptic capability 각각 부재 | layout/안내/감각 기능만 축소. 서버 날짜·저장 성공·화면 전이는 바뀌지 않음 | OP-005~008; [Acc #17 · #26 · #29, L97, L100 · 약 L78–100](../../docs/ARCA_MVP_ACCEPTANCE.md#응답과-날짜) |
-| `MS-PLATFORM-003` | 장면/서체 자원 지연·실패·늦은 도착, Reduced Motion | 정적 pixel fallback·실제 text·조작 유지, 입력/커서/버튼 이동·연출 재시작 없음 | local; [Acc #36 · #52 · #53, L142, L148 · 약 L113–148](../../docs/ARCA_MVP_ACCEPTANCE.md#항해-기록의-원문-발췌) |
+| `MS-PLATFORM-003` | 장면/서체 자원 지연·실패·늦은 도착, Reduced Motion | 정적 pixel fallback·실제 text·조작 유지, 입력/커서/버튼 이동·연출 재시작 없음 | local; [Acc #36 · #52 · #53, L142, L148 · 약 L113–148](../../docs/ARCA_MVP_ACCEPTANCE.md#항해-기록-탐색과-원문-보호) |
 | `MS-ANALYTICS-001` | FE allowlist 정상 batch, 같은 event ID 중복, 알 수 없는 event/property | 정상 event 한 번 수락. 중복은 추가 집계 없음. 잘못된 batch 전체 거절·민감값 반사 없음, UI 흐름 유지 | OP-014; [API-V-018 · 약 L786–786](05_API_SPEC.md#15-계약-검증-추적); [Acc §1 · #30 · #32, L101, L103 · 약 L13–33](../../docs/ARCA_MVP_ACCEPTANCE.md#1-제품-판단-이벤트) |
 | `MS-ANALYTICS-002` | queue 20/100/101, flush 실패·background·network 복귀·reload·generation 변경 | bounded queue/batch, 화면 비차단, reload 유실 허용, old generation queue 폐기. BE 성공 event를 FE가 만들지 않음 | OP-014; [API-V-018 · 약 L786–786](05_API_SPEC.md#15-계약-검증-추적); [Acc #30 · #32, L103 · 약 L101–103](../../docs/ARCA_MVP_ACCEPTANCE.md#실제-환경과-보호) |
 | `MS-PRIVACY-001` | 데이터 역할별 합성 canary로 핵심·오류·삭제 시나리오 실행 | [.claude/spec/07_MOCK_SCENARIOS.md §10.3 · 약 L175–177](07_MOCK_SCENARIOS.md#103-민감정보-canary) 금지 sink에 canary·token·민감 ID 없음. 오류/분석에는 allowlist 값만 존재 | 공통·OP-014; [API-V-017 · API-V-018 · 약 L785–786](05_API_SPEC.md#15-계약-검증-추적); [Acc #30 · #32 · #33, L103, L109 · 약 L101–109](../../docs/ARCA_MVP_ACCEPTANCE.md#실제-환경과-보호) |

@@ -1,7 +1,7 @@
 # ARCA API 명세
 
-- 문서 버전: v1.5
-- 최근 수정일: 2026년 9월 22일
+- 문서 버전: v1.6
+- 최근 수정일: 2026년 9월 28일
 - 상태: 확정
 - 승인 주체: 제품 책임자
 - 편집: 중복 인계·설명을 줄이고 작업별 참조 위치를 추가했습니다. 필수 계약은 유지합니다.
@@ -170,6 +170,8 @@ OP-003 성공 응답의 ACTIVE 세션을 F03이 이어받습니다. OP-015는 �
 - 발췌 `Excerpt`는 `profile: COMPACT | STANDARD | EXPANDED`, 실제 `limits`(maxGraphemes·maxLogicalLines), `sourceRevision`, `text`, `isTruncated`입니다. 화면별 응답 필드는 공통 `excerpt`를 사용합니다.
 - 서버는 선택한 프로필의 실제 예산 안에서 원문 시작부터 가장 긴 연속 prefix를 생성합니다. 빈 줄·공백·개행을 보존하고 EGC 경계에서만 자릅니다. 줄임표는 본문에 넣지 않습니다. FE는 pre-wrap 및 실제 wrapping overflow를 합쳐 생략 여부를 결정합니다.
 - 프로필별 현재 예산과 F10/F12/F20 선택의 SSOT는 [04 IX-027 · L217–258](./04_INTERACTIONS_AND_COPY.md#510-발췌날짜동적-값--ix-027ix-028)입니다. OP-005·008·010의 `excerptProfile` query로 선택하며 값 자체를 enum 이름에 넣지 않습니다. 조정한 예산은 배포 설정에 반영하고 응답의 실제 limits를 사용합니다. 전면 본문 조회나 행별 상세 요청으로 우회하지 않습니다.
+
+현행 F20은 질문·날짜만 표시하고 응답은 F21에서 읽습니다(03 §6.1). OP-010의 STANDARD `excerpt`와 기존 query·DTO·revision·privacy 계약은 호환을 위해 그대로 유지합니다. 목록에서 필드를 받는다는 이유로 화면 또는 접근성 이름에 응답 발췌를 노출하지 않습니다. 이번 UI 변경은 wire schema나 서버 동작 변경이 아닙니다.
 
 ### 5.4 오늘과 목록
 

@@ -22,31 +22,37 @@ const rowTexts = () =>
   screen
     .queryAllByRole('button')
     .filter((b) => b.classList.contains('arca-memory-row'))
-    .map((r) => r.querySelector('.arca-user-text')?.textContent);
+    .map((r) => r.querySelector('.arca-memory-row__question')?.textContent);
 
 function seedTwo(world: MockWorld): [MockAnswer, MockAnswer] {
   const older = world.seedAnswer(SYNTHETIC_KEYS.registered, '8월 합성 답변', {
     dailySemaId: 'd-0831',
     createdAt: '2026-08-31T01:00:00Z',
     createdDateKst: '2026-08-31',
+    question: { ...world.sema.primaryQuestion, text: '8월 합성 질문' },
   });
   const newer = world.seedAnswer(SYNTHETIC_KEYS.registered, '9월 합성 답변', {
     dailySemaId: 'd-0901',
     createdAt: '2026-09-01T01:00:00Z',
     createdDateKst: '2026-09-01',
+    question: { ...world.sema.primaryQuestion, text: '9월 합성 질문' },
   });
   return [older, newer];
 }
 
-/** Boots at F10, opens F20 and the row with `text` (F21). */
+/** Opens the question for the fixture answer, then checks its content in F21. */
 async function openDetail(world: MockWorld, text: string, storage = createFakeStorage()) {
   const booted = bootApp(server, { world, storage });
   await act(() => booted.started);
   await findTitle(copy['CPY-F10-001']);
   await userEvent.click(screen.getByRole('button', { name: rootTabLabels.archive }));
   await findTitle(copy['CPY-F20-001']);
-  await waitFor(() => expect(rowTexts()).toContain(text));
-  const row = screen.getAllByRole('button').find((b) => b.querySelector('.arca-user-text')?.textContent === text);
+  const question = [...world.answers.values()].find((answer) => answer.content === text)?.question.text;
+  expect(question).toBeDefined();
+  await waitFor(() => expect(rowTexts()).toContain(question));
+  const row = screen
+    .getAllByRole('button')
+    .find((b) => b.querySelector('.arca-memory-row__question')?.textContent === question);
   await userEvent.click(row as HTMLElement);
   await findTitle(copy['CPY-F21-001']);
   await screen.findByText(text);
@@ -60,6 +66,27 @@ async function openEdit() {
 }
 
 describe('F22 edit (03 §6.3, 04 §6.11)', () => {
+  test('IME count is live while validation and saving wait for compositionend', async () => {
+    const world = createMockWorld('server.activeUnanswered');
+    seedTwo(world);
+    await openDetail(world, '9월 합성 답변');
+    const textarea = await openEdit();
+    fireEvent.change(textarea, { target: { value: '가' } });
+    fireEvent.compositionStart(textarea);
+    fireEvent.change(textarea, { target: { value: '가나' } });
+    expect(document.getElementById('f22-help')).toHaveTextContent('2/2,000자');
+    fireEvent.change(textarea, { target: { value: '가나👩‍👩‍👧' } });
+    expect(document.getElementById('f22-help')).toHaveTextContent('3/2,000자');
+    fireEvent.change(textarea, { target: { value: '가'.repeat(2_001) } });
+    expect(document.getElementById('f22-help')).toHaveTextContent('2,001/2,000자');
+    expect(textarea).not.toHaveAttribute('aria-invalid', 'true');
+    fireEvent.click(screen.getByRole('button', { name: copy['CPY-F22-014'] }));
+    expect(opCount(world, 'OP-007')).toBe(0);
+    fireEvent.compositionEnd(textarea, { target: { value: '가'.repeat(2_001) } });
+    expect(screen.getByText('1자를 줄여 주세요.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: copy['CPY-F22-014'] })).toBeDisabled();
+  });
+
   test('MS-EDIT-001: exact edit → F21 with the new text, 수정됨, one notice; F20 row patched; no F12', async () => {
     const world = createMockWorld('server.activeUnanswered');
     const [, newer] = seedTwo(world);
@@ -89,7 +116,14 @@ describe('F22 edit (03 §6.3, 04 §6.11)', () => {
 
     await userEvent.click(screen.getByRole('button', { name: copy['CPY-COM-005'] }));
     await findTitle(copy['CPY-F20-001']);
-    await waitFor(() => expect(rowTexts()[0]).toBe(edited));
+    await waitFor(() => expect(rowTexts()[0]).toBe(newer.question.text));
+    expect(screen.queryByText(edited)).not.toBeInTheDocument();
+    const row = screen.getAllByRole('button').find((b) => b.classList.contains('arca-memory-row'));
+    await userEvent.click(row as HTMLElement);
+    await findTitle(copy['CPY-F21-001']);
+    expect(screen.getByRole('region', { name: copy['CPY-F21-004'] })).toHaveTextContent(edited, {
+      normalizeWhitespace: false,
+    });
   });
 
   test('IX-024: back to the server text shows 변경 없음, keeps save disabled and leaves no draft', async () => {
@@ -260,7 +294,7 @@ describe('F23 single delete (03 §6.4, 04 §6.12, 06 §9.2)', () => {
     release();
 
     await findTitle(copy['CPY-F20-001']);
-    await waitFor(() => expect(rowTexts()).toEqual(['9월 합성 답변']));
+    await waitFor(() => expect(rowTexts()).toEqual(['9월 합성 질문']));
     expect(screen.queryByRole('heading', { level: 2, name: '2026년 8월' })).toBeNull();
     expect(world.answers.has(older.answerId)).toBe(false);
     expect(await screen.findByText('기억 조각 1개')).toBeInTheDocument();
@@ -304,7 +338,7 @@ describe('F23 single delete (03 §6.4, 04 §6.12, 06 §9.2)', () => {
     world.answers.delete(newer.answerId);
     release();
     await findTitle(copy['CPY-F20-001']);
-    await waitFor(() => expect(rowTexts()).toEqual(['8월 합성 답변']));
+    await waitFor(() => expect(rowTexts()).toEqual(['8월 합성 질문']));
     const ticket = [...world.tickets.values()].find((t) => t.answerTarget?.kind === 'DELETE');
     expect(ticket?.deleteEffect).toBe('ALREADY_ABSENT');
   });
@@ -337,7 +371,7 @@ describe('F23 single delete (03 §6.4, 04 §6.12, 06 §9.2)', () => {
     const again = await screen.findByRole('alertdialog', { name: copy['CPY-F23-001'] });
     await userEvent.click(within(again).getByRole('button', { name: copy['CPY-COM-007'] }));
     await findTitle(copy['CPY-F20-001']);
-    await waitFor(() => expect(rowTexts()).toEqual(['8월 합성 답변']));
+    await waitFor(() => expect(rowTexts()).toEqual(['8월 합성 질문']));
     expect(opCount(world, 'OP-007')).toBe(1);
   }, 20_000);
 

@@ -26,7 +26,7 @@ test('date change → F13 (copy first) → today → past-draft Sheet → F13 re
 
   await page.getByRole('button', { name: '오늘의 항해로' }).click();
   await expect(page.getByRole('heading', { level: 1, name: '오늘의 항해' })).toBeVisible();
-  await expect(page.getByText('다음 날 합성 질문 (synthetic/non-user)')).toBeVisible();
+  await expect(page.getByText('요즘 자꾸 미루게 되는 일이 있다면, 그 일의 어떤 부분이 무거운가요?')).toBeVisible();
 
   const trigger = page.getByRole('button', { name: '지난 임시본 보기' });
   await trigger.click();

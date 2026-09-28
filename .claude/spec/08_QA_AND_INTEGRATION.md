@@ -1,6 +1,6 @@
 # ARCA QA 및 통합 검증 명세
 
-- v1.2 · 2026-09-27 · 제품 책임자 승인 설계; 단계 1 명령 연결(§11), 구현·실행 검증은 미착수. 중복 설명을 줄이고 선택 읽기·줄 포인터로 정리.
+- v1.3 · 2026-09-28 · 제품 책임자 승인 설계; 로컬 정적·단위·브라우저 실행 및 UI 비교 증거는 §14.1. 실서버·실기기·출시 gate는 별도 미완료.
 - 소유 범위: 검증 층·환경·명령·증거·완료 판정. 시작 상태와 기대 결과는 [.claude/spec/07_MOCK_SCENARIOS.md §11 · 약 L179–307](07_MOCK_SCENARIOS.md#11-이름-있는-시나리오-카탈로그).
 
 ## 1. 범위, 원칙과 현재 자료
@@ -20,7 +20,7 @@
 | 명령·실행 기록 | [.claude/spec/08_QA_AND_INTEGRATION.md §11 · 약 L196–209](08_QA_AND_INTEGRATION.md#11-환경과-명령-계약) → [.claude/spec/08_QA_AND_INTEGRATION.md §12 · 약 L211–223](08_QA_AND_INTEGRATION.md#12-결과와-증거-기록) |
 | PR/merge/출시 판단 | [.claude/spec/08_QA_AND_INTEGRATION.md §13 · 약 L225–265](08_QA_AND_INTEGRATION.md#13-결함-flaky-예외와-gate) |
 
-실제 source·lockfile·runner·CI·기기·서버/운영 환경과 실행 증거는 아직 제공되지 않았습니다. 명령·버전·실행 성공을 가정하지 않습니다. 제품 판정은 [docs/ARCA_MVP_ACCEPTANCE.md §3 · 약 L48–150](../../docs/ARCA_MVP_ACCEPTANCE.md#3-핵심-qa-시나리오), 충돌 처리는 [.claude/spec/00_INDEX.md §4 · 약 L55–76](00_INDEX.md#4-충돌-우선순위와-정정-절차)을 따릅니다.
+로컬 source·lockfile·runner와 실행 결과는 §14.1에 기록합니다. 원격 CI·실제 기기·실서버/운영 결과는 미검증이며 로컬 통과로 대신하지 않습니다. 제품 판정은 [docs/ARCA_MVP_ACCEPTANCE.md §3 · 약 L48–150](../../docs/ARCA_MVP_ACCEPTANCE.md#3-핵심-qa-시나리오), 충돌 처리는 [.claude/spec/00_INDEX.md §4 · 약 L55–76](00_INDEX.md#4-충돌-우선순위와-정정-절차)을 따릅니다.
 
 ### 1.4 결과 상태
 
@@ -129,7 +129,7 @@ iOS·Android에서 실제 확인할 항목:
 
 | 항목 | 자동/대표 연결 | 실제 기기 확인 |
 |---|---|---|
-| 닉네임·응답 | 닉네임 1/2/12/13, 응답 1/2,000/2,001 EGC·공백/개행·붙여넣기·초과 비절단·오류 해제 | 한글/일본어 IME, 키보드 가림, 긴 글 중간 cursor/selection |
+| 닉네임·응답 | 닉네임 1/2/12/13, 응답 1/2,000/2,001 EGC·공백/개행·붙여넣기·초과 비절단·오류 해제; 조합 중 실시간 count와 조합 종료 후 검증/commit 분리 | 한글/일본어 IME, 키보드 가림, 긴 글 중간 cursor/selection |
 | 320px·200%·작은 높이 | reflow·중첩·단일 저장 control·bar 전환 시 입력/scroll/focus | 시스템 큰 글자·키보드에서도 질문→입력→저장 |
 | 접근성 | axe·role/name·대비·타깃·단일 live source | VoiceOver/TalkBack으로 핵심 흐름·삭제 확인·오류 복구, 읽기/발표/focus |
 | Overlay·Back | trap/닫힘 잠금/복귀 | Dialog→Overlay→키보드→보관 조건에 따른 이탈→부모/root, 외부 정책/고객센터 복귀 |
@@ -141,7 +141,7 @@ network/time hint·haptic/장식 실패는 날짜 판정·저장·이동을 바�
 
 선택 case와 기대 결과: [.claude/spec/07_MOCK_SCENARIOS.md §11.7 · 약 L264–277](07_MOCK_SCENARIOS.md#117-목록cursor탐색), [.claude/spec/07_MOCK_SCENARIOS.md §11.5 · 약 L234–248](07_MOCK_SCENARIOS.md#115-command수정두-기기), [.claude/spec/07_MOCK_SCENARIOS.md §11.6 · 약 L250–262](07_MOCK_SCENARIOS.md#116-개별-삭제전체-삭제).
 
-- 목록/count 성공·실패 네 조합, 0/1/2/20/21·월/연도·cursor 무효·후보 적용은 빠른 층에서 확인합니다.
+- 목록 질문·날짜 및 응답 미노출→상세 전문, 수정 후 상세 재열람, 삭제 행 제거와 목록/count 성공·실패 네 조합, 0/1/2/20/21·월/연도·cursor 무효·후보 적용은 빠른 층에서 확인합니다.
 - browser/기기는 deep scroll·anchor/focus·큰 글자 등 연결만 추가합니다.
 - 실서버는 두 기기 revision 충돌·ALREADY_ABSENT·receipt 이후 변경·ack 후 proof 복구·삭제 fence 뒤 mutation/worker 차단을 확인합니다. 필요한 선후 순서를 고정하고 우연한 timing에 기대지 않습니다.
 
@@ -269,3 +269,30 @@ candidate 필수 행이 모두 PASS이며 [docs/ARCA_MVP_ACCEPTANCE.md §4 · �
 구현 순서: [.claude/spec/06_FRONTEND_SPEC.md §12 · 약 L666–683](06_FRONTEND_SPEC.md#12-구현-순서). slice는 선택한 주 검증 층·대표 연결·필요한 실패/접근성/개인정보/실기기 결과를 갖추고 일상 기록에 ID·계약·남은 blocker를 연결하면 완료입니다. 필수 범위가 남으면 PARTIAL, 선택 검증 미도입은 차단 사유가 아닙니다.
 
 전체 완료는 release gate 통과로 판정합니다. Acceptance별 원문은 [docs/ARCA_MVP_ACCEPTANCE.md §3 · 약 L48–150](../../docs/ARCA_MVP_ACCEPTANCE.md#3-핵심-qa-시나리오), 해당 시나리오는 [.claude/spec/07_MOCK_SCENARIOS.md §11 · 약 L179–307](07_MOCK_SCENARIOS.md#11-이름-있는-시나리오-카탈로그)의 `Acc #`로 찾습니다. 별도 중복 추적표나 완료 체크리스트를 만들지 않습니다.
+
+
+### 14.1 2026-09-28 UI 정리와 IME 카운터 검증
+
+현행 작업 트리의 로컬 검증 기록입니다. 커밋·배포·빌드 오케스트레이터를 실행하지 않았습니다. 사용자 요청에 따라 디자인을 먼저 비교하고, 채택한 결과를 01~04·06·DECISIONS와 제품 Rules/Flow/Acceptance에 동기화했습니다. 05의 추가 설명은 F20의 표시와 기존 excerpt DTO를 구분하며 wire schema 변경은 없습니다.
+
+| 범위 | 현행 결과 | 증거·재현 위치 |
+|---|---|---|
+| 관측실 UI·장면·읽기·작성·완료·모달·상태 | 합성 데이터 393×852·320×568, 기본/200% 전후 비교. 장식·면 밀도·타깃·포커스·탭 도달성 확인 | `.playwright/design-review/diagnosis.md`, `comparison.html`, `accessibility.json` |
+| 목록·텍스트 행동·폰트·모션 | F20 질문·날짜만 표시→F21 응답, 세 실제 글자 크기, tap 배경 없음·눌림, 180ms 본문 진입·Reduced Motion 0ms | `.playwright/archive-question-review/`, `.playwright/refinement-review/comparison.html`, `interaction.json` |
+| IME 카운터 | F03·F11·F22·F30 회귀: 조합 중 현재 EGC 수·결합 이모지·닉네임 공백, 조합 후 오류 및 조합 중 제출 방지. F11은 조합 중 보관 미확정도 확인 | 각 화면 `.test.tsx`, `.playwright/final-review/unit.log` |
+| Chromium 실제 composition 경로 | CDP `Input.imeSetComposition`으로 F11·F22·F30에서 두 글자 입력 중 카운터 1→2 수정 확인. 393/320px × 기본/200%, 12쌍. 가로 overflow 0 | `.playwright/final-review/capture.mjs`, `before/`, `after/metrics.json`, `comparison.html` |
+| 오늘 날짜 위치 | F10 미응답·완료 날짜를 질문 영역 안쪽 위에 한 번 표시, 하단 발신자·SEMA 코드 제거. 393/320px × 기본/200%, 8쌍. WebKit에서 320px·200% 포함 가로 overflow 0·버튼 중앙 hit test 통과 | `.playwright/today-date-review/comparison.html`, `after/metrics.json`, `after/webkit.json` |
+
+추가 F21 정리: 작성 날짜를 질문 서문 안쪽 상단으로 이동하고 `작성일` 접두 문구·하단 중복 날짜를 제거했습니다. 수정 상태는 본문 아래에 유지합니다. 합성 일반/수정 기록 × 393/320px × 기본/200%의 8쌍을 `.playwright/detail-date-review/comparison.html`과 `before/`·`after/metrics.json`에 보관합니다. 추가 변경의 최종 재실행 로그는 `.playwright/detail-date-review/unit-final.log`·`playwright.log`입니다.
+
+최종 명령 결과는 아래에 기록합니다. 테스트 전 개발 서버를 종료해 포트 충돌을 방지합니다.
+
+- `./node_modules/.bin/biome check .`: PASS (108 files)
+- `./node_modules/.bin/tsc -b`: PASS
+- `node .claude/hooks/checks/token-lint.mjs`: PASS
+- `./node_modules/.bin/vitest run --project unit`: PASS (23 files, 276 tests)
+- `./node_modules/.bin/vite build && ./node_modules/.bin/playwright test`: PASS (Chromium·WebKit, 36 tests)
+
+이전 디자인 검증의 axe 자동 위반은 0이며 CSS 배경 프레임의 일부 대비는 자동 판정 불가여서 실제 토큰 계산을 병행했습니다. 카운터 CDP 경로와 높이 축소 키보드 공간 에뮬레이션은 OS 키보드·iOS/Android IME·토스 WebView 실기기 확인을 대신하지 않습니다. 실제 기기·VoiceOver/TalkBack·운영 서버·출시 gate는 미완료입니다. Vite의 500kB 초과 청크 경고는 남아 있으며 별도 번들 분할 검토 대상입니다.
+
+`.playwright/`의 원본 캡처·로그는 Git 제외된 로컬 스크래치 자료입니다. `docs/`도 저장소의 기존 ignore 정책으로 로컬 참조이며 해당 파일의 현행 문구는 동기화했으나 추적 설정을 바꾸거나 강제 stage하지 않았습니다. 재현 가능한 회귀 테스트와 이 명세의 결과 기록을 함께 보존합니다.

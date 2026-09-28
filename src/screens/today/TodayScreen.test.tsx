@@ -21,8 +21,9 @@ describe('F10 unanswered (IX-006, IX-033)', () => {
 
     const question = screen.getByRole('region', { name: copy['CPY-F10-003'] });
     expect(within(question).getByText(world.sema.primaryQuestion.text)).toBeInTheDocument();
-    expect(screen.getByText('2026년 9월 27일')).toBeInTheDocument();
-    expect(screen.getByText('SEMA 코드 · SYN-001')).toBeInTheDocument();
+    expect(within(question).getByText('2026년 9월 27일')).toHaveAttribute('datetime', '2026-09-27');
+    expect(screen.queryByText('SEMA 코드 · SEMA-0270')).not.toBeInTheDocument();
+    expect(screen.queryByText(copy['CPY-F10-008'])).not.toBeInTheDocument();
     expect(screen.getByText('기억 조각 0개')).toBeInTheDocument();
     expect(opCount(world, 'OP-005')).toBe(1);
     expect((await axe.run(document.body)).violations).toEqual([]);
@@ -74,6 +75,11 @@ describe('F10 answered (IX-027, IX-033)', () => {
     expect(screen.getByRole('region', { name: copy['CPY-F10-015'] })).toHaveTextContent(
       world.sema.primaryQuestion.text,
     );
+    expect(
+      within(screen.getByRole('region', { name: copy['CPY-F10-015'] })).getByText('2026년 9월 27일'),
+    ).toHaveAttribute('datetime', '2026-09-27');
+    expect(screen.queryByText(copy['CPY-F10-008'])).not.toBeInTheDocument();
+    expect(screen.queryByText('SEMA 코드 · SEMA-0270')).not.toBeInTheDocument();
     expect(screen.getByText('기억 조각 1개')).toBeInTheDocument();
     expect((await axe.run(document.body)).violations).toEqual([]);
   });
@@ -133,7 +139,9 @@ describe('F21 read-back (MS-CORE-001 read side)', () => {
     expect(regions[0]).toHaveAccessibleName(copy['CPY-F21-002']);
     expect(regions[1]).toHaveAccessibleName(copy['CPY-F21-004']);
     expect(regions[1]?.querySelector('.arca-user-text')?.textContent).toBe(content);
-    expect(screen.getByText('작성일 · 2026년 9월 27일')).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('region', { name: copy['CPY-F21-002'] })).getByText('2026년 9월 27일'),
+    ).toHaveAttribute('datetime', '2026-09-27');
     expect((await axe.run(document.body)).violations).toEqual([]);
   });
 

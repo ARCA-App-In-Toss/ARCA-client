@@ -20,7 +20,23 @@ import {
 import { copy, fill } from '../../ui/copy.ts';
 import { formatCount, formatDateKst, formatInstantKst, isWhitespaceOnly } from '../../ui/format.ts';
 import { PixelSheet } from '../../ui/PixelSheet.tsx';
+import { MemoryFragment, ObservationScene } from '../../ui/pixel.tsx';
 import { RootHeader, RootTabs } from '../RootTabs.tsx';
+
+/** The scene is decorative; the question label and date remain readable text. */
+function QuestionLabel({ id, text, dateKst }: { id: string; text: string; dateKst: string }) {
+  return (
+    <div className="arca-question-source">
+      <ObservationScene />
+      <div className="arca-question-heading">
+        <p className="arca-label arca-label--signal" id={id}>
+          {text}
+        </p>
+        <QuestionDate dateKst={dateKst} />
+      </div>
+    </div>
+  );
+}
 
 /** F10 — today's SEMA (03 §5.1, 04 §6.5). Unanswered: question first; answered: own excerpt first. */
 export function TodayScreen() {
@@ -123,13 +139,11 @@ export function TodayScreen() {
   );
 }
 
-function SemaMeta({ today }: { today: Today }) {
+function QuestionDate({ dateKst }: { dateKst: string }) {
   return (
-    <ul className="arca-meta">
-      <li>{copy['CPY-F10-008']}</li>
-      <li>{formatDateKst(today.dateKst)}</li>
-      <li>{fill(copy['CPY-COM-002'], { semaCode: today.sema.semaCode })}</li>
-    </ul>
+    <time className="arca-question-date" dateTime={dateKst}>
+      {formatDateKst(dateKst)}
+    </time>
   );
 }
 
@@ -162,11 +176,9 @@ function Unanswered({
     const pendingQuestion = pendingRole === 'PRIMARY' ? today.sema.primaryQuestion : today.sema.alternateQuestion;
     return (
       <>
-        <ScenePanel labelledBy="f10-question-label">
-          <p className="arca-label" id="f10-question-label">
-            {copy['CPY-F10-003']}
-          </p>
-          <p className="arca-question">{pendingQuestion.text}</p>
+        <ScenePanel labelledBy="f10-question-label" hero>
+          <QuestionLabel id="f10-question-label" text={copy['CPY-F10-003']} dateKst={today.dateKst} />
+          <p className="arca-question arca-question--lead">{pendingQuestion.text}</p>
         </ScenePanel>
         <InlineStatus message={copy['CPY-F10-038']} live={false} />
         <div className="arca-actions">
@@ -174,7 +186,6 @@ function Unanswered({
             {copy['CPY-F10-039']}
           </PixelButton>
         </div>
-        <SemaMeta today={today} />
         <Count today={today} />
       </>
     );
@@ -182,11 +193,9 @@ function Unanswered({
 
   return (
     <>
-      <ScenePanel labelledBy="f10-question-label">
-        <p className="arca-label" id="f10-question-label">
-          {copy['CPY-F10-003']}
-        </p>
-        <p className="arca-question">{question.text}</p>
+      <ScenePanel labelledBy="f10-question-label" hero>
+        <QuestionLabel id="f10-question-label" text={copy['CPY-F10-003']} dateKst={today.dateKst} />
+        <p className="arca-question arca-question--lead">{question.text}</p>
       </ScenePanel>
       <div className="arca-actions">
         <PixelButton variant="primary" onClick={() => navigate(paths.write, { questionRole: role })}>
@@ -194,6 +203,7 @@ function Unanswered({
         </PixelButton>
         {/* Focus stays here; the name switches to the next available action (IX-006 #4). */}
         <PixelButton
+          variant="ghost"
           onClick={() => {
             const next: QuestionRole = role === 'PRIMARY' ? 'ALTERNATE' : 'PRIMARY';
             const nextQuestion = next === 'PRIMARY' ? today.sema.primaryQuestion : today.sema.alternateQuestion;
@@ -204,7 +214,6 @@ function Unanswered({
           {role === 'PRIMARY' ? copy['CPY-F10-006'] : copy['CPY-F10-007']}
         </PixelButton>
       </div>
-      <SemaMeta today={today} />
       <Count today={today} />
     </>
   );
@@ -229,15 +238,26 @@ function Answered({
 
   return (
     <>
-      <RecordPanel labelledBy={excerpt ? 'f10-excerpt-label' : undefined}>
-        <p className="arca-label">{copy['CPY-F10-011']}</p>
+      {/* Saved-question preface above the excerpt (product decision 2026-09-28); the label is AT-only. */}
+      <section className="arca-preface" aria-labelledby="f10-saved-question-label">
+        <p className="arca-visually-hidden" id="f10-saved-question-label">
+          {copy['CPY-F10-015']}
+        </p>
+        <QuestionDate dateKst={today.dateKst} />
+        <p className="arca-question arca-question--quiet">{answer.question.text}</p>
+      </section>
+      <RecordPanel labelledBy={excerpt ? 'f10-excerpt-label' : undefined} hero>
+        <p className="arca-sender arca-sender--compact">
+          <MemoryFragment cell={2} />
+          <span className="arca-label arca-label--signal">{copy['CPY-F10-011']}</span>
+        </p>
         {excerpt ? (
           <>
             <p className="arca-label" id="f10-excerpt-label">
               {excerpt.isTruncated ? copy['CPY-F10-013'] : copy['CPY-F10-012']}
             </p>
             {/* Stored prefix verbatim; the ellipsis is UI-only and never part of the text (04 §5.10). */}
-            <p className="arca-user-text">
+            <p className="arca-user-text arca-user-text--reading">
               {excerpt.text}
               {excerpt.isTruncated && <span aria-hidden="true">…</span>}
             </p>
@@ -265,13 +285,6 @@ function Answered({
           {copy['CPY-F10-016']}
         </PixelButton>
       </div>
-      <ScenePanel labelledBy="f10-saved-question-label">
-        <p className="arca-label" id="f10-saved-question-label">
-          {copy['CPY-F10-015']}
-        </p>
-        <p className="arca-question">{answer.question.text}</p>
-      </ScenePanel>
-      <SemaMeta today={today} />
       <Count today={today} />
     </>
   );

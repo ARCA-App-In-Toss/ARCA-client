@@ -1,22 +1,45 @@
-/* ARCA arca-default tokens. Values mirror 02 Design System §3–§7; 02 is the SSOT. */
+/* ARCA visual tokens: quiet observatory surfaces, readable text, and integer pixel art. */
+
+/* 4.1 Neo둥근모 v1.601 Regular, self-hosted (AST-011, SIL OFL 1.1 — public/fonts/neodgm/LICENSE.txt).
+   `swap` keeps text readable in the system fallback while the file loads; nothing waits on it (06 §10.5). */
+@font-face {
+  font-family: "NeoDunggeunmo";
+  src: url("/fonts/neodgm/neodgm.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   /* 3.1 base & experience */
-  --color-bg-canvas: #071426;
-  --color-bg-scene: #10233f;
-  --color-bg-record: #182b3c;
+  --color-bg-canvas: #090f1d;
+  --color-bg-scene: #111e32;
+  --color-bg-record: #19263a;
   --color-bg-document: #f4f7fb;
-  --color-bg-inset-dark: #0c1b30;
+  --color-bg-inset-dark: #0d1728;
   --color-bg-inset-light: #e7edf5;
   --color-text-on-dark-primary: #f4f7fb;
-  --color-text-on-dark-secondary: #aab9cf;
-  --color-text-on-light-primary: #071426;
+  --color-text-on-dark-secondary: #afbdd0;
+  --color-text-on-light-primary: #090f1d;
   --color-text-on-light-secondary: #425574;
   --color-border-on-dark: #607795;
   --color-border-on-light: #7890ad;
-  --color-brand-primary: #2457e6;
-  --color-signal: #67e8f9;
-  --color-memory: #9a78ff;
+  --color-brand-primary: #3659bc;
+  --color-signal: #9adbdc;
+  --color-memory: #b4a0ef;
   --color-warmth: #c98a3d;
+
+  /* 3.1 stepped light (02 §6.1: opaque blocks in brightness steps, never a gradient glow).
+     Adopted values in 02 §3.1; signal/memory/brand steps over the canvas. */
+  --color-signal-step-1: #509dab;
+  --color-signal-step-2: #265367;
+  --color-signal-step-3: #172f43;
+  --color-memory-step-1: #8068bf;
+  --color-memory-step-2: #493b76;
+  --color-memory-step-3: #282541;
+  --color-brand-primary-deep: #253c79;
+  --color-bg-scene-raised: #22354e;
+  --color-bg-canvas-deep: #050b15;
 
   /* 3.2 functional status, dark surface pair */
   --color-status-success-on-dark-fg: #63d7a4;
@@ -28,20 +51,51 @@
   --color-status-info-on-dark-fg: #89a7ff;
   --color-status-info-on-dark-bg: #172b5f;
 
-  /* 4 typography. Neo둥근모 must be self-hosted (02 §4.1); until the file is added the local() lookup falls back. */
+  /* Three text sizes; semantic aliases keep screen roles explicit without adding new sizes. */
   --font-family-pixel: "NeoDunggeunmo", system-ui, "Apple SD Gothic Neo", sans-serif;
   --font-family-body: system-ui, "Apple SD Gothic Neo", sans-serif;
   --font-weight-regular: 400;
-  --type-display-size: 2rem;
-  --type-display-line: 2.75rem;
-  --type-screen-title-size: 1.5rem;
-  --type-screen-title-line: 2.25rem;
-  --type-question-size: 1.25rem;
-  --type-question-line: 2rem;
-  --type-body-size: 1rem;
-  --type-body-line: 1.75rem;
-  --type-control-size: 1rem;
+  --type-size-title: 1.25rem;
+  --type-size-body: 1rem;
+  --type-size-caption: 0.875rem;
+  --type-line-title: 2rem;
+  --type-line-body: 1.75rem;
+  --type-line-caption: 1.25rem;
+  --type-display-size: var(--type-size-title);
+  --type-display-line: var(--type-line-title);
+  --type-screen-title-size: var(--type-size-title);
+  --type-screen-title-line: var(--type-line-title);
+  --type-question-size: var(--type-size-title);
+  --type-question-line: var(--type-line-title);
+  --type-body-size: var(--type-size-body);
+  --type-body-line: var(--type-line-body);
+  --type-control-size: var(--type-size-body);
   --type-control-line: 1.5rem;
+  --type-caption-size: var(--type-size-caption);
+  --type-caption-line: var(--type-line-caption);
+  --type-reading-size: var(--type-size-body);
+  --type-reading-line: var(--type-line-body);
+  --type-question-lead-size: var(--type-size-title);
+  --type-question-lead-line: var(--type-line-title);
+  --type-narrative-size: var(--type-size-body);
+  --type-narrative-line: var(--type-line-body);
+
+  /* Reading surfaces and small scene dimensions. */
+  --color-border-subtle: #2d4059;
+  --color-brand-edge: #91abe9;
+  --color-tap-highlight: transparent;
+  --a11y-pixel: 1px;
+  --art-scene-width: 224px;
+  --art-observation-width: 224px;
+  --layout-tabs-height: calc(
+    var(--type-control-line) +
+    var(--space-200) *
+    2 +
+    var(--border-default) *
+    4 +
+    var(--space-100) *
+    2
+  );
 
   /* 5 spacing & layout */
   --space-100: 4px;
@@ -59,6 +113,10 @@
   --layout-gutter-compact: 16px;
   --layout-target-min: 44px;
   --layout-button-height: 52px;
+  --icon-size-default: 24px;
+  --icon-size-emphasis: 48px;
+  /* 8.1 pixel scale: 1 source px = 4 CSS px */
+  --pixel-cell: 4px;
 
   /* 6 shape, border, shadow, layer */
   --corner-control: 4px;
@@ -69,22 +127,34 @@
   --focus-offset: 2px;
   --shadow-raised: 4px 4px 0;
   --shadow-pressed: 2px 2px 0;
+  --opacity-decorative-muted: 0.72;
   --opacity-disabled: 0.48;
   /* 02 §6.2: dimmer is exactly rgba(3, 8, 18, 0.72) */
   --color-dimmer: rgba(3, 8, 18, 0.72);
   --layer-content: 0;
+  --layer-raised: 10;
+  --layer-app-sticky: 20;
+  --layer-sheet: 30;
   --layer-dialog: 40;
+  --layer-toast: 50;
 
   /* 7 motion */
+  --motion-press-offset: var(--border-default);
   --motion-duration-instant: 0ms;
   --motion-duration-fast: 120ms;
   --motion-duration-base: 180ms;
+  --motion-duration-scene: 320ms;
+  --motion-duration-memory: 1600ms;
   --motion-easing-pixel: steps(2, end);
+  --motion-easing-settle: cubic-bezier(0.2, 0, 0, 1);
 }
 
 @media (prefers-reduced-motion: reduce) {
   :root {
+    --motion-press-offset: 0px;
     --motion-duration-fast: 0ms;
     --motion-duration-base: 0ms;
+    --motion-duration-scene: 0ms;
+    --motion-duration-memory: 0ms;
   }
 }

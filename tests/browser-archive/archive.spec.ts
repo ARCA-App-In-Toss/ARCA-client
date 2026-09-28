@@ -41,7 +41,7 @@ test('edit: exact text saved, F21 shows it with 수정됨; no F12', async ({ pag
   await page.getByRole('button', { name: '수정하기' }).click();
   await expect(page.getByRole('heading', { level: 1, name: '기억 조각 수정' })).toBeVisible();
   const field = page.getByRole('textbox', { name: '내 답변' });
-  await expect(field).toHaveValue('합성 기록 1 (synthetic/non-user)');
+  await expect(field).toHaveValue('역 뒤편 공원의 세 번째 벤치에서 한 정거장을 걸을지 고민했다. (1)');
   const edited = '브라우저에서 고친 합성\n둘째 줄  ';
   await field.fill(edited);
   await page.getByRole('button', { name: '수정 내용 저장' }).click();
@@ -54,6 +54,7 @@ test('edit: exact text saved, F21 shows it with 수정됨; no F12', async ({ pag
 
 test('delete: Escape cancels with focus back; confirm removes the row and returns to F20', async ({ page }) => {
   await openArchive(page);
+  const deletedDate = await page.locator('.arca-memory-row__meta').first().innerText();
   await page.locator('.arca-memory-row').first().click();
   const trigger = page.getByRole('button', { name: '삭제하기' });
   await trigger.click();
@@ -70,7 +71,7 @@ test('delete: Escape cancels with focus back; confirm removes the row and return
   await page.getByRole('alertdialog').getByRole('button', { name: '기억 조각 삭제' }).click();
   await expect(page.getByRole('heading', { level: 1, name: '항해 기록' })).toBeVisible();
   // The row goes at once; at the top the re-read first page then replaces the chain (06 §6.3–6.4).
-  await expect(page.getByText('합성 기록 1 (synthetic/non-user)', { exact: true })).toHaveCount(0);
+  await expect(page.getByText(deletedDate, { exact: true })).toHaveCount(0);
   await expect(page.locator('.arca-memory-row')).toHaveCount(20);
   await expect(page.getByText('기억 조각 20개')).toBeVisible();
   await expect(page.getByRole('button', { name: '기록 더 보기' })).toHaveCount(0);

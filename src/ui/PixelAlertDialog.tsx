@@ -54,7 +54,7 @@ export function PixelAlertDialog({
       <AlertDialog.Portal>
         <AlertDialog.Overlay className="arca-dimmer" />
         <AlertDialog.Content
-          className="arca-alert-dialog"
+          className={danger ? 'arca-alert-dialog arca-px' : 'arca-alert-dialog arca-alert-dialog--neutral arca-px'}
           onEscapeKeyDown={(event) => {
             if (locked) event.preventDefault();
           }}
@@ -74,13 +74,13 @@ export function PixelAlertDialog({
           <div className="arca-actions">
             {/* Radix focuses Cancel first: the safe action is the initial focus (04 IX-015). */}
             <AlertDialog.Cancel asChild>
-              <button type="button" className="arca-button arca-button--secondary" disabled={locked}>
+              <button type="button" className="arca-button arca-button--secondary arca-px" disabled={locked}>
                 {cancelLabel}
               </button>
             </AlertDialog.Cancel>
             <button
               type="button"
-              className={danger ? 'arca-button arca-button--danger' : 'arca-button arca-button--ghost'}
+              className={danger ? 'arca-button arca-button--danger arca-px' : 'arca-button arca-button--ghost'}
               aria-busy={busy || undefined}
               onClick={() => {
                 if (!busy) onAction();

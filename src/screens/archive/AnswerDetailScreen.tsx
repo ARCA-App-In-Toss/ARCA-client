@@ -12,7 +12,6 @@ import {
   PixelIconButton,
   PixelPlaceholder,
   RecordPanel,
-  ScenePanel,
   ScreenTitle,
   StatePanel,
 } from '../../ui/components.tsx';
@@ -151,7 +150,7 @@ export function AnswerDetailScreen() {
 
   const header = (
     <div className="arca-screen-header">
-      <PixelIconButton label={copy['CPY-COM-005']} glyph="‹" onClick={() => navigate(paths.archive)} />
+      <PixelIconButton label={copy['CPY-COM-005']} icon="back" onClick={() => navigate(paths.archive)} />
       <ScreenTitle>{copy['CPY-F21-001']}</ScreenTitle>
     </div>
   );
@@ -208,23 +207,23 @@ export function AnswerDetailScreen() {
   return (
     <PixelAppShell>
       {header}
-      <ScenePanel labelledBy="f21-question-label">
-        <p className="arca-label" id="f21-question-label">
+      <section className="arca-preface" aria-labelledby="f21-question-label">
+        <p className="arca-visually-hidden" id="f21-question-label">
           {copy['CPY-F21-002']}
         </p>
-        <p className="arca-question">{question.text}</p>
-      </ScenePanel>
-      <RecordPanel labelledBy="f21-answer-label">
+        <time className="arca-question-date" dateTime={createdDateKst}>
+          {formatDateKst(createdDateKst)}
+        </time>
+        <p className="arca-question arca-question--quiet">{question.text}</p>
+      </section>
+      <RecordPanel labelledBy="f21-answer-label" hero>
         <p className="arca-label" id="f21-answer-label">
           {copy['CPY-F21-004']}
         </p>
-        <p className="arca-user-text">{content}</p>
+        <p className="arca-user-text arca-user-text--reading">{content}</p>
         {isWhitespaceOnly(content) && <p className="arca-text-secondary">{copy['CPY-COM-004']}</p>}
       </RecordPanel>
-      <ul className="arca-meta">
-        <li>{fill(copy['CPY-F21-006'], { createdDateKst: formatDateKst(createdDateKst) })}</li>
-        {isEdited && <li>{copy['CPY-F21-007']}</li>}
-      </ul>
+      {isEdited && <p className="arca-caption arca-text-secondary">{copy['CPY-F21-007']}</p>}
       <InlineStatus
         message={dialogRoute ? null : status}
         tone={notice === 'deleteFailed' || notice === 'editNotSaved' ? 'danger' : 'neutral'}
@@ -247,7 +246,7 @@ export function AnswerDetailScreen() {
         )}
         <PixelButton
           ref={deleteButtonRef}
-          variant="danger"
+          variant="danger-text"
           disabled={deleteUnresolved ? view.kind === 'working' : locked || editUnresolved}
           onClick={() => navigate(paths.deleteAnswer, { answerRef: routeState?.answerRef ?? '' })}
         >

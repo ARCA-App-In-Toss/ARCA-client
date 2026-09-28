@@ -8,7 +8,7 @@ import { useAnswerWrite, useCompletions, useCopyText, usePendingWrite } from '..
 import type { PrepareAnswerCreate, TodaySema } from '../../data/api/models.ts';
 import type { CreateDraftIdentity } from '../../domain/drafts/draftRepository.ts';
 import type { KeepStatus } from '../../domain/drafts/draftWriter.ts';
-import { measureAnswer } from '../../domain/text/graphemes.ts';
+import { countGraphemes, measureAnswer } from '../../domain/text/graphemes.ts';
 import {
   InlineStatus,
   PixelAppShell,
@@ -23,6 +23,7 @@ import {
 import { copy, fill } from '../../ui/copy.ts';
 import { formatCount } from '../../ui/format.ts';
 import { PixelAlertDialog } from '../../ui/PixelAlertDialog.tsx';
+import { JoyMark, PixelIcon } from '../../ui/pixel.tsx';
 
 function keepLabel(status: KeepStatus): string | null {
   switch (status.kind) {
@@ -220,6 +221,8 @@ export function WriteScreen() {
   }
 
   const measured = measureAnswer(settledText ?? draft.text);
+  // Display the live input count; validation and persistence still wait for IME to settle.
+  const currentCount = settledText === null ? measured.count : countGraphemes(draft.text);
   const overflow = measured.overCount > 0;
   const loading = !question || draft.load.kind === 'loading';
   const unreadable = draft.load.kind === 'unreadable';
@@ -333,24 +336,29 @@ export function WriteScreen() {
 
   const helpId = 'f11-help';
   return (
-    <PixelAppShell>
+    <PixelAppShell className="arca-page--compose">
       <div className="arca-screen-header">
-        <PixelIconButton label={copy['CPY-COM-005']} glyph="‹" buttonRef={backButtonRef} onClick={onLeave} />
+        <PixelIconButton label={copy['CPY-COM-005']} icon="back" buttonRef={backButtonRef} onClick={onLeave} />
         <ScreenTitle>{copy['CPY-F11-001']}</ScreenTitle>
       </div>
       <ScenePanel labelledBy="f11-question-label">
-        <p className="arca-label" id="f11-question-label">
-          {copy['CPY-F11-002']}
-        </p>
+        <div className="arca-sender arca-sender--compact">
+          <JoyMark cell={2} />
+          <p className="arca-label arca-label--signal" id="f11-question-label">
+            {copy['CPY-F11-002']}
+          </p>
+        </div>
         <p className="arca-question">{question?.text}</p>
+        <PixelButton
+          variant="ghost"
+          className="arca-button--inline"
+          disabled={loading || textLocked}
+          onClick={() => void onSwitch()}
+        >
+          {role === 'PRIMARY' ? copy['CPY-F10-006'] : copy['CPY-F10-007']}
+        </PixelButton>
       </ScenePanel>
-      <PixelButton disabled={loading || textLocked} onClick={() => void onSwitch()}>
-        {role === 'PRIMARY' ? copy['CPY-F10-006'] : copy['CPY-F10-007']}
-      </PixelButton>
       <RecordPanel>
-        <p className="arca-text-secondary" id="f11-privacy">
-          {copy['CPY-F11-005']} {copy['CPY-F11-006']}
-        </p>
         {loading ? (
           <PixelPlaceholder />
         ) : (
@@ -377,13 +385,19 @@ export function WriteScreen() {
             />
             <div className="arca-field-help" id={helpId}>
               <span>{keepLabel(draft.status) ?? ''}</span>
-              <span>{fill(copy['CPY-F11-007'], { currentCount: formatCount(measured.count) })}</span>
+              <span>{fill(copy['CPY-F11-007'], { currentCount: formatCount(currentCount) })}</span>
             </div>
             {overflow && (
               <p className="arca-field-error" id="f11-error">
                 {fill(copy['CPY-F11-008'], { overCount: formatCount(measured.overCount) })}
               </p>
             )}
+            <p className="arca-privacy" id="f11-privacy">
+              <PixelIcon name="lock" />
+              <span>
+                {copy['CPY-F11-005']} {copy['CPY-F11-006']}
+              </span>
+            </p>
             {draft.status.kind === 'failed' && !pending && (
               <PixelButton variant="ghost" onClick={() => void draft.flush()}>
                 {copy['CPY-F11-014']}
