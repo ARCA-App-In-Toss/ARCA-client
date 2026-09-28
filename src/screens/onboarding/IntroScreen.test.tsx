@@ -1,4 +1,4 @@
-import { act, screen } from '@testing-library/react';
+import { act, fireEvent, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { setupServer } from 'msw/node';
 import { afterAll, afterEach, beforeAll, describe, expect, test } from 'vitest';
@@ -156,6 +156,22 @@ describe('F01 intro (IX-030, MS-ONB-003)', () => {
     await userEvent.click(button(copy['CPY-F01-006']));
     await findTitle(copy['CPY-F02-001']);
     expect(opCount(world, 'OP-003')).toBe(0);
+  });
+
+  test('a scene image that fails to load falls back to its code scene without blocking the story (06 §10.5)', async () => {
+    reducedMotion(true);
+    await bootIntro();
+    const backdrop = document.querySelector('.arca-intro-backdrop') as HTMLElement;
+    const image = backdrop.querySelector('img.arca-intro-scene') as HTMLImageElement;
+    expect(image.getAttribute('src')).toContain('scene-1');
+    fireEvent.error(image);
+    expect(backdrop.querySelector('img')).toBeNull();
+    expect(backdrop.querySelector('svg.arca-intro-art')).not.toBeNull();
+    // The next scene still tries its own image.
+    await userEvent.click(button(copy['CPY-F01-004']));
+    await userEvent.click(button(copy['CPY-F01-004']));
+    expect(screen.getByRole('img', { name: '6개 중 2번째 장면' })).toBeInTheDocument();
+    expect(backdrop.querySelector('img.arca-intro-scene')?.getAttribute('src')).toContain('scene-2');
   });
 
   test('skip on the first scene opens F02 with no confirmation step', async () => {

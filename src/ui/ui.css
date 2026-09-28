@@ -1581,8 +1581,36 @@ h2.arca-label {
   align-items: center;
   justify-content: center;
   padding-bottom: 32dvh;
+  overflow: hidden;
   background: var(--color-bg-canvas-deep);
   pointer-events: none;
+}
+
+/* AST-004 scene image: a 156-cell square centred horizontally. The cell size always covers the width,
+   aims at about 90 cells across (a portrait phone shows the core strip with some background either
+   side), and stays small enough that at least 110 rows show on a landscape screen. A scene shorter than
+   the screen sits in the middle and its top and bottom rows already sink into the backdrop; a taller
+   one stays top-aligned so the overflow falls off the bottom under the dialog (02 §8.1). */
+.arca-intro-scene {
+  --scene-cell: max(100vw / 156, min(100vw / 90, 100dvh / 110));
+  position: absolute;
+  top: max(0px, (100dvh - var(--scene-cell) * 156) / 2);
+  left: 50%;
+  width: calc(var(--scene-cell) * 156);
+  height: calc(var(--scene-cell) * 156);
+  max-width: none;
+  transform: translateX(-50%);
+  image-rendering: pixelated;
+}
+
+/* Whole CSS px per cell and whole-pixel edges. Engines without round() keep the sizes above. */
+@supports (width: round(up, 1px, 1px)) {
+  .arca-intro-scene {
+    --scene-cell: max(round(up, 100vw / 156, 1px), min(round(down, 100vw / 90, 1px), round(down, 100dvh / 110, 1px)));
+    top: max(0px, round(down, (100dvh - var(--scene-cell) * 156) / 2, 1px));
+    left: round(down, calc(50% - var(--scene-cell) * 78), 1px);
+    transform: none;
+  }
 }
 
 .arca-page--intro .arca-shell__content {

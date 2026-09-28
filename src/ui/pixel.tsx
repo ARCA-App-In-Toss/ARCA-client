@@ -1,4 +1,10 @@
-import type { CSSProperties } from 'react';
+import { type CSSProperties, useEffect, useState } from 'react';
+import scene1 from '../../design/assets/AST-004/export/scene-1.webp?no-inline';
+import scene2 from '../../design/assets/AST-004/export/scene-2.webp?no-inline';
+import scene3 from '../../design/assets/AST-004/export/scene-3.webp?no-inline';
+import scene4 from '../../design/assets/AST-004/export/scene-4.webp?no-inline';
+import scene5 from '../../design/assets/AST-004/export/scene-5.webp?no-inline';
+import scene6 from '../../design/assets/AST-004/export/scene-6.webp?no-inline';
 
 // Pixel raster primitives (02 §8). Every drawing is authored on an integer grid and rendered as SVG
 // rects at an integer CSS scale with crisp edges; colours come only from ARCA tokens so the same art
@@ -694,11 +700,52 @@ export const introScenes: readonly (readonly string[])[] = [
   sceneBoarding(),
 ];
 
-/** One intro scene at 4 CSS px per cell (224×120): fits the 320px content width without scaling. */
-export function IntroScene({ index }: { index: number }) {
+/** Code scene: the static fallback when the scene image fails (AST-004), 5→6 CSS px per cell. */
+function IntroSceneArt({ index }: { index: number }) {
   const rows = introScenes[index] ?? introScenes[0];
   if (!rows) return null;
   return <PixelArt rows={rows} className="arca-scene-art arca-intro-art" />;
+}
+
+/* Adopted AST-004 images: 156×156-cell square sources (design/assets/AST-004/export). The core sits in
+ * the centre strip a portrait phone shows; wider screens reveal background-only sides (02 §8.1).
+ * `no-inline` keeps each scene its own file so scenes 2~6 can load later (06 §10.5). */
+const introSceneImages: readonly string[] = [scene1, scene2, scene3, scene4, scene5, scene6];
+
+/** Scenes 2~6 load at idle once the intro is showing (06 §10.5); the first scene loads with the page. */
+function prefetchLaterScenes(): () => void {
+  const load = () => {
+    for (const src of introSceneImages.slice(1)) new Image().src = src;
+  };
+  if (typeof window.requestIdleCallback === 'function') {
+    const handle = window.requestIdleCallback(load);
+    return () => window.cancelIdleCallback(handle);
+  }
+  const timer = window.setTimeout(load, 200);
+  return () => window.clearTimeout(timer);
+}
+
+/**
+ * Full-screen intro scene. The image covers the width at a whole number of CSS px per cell, centred
+ * (ui.css); a scene that fails to load falls back to its code scene.
+ */
+export function IntroScene({ index }: { index: number }) {
+  const src = introSceneImages[index] ?? introSceneImages[0];
+  const [failed, setFailed] = useState<ReadonlySet<string>>(() => new Set());
+
+  useEffect(prefetchLaterScenes, []);
+
+  if (!src || failed.has(src)) return <IntroSceneArt index={index} />;
+  return (
+    <img
+      key={src}
+      className="arca-intro-scene"
+      src={src}
+      alt=""
+      decoding="async"
+      onError={() => setFailed((previous) => new Set(previous).add(src))}
+    />
+  );
 }
 
 /** F20 empty state: an unlit pod row waiting for the first fragment (AST-007). */
