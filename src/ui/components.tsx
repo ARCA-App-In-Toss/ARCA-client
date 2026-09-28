@@ -144,6 +144,7 @@ export function PixelCheckboxRow({
   label,
   badge,
   accessibleName,
+  link,
   checked,
   onChange,
 }: {
@@ -151,6 +152,8 @@ export function PixelCheckboxRow({
   label: string;
   badge: string;
   accessibleName: string;
+  /** An underlined inline control before `label` (e.g. a policy name that opens its full text). */
+  link?: { text: string; accessibleName: string; onOpen: () => void };
   checked: boolean;
   onChange: (checked: boolean) => void;
 }) {
@@ -164,9 +167,24 @@ export function PixelCheckboxRow({
         checked={checked}
         onChange={(event) => onChange(event.target.checked)}
       />
-      <label htmlFor={id} className="arca-checkbox-row__label">
-        <span className="arca-checkbox-row__badge">{badge}</span> {label}
-      </label>
+      {link ? (
+        // The link is a sibling of the labels, never inside one, so it opens without toggling;
+        // the text around it still toggles the checkbox.
+        <span className="arca-checkbox-row__label">
+          <label htmlFor={id}>
+            <span className="arca-checkbox-row__badge">{badge}</span>
+          </label>
+          <button type="button" className="arca-inline-link" aria-label={link.accessibleName} onClick={link.onOpen}>
+            {link.text}
+          </button>
+          <label htmlFor={id}>{label}</label>
+        </span>
+      ) : (
+        <label htmlFor={id} className="arca-checkbox-row__label">
+          <span className="arca-checkbox-row__badge">{badge}</span>
+          {label}
+        </label>
+      )}
     </div>
   );
 }

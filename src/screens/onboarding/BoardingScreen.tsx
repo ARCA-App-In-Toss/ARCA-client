@@ -2,21 +2,25 @@ import { useState } from 'react';
 import { type BoardingPolicy, useBoarding } from '../../app/AppServices.tsx';
 import { InlineStatus, PixelAppShell, PixelButton, PixelCheckboxRow, ScreenTitle } from '../../ui/components.tsx';
 import { type CopyId, copy } from '../../ui/copy.ts';
+import { MemoryFragment } from '../../ui/pixel.tsx';
 
 // F02 (03 §4.3, 04 §6.3, IX-031). Two independent required consents, the recovery limit before
 // consent, then one OP-003 that creates consent records and passenger together. Success re-routes to
 // F03 via the app snapshot; failure keeps both selections, scroll and focus.
 
-const policyCopy: Record<string, { label: CopyId; open: CopyId; name: CopyId }> = {
-  'terms-of-service': { label: 'CPY-F02-004', open: 'CPY-F02-007', name: 'CPY-F02-015' },
-  'privacy-policy': { label: 'CPY-F02-005', open: 'CPY-F02-008', name: 'CPY-F02-016' },
+const policyCopy: Record<string, { title: CopyId; open: CopyId; name: CopyId }> = {
+  'terms-of-service': { title: 'CPY-F02-017', open: 'CPY-F02-007', name: 'CPY-F02-015' },
+  'privacy-policy': { title: 'CPY-F02-018', open: 'CPY-F02-008', name: 'CPY-F02-016' },
 };
 
-/** Unknown policy IDs fall back to the server title; real IDs are a launch input (03 §4.3). */
+/**
+ * The policy name is the underlined link that opens its full text; the rest of the label toggles the
+ * checkbox. Unknown policy IDs fall back to the server title; real IDs are a launch input (03 §4.3).
+ */
 function textsFor(policy: BoardingPolicy) {
   const known = policyCopy[policy.policyId];
-  if (known) return { label: copy[known.label], open: copy[known.open], name: copy[known.name] };
-  return { label: policy.title, open: policy.title, name: `${copy['CPY-F02-006']}, ${policy.title}` };
+  if (known) return { title: copy[known.title], open: copy[known.open], name: copy[known.name] };
+  return { title: policy.title, open: policy.title, name: `${copy['CPY-F02-006']}, ${policy.title}` };
 }
 
 /** Agreement is to an exact version: a changed version is not pre-checked (05 §6.2). */
@@ -57,46 +61,53 @@ export function BoardingScreen() {
     status.kind === 'submitting' ? copy['CPY-F02-011'] : status.kind === 'message' ? copy[status.id] : null;
 
   return (
-    <PixelAppShell>
+    <PixelAppShell className="arca-page--cta">
       <ScreenTitle>{copy['CPY-F02-001']}</ScreenTitle>
       <p className="arca-narrative">{copy['CPY-F02-002']}</p>
-      <p className="arca-caption arca-text-secondary">{copy['CPY-F02-003']}</p>
-      <div className="arca-consent-group arca-plain-small">
-        {policies.map((policy) => {
-          const texts = textsFor(policy);
-          return (
-            <div key={policy.policyId} className="arca-consent">
-              <PixelCheckboxRow
-                id={`arca-consent-${policy.policyId}`}
-                label={texts.label}
-                badge={copy['CPY-F02-006']}
-                accessibleName={texts.name}
-                checked={agreed.has(agreementKey(policy))}
-                onChange={(checked) => toggle(policy, checked)}
-              />
-              <PixelButton variant="ghost" onClick={() => void open(policy.policyId)}>
-                {texts.open}
-              </PixelButton>
-            </div>
-          );
-        })}
+      {/* The memory fragment the passenger will keep; decorative, centred in the free space. */}
+      <div className="arca-cta-hero">
+        <MemoryFragment cell={6} />
       </div>
-      <InlineStatus message={message} tone={status.kind === 'message' ? 'danger' : 'neutral'} />
-      <div className="arca-actions">
-        {allAgreed ? null : (
-          <p id="arca-boarding-reason" className="arca-text-secondary">
-            {copy['CPY-F02-009']}
-          </p>
-        )}
-        <PixelButton
-          variant="primary"
-          loading={submitting}
-          aria-disabled={!allAgreed || submitting || undefined}
-          aria-describedby={allAgreed ? undefined : 'arca-boarding-reason'}
-          onClick={() => void board()}
-        >
-          {copy['CPY-F02-010']}
-        </PixelButton>
+      {/* Consent, the recovery limit and the Primary sit together at the bottom (03 §4.3). */}
+      <div className="arca-cta-bottom">
+        <div className="arca-consent-group arca-plain-small">
+          {policies.map((policy) => {
+            const texts = textsFor(policy);
+            return (
+              <div key={policy.policyId} className="arca-consent">
+                <PixelCheckboxRow
+                  id={`arca-consent-${policy.policyId}`}
+                  label={copy['CPY-F02-019']}
+                  badge={copy['CPY-F02-006']}
+                  accessibleName={texts.name}
+                  link={{ text: texts.title, accessibleName: texts.open, onOpen: () => void open(policy.policyId) }}
+                  checked={agreed.has(agreementKey(policy))}
+                  onChange={(checked) => toggle(policy, checked)}
+                />
+              </div>
+            );
+          })}
+        </div>
+        <InlineStatus message={message} tone={status.kind === 'message' ? 'danger' : 'neutral'} />
+        <div className="arca-actions">
+          {/* The recovery limit sits right above the consent action so it is read before boarding (03 §4.3). */}
+          <p className="arca-caption arca-text-secondary">{copy['CPY-F02-003']}</p>
+          {/* The disabled reason stays for assistive tech only; sighted users see the inactive button. */}
+          {allAgreed ? null : (
+            <p id="arca-boarding-reason" className="arca-visually-hidden">
+              {copy['CPY-F02-009']}
+            </p>
+          )}
+          <PixelButton
+            variant="primary"
+            loading={submitting}
+            aria-disabled={!allAgreed || submitting || undefined}
+            aria-describedby={allAgreed ? undefined : 'arca-boarding-reason'}
+            onClick={() => void board()}
+          >
+            {copy['CPY-F02-010']}
+          </PixelButton>
+        </div>
       </div>
     </PixelAppShell>
   );

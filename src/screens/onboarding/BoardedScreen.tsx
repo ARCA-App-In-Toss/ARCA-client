@@ -98,7 +98,7 @@ export function BoardedScreen() {
   const describedBy = `f03-help f03-count${visibleError ? ' f03-error' : ''}`;
 
   return (
-    <PixelAppShell>
+    <PixelAppShell className="arca-page--cta">
       <ScreenTitle>{copy['CPY-F03-001']}</ScreenTitle>
       <p className="arca-narrative">{copy['CPY-F03-002']}</p>
       <InsetPanel>
@@ -111,65 +111,71 @@ export function BoardedScreen() {
           </div>
         </dl>
       </InsetPanel>
-      <PixelTextField
-        id="f03-nickname"
-        label={
-          <>
-            {copy['CPY-F03-005']} <span className="arca-text-secondary">{copy['CPY-F03-006']}</span>
-          </>
-        }
-        aria-label={copy['CPY-F03-018']}
-        placeholder={copy['CPY-F03-007']}
-        describedBy={describedBy}
-        invalid={visibleError !== null}
-        value={value}
-        readOnly={saving}
-        enterKeyHint="go"
-        autoComplete="off"
-        onChange={(event) => {
-          setValue(event.target.value);
-          if (!composing.current) commit(event.target.value);
-        }}
-        onCompositionStart={() => {
-          composing.current = true;
-        }}
-        onCompositionEnd={(event) => {
-          composing.current = false;
-          commit(event.currentTarget.value);
-        }}
-        onBlur={() => {
-          if (checkNickname(value).error === 'too-short') setShortRevealed(true);
-        }}
-        onKeyDown={(event) => {
-          if (event.key !== 'Enter' || event.nativeEvent.isComposing || composing.current) return;
-          event.preventDefault();
-          void proceed();
-        }}
-      />
-      <div className="arca-field-help">
-        <span id="f03-help">{copy['CPY-F03-008']}</span>
-        <span id="f03-count">{fill(copy['CPY-F03-009'], { currentCount: String(currentCount) })}</span>
-      </div>
-      {visibleError ? (
-        <p className="arca-field-error" id="f03-error">
-          {copy[errorCopy[visibleError]]}
-        </p>
-      ) : null}
-      <InlineStatus message={status} tone={problem?.tone ?? 'neutral'} />
-      <div className="arca-actions">
-        <PixelButton
-          variant="primary"
-          loading={saving}
-          aria-disabled={visibleError !== null || undefined}
-          onClick={() => void proceed()}
-        >
-          {copy['CPY-F03-013']}
-        </PixelButton>
-        {problem?.skippable ? (
-          <PixelButton loading={saving} onClick={toToday}>
-            {copy['CPY-F03-019']}
-          </PixelButton>
+      {/* Field, help/count and error read as one unit, so they sit closer than the page rhythm. */}
+      <div className="arca-field-group">
+        <PixelTextField
+          id="f03-nickname"
+          label={
+            <>
+              {copy['CPY-F03-005']} <span className="arca-text-secondary">{copy['CPY-F03-006']}</span>
+            </>
+          }
+          aria-label={copy['CPY-F03-018']}
+          placeholder={copy['CPY-F03-007']}
+          describedBy={describedBy}
+          invalid={visibleError !== null}
+          value={value}
+          readOnly={saving}
+          enterKeyHint="go"
+          autoComplete="off"
+          onChange={(event) => {
+            setValue(event.target.value);
+            if (!composing.current) commit(event.target.value);
+          }}
+          onCompositionStart={() => {
+            composing.current = true;
+          }}
+          onCompositionEnd={(event) => {
+            composing.current = false;
+            commit(event.currentTarget.value);
+          }}
+          onBlur={() => {
+            if (checkNickname(value).error === 'too-short') setShortRevealed(true);
+          }}
+          onKeyDown={(event) => {
+            if (event.key !== 'Enter' || event.nativeEvent.isComposing || composing.current) return;
+            event.preventDefault();
+            void proceed();
+          }}
+        />
+        <div className="arca-field-help">
+          <span id="f03-help">{copy['CPY-F03-008']}</span>
+          <span id="f03-count">{fill(copy['CPY-F03-009'], { currentCount: String(currentCount) })}</span>
+        </div>
+        {visibleError ? (
+          <p className="arca-field-error" id="f03-error">
+            {copy[errorCopy[visibleError]]}
+          </p>
         ) : null}
+      </div>
+      {/* The Primary shares the bottom position with F01 and F02 (03 §4.4). */}
+      <div className="arca-cta-bottom">
+        <InlineStatus message={status} tone={problem?.tone ?? 'neutral'} />
+        <div className="arca-actions">
+          <PixelButton
+            variant="primary"
+            loading={saving}
+            aria-disabled={visibleError !== null || undefined}
+            onClick={() => void proceed()}
+          >
+            {copy['CPY-F03-013']}
+          </PixelButton>
+          {problem?.skippable ? (
+            <PixelButton loading={saving} onClick={toToday}>
+              {copy['CPY-F03-019']}
+            </PixelButton>
+          ) : null}
+        </div>
       </div>
     </PixelAppShell>
   );

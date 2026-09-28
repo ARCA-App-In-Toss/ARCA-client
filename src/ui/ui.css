@@ -573,7 +573,9 @@ h2.arca-label {
 .arca-checkbox-row {
   display: flex;
   align-items: flex-start;
-  gap: var(--space-300);
+  /* 12px between the visible 24px box and the text: the 44px target's transparent border already
+   * supplies 10px of it, so the flex gap adds only the rest. */
+  gap: calc(var(--space-300) - (var(--layout-target-min) - var(--icon-size-default)) / 2);
   min-height: var(--layout-target-min);
 }
 
@@ -617,10 +619,11 @@ h2.arca-label {
   cursor: pointer;
 }
 
+/* "필수": plain reading text in the brand blue. The light brand tone keeps text contrast (6.7:1 on the
+ * consent surface); the primary brand blue itself would read at only 2.4:1. */
 .arca-checkbox-row__badge {
-  font-family: var(--font-family-pixel);
-  font-synthesis: none;
-  color: var(--color-signal);
+  margin-inline-end: var(--space-200);
+  color: var(--color-brand-edge);
 }
 
 /* ---------------------------------------------------------------------------------------------
@@ -1348,18 +1351,35 @@ h2.arca-label {
   padding-block: var(--space-200);
 }
 
-/* Document link rows sit under the checkbox label, aligned with its text. */
-.arca-consent .arca-button--ghost {
-  width: auto;
-  align-self: flex-start;
-  min-height: var(--layout-target-min);
-  margin-left: calc(var(--layout-target-min) + var(--space-300));
-  padding-inline: 0;
-  text-align: start;
-  font-family: var(--font-family-body);
-  font-size: var(--type-caption-size);
-  line-height: var(--type-caption-line);
-  padding-block: var(--space-200);
+/* The policy name inside the consent label: underlined text that opens the full policy. Its padding
+ * grows the tap target to 44px tall without moving the line (negative margin keeps the layout). */
+.arca-inline-link {
+  display: inline;
+  margin: 0;
+  margin-block: calc(var(--space-200) * -1);
+  padding: var(--space-200) 0;
+  border: 0;
+  background: none;
+  color: var(--color-text-on-dark-primary);
+  font: inherit;
+  text-decoration: underline;
+  text-decoration-thickness: var(--border-default);
+  text-underline-offset: var(--space-100);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.arca-inline-link:active {
+  color: var(--color-text-on-dark-secondary);
+}
+
+.arca-inline-link:focus-visible {
+  outline: var(--border-default) solid var(--color-signal);
+  outline-offset: var(--space-100);
+}
+
+.arca-checkbox-row__label > label {
+  cursor: pointer;
 }
 
 .arca-button--danger-text {
@@ -1459,6 +1479,33 @@ h2.arca-label {
   align-self: center;
 }
 
+/* F01~F03 bottom Primary: the page fills the viewport and the last group sits at the bottom, so
+ * `탑승 준비하기`, `동의하고 탑승하기` and `첫 질문 만나기` share one height (03 §4.2~4.4). It stays in the
+ * document flow: with large text the page grows and the Primary follows the content. */
+.arca-page--cta .arca-shell__content {
+  min-height: 100dvh;
+}
+
+.arca-cta-hero {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+}
+
+.arca-cta-bottom {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-600);
+  margin-top: auto;
+}
+
+.arca-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-200);
+}
+
 /* F01 layers (03 §4.2): the scene is the bottom layer and covers the whole viewport edge to edge;
  * the progress bar and the dialog box float above it inside the content width. A bitmap scene fills
  * the backdrop (cover) with its key subject above the dialog; the code scene is the static fallback,
@@ -1484,7 +1531,8 @@ h2.arca-label {
   z-index: 1;
   min-height: 100dvh;
   gap: var(--space-400);
-  padding-block: max(var(--space-400), env(safe-area-inset-top)) max(var(--space-600), env(safe-area-inset-bottom));
+  /* Same bottom inset as the other onboarding pages so the three Primaries line up (.arca-page--cta). */
+  padding-block: max(var(--space-400), env(safe-area-inset-top)) max(var(--space-800), env(safe-area-inset-bottom));
 }
 
 .arca-intro-stage {
