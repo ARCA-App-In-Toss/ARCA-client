@@ -11,6 +11,19 @@ async function openArchive(page: Page) {
   await expect(page.locator('.arca-memory-row')).toHaveCount(20);
 }
 
+/** Every tappable element must suppress the native tap overlay (no grey flash on touch). */
+async function expectNoTapHighlight(page: Page) {
+  const offenders = await page.evaluate(() =>
+    Array.from(document.querySelectorAll<HTMLElement>('button, a, label, input, [role="button"], .arca-intro-stage'))
+      .filter((element) => {
+        const color = getComputedStyle(element).getPropertyValue('-webkit-tap-highlight-color').replace(/\s/g, '');
+        return color !== '' && color !== 'transparent' && color !== 'rgba(0,0,0,0)';
+      })
+      .map((element) => element.outerHTML.slice(0, 80)),
+  );
+  expect(offenders).toEqual([]);
+}
+
 const noIdsInUrl = (page: Page) => expect(page.url()).not.toMatch(/synthetic|token|합성|answer-/);
 
 test('20 + 1 on request, one heading per month, F21 → Back restores the chain and the row', async ({ page }) => {
@@ -113,4 +126,37 @@ test('320px with 200% text: F21 actions and the F23 dialog stay reachable, no ho
   }
   const editOverflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   expect(editOverflow).toBeLessThanOrEqual(0);
+});
+
+test('scroll: a forward move opens the next screen at its top; the in-app back restores the F20 row', async ({
+  page,
+}) => {
+  await openArchive(page);
+  // Make every screen taller than the viewport so a leftover scroll position could survive.
+  await page.addStyleTag({ content: '.arca-shell { min-height: 400vh; }' });
+  const row = page.locator('.arca-memory-row').nth(15);
+  await row.scrollIntoViewIfNeeded();
+  expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+  await row.click();
+  await expect(page.getByRole('heading', { level: 1, name: '기억 조각' })).toBeVisible();
+  expect(await page.evaluate(() => window.scrollY)).toBe(0);
+
+  await page.getByRole('button', { name: '이전 화면으로' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: '항해 기록' })).toBeVisible();
+  await expect(page.locator('.arca-memory-row').nth(15)).toBeInViewport();
+});
+
+test('no native tap highlight on F10, F20, F21 and F30 controls', async ({ page }) => {
+  await openArchive(page);
+  await expectNoTapHighlight(page);
+  await page.locator('.arca-memory-row').first().click();
+  await expect(page.getByRole('heading', { level: 1, name: '기억 조각' })).toBeVisible();
+  await expectNoTapHighlight(page);
+  await page.getByRole('button', { name: '이전 화면으로' }).click();
+  await page.getByRole('button', { name: '오늘', exact: true }).click();
+  await expect(page.getByRole('heading', { level: 1, name: '오늘의 항해' })).toBeVisible();
+  await expectNoTapHighlight(page);
+  await page.getByRole('button', { name: '설정' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: '설정' })).toBeVisible();
+  await expectNoTapHighlight(page);
 });
