@@ -101,34 +101,41 @@ export function PassengerGroup({
       </dl>
       {editing ? (
         <div className="arca-stack">
-          <PixelTextField
-            inputRef={inputRef}
-            id="f30-nickname"
-            label={copy['CPY-F30-008']}
-            placeholder={copy['CPY-F30-009']}
-            describedBy={describedBy}
-            invalid={visibleError !== null}
-            value={input.value}
-            readOnly={saving}
-            enterKeyHint="done"
-            autoComplete="off"
-            {...input.fieldHandlers(() => void submit())}
-          />
-          <div className="arca-field-help">
-            <span id="f30-help">{copy['CPY-F30-010']}</span>
-            <span id="f30-count">{fill(copy['CPY-F30-011'], { currentCount: String(input.currentCount) })}</span>
+          <div className="arca-field-group">
+            <PixelTextField
+              inputRef={inputRef}
+              id="f30-nickname"
+              label={copy['CPY-F30-008']}
+              placeholder={copy['CPY-F30-009']}
+              describedBy={describedBy}
+              invalid={visibleError !== null}
+              value={input.value}
+              readOnly={saving}
+              enterKeyHint="done"
+              autoComplete="off"
+              {...input.fieldHandlers(() => void submit())}
+            />
+            <div className="arca-field-help">
+              <span className="arca-visually-hidden" id="f30-help">
+                {copy['CPY-F30-010']}
+              </span>
+              {visibleError ? (
+                <span className="arca-field-error" id="f30-error">
+                  {copy[errorCopy[visibleError]]}
+                </span>
+              ) : null}
+              <span id="f30-count">{fill(copy['CPY-F30-011'], { currentCount: String(input.currentCount) })}</span>
+            </div>
+            {showUnchanged ? (
+              <p className="arca-visually-hidden" id="f30-unchanged">
+                {copy['CPY-F30-017']}
+              </p>
+            ) : null}
           </div>
-          {visibleError ? (
-            <p className="arca-field-error" id="f30-error">
-              {copy[errorCopy[visibleError]]}
-            </p>
-          ) : null}
-          {showUnchanged ? (
-            <p className="arca-text-secondary" id="f30-unchanged">
-              {copy['CPY-F30-017']}
-            </p>
-          ) : null}
-          <div className="arca-actions">
+          <div className="arca-actions arca-actions--pair">
+            <PixelButton disabled={saving} onClick={close}>
+              {copy['CPY-F30-016']}
+            </PixelButton>
             <PixelButton
               variant="primary"
               loading={saving}
@@ -136,9 +143,6 @@ export function PassengerGroup({
               onClick={() => void submit()}
             >
               {problem && problem.id !== 'CPY-F11-044' ? copy['CPY-F30-022'] : copy['CPY-F30-015']}
-            </PixelButton>
-            <PixelButton disabled={saving} onClick={close}>
-              {copy['CPY-F30-016']}
             </PixelButton>
           </div>
         </div>

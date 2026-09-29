@@ -79,6 +79,10 @@
   background: var(--color-status-danger-on-dark-fg);
 }
 
+.arca-field-help > .arca-field-error::before {
+  margin-top: calc((var(--type-caption-line) - var(--space-200)) / 2);
+}
+
 .arca-privacy {
   display: flex;
   align-items: flex-start;

@@ -60,7 +60,7 @@
   padding-inline: 0;
 }
 
-.arca-settings-group .arca-actions {
+.arca-settings-group .arca-actions:not(.arca-actions--pair) {
   gap: 0;
 }
 
