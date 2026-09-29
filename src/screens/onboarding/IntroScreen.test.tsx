@@ -185,6 +185,33 @@ describe('F01 intro (IX-030, MS-ONB-003)', () => {
     expect(backdrop.querySelectorAll('img')).toHaveLength(1);
   });
 
+  test('boarding Primary takes focus; a tap-led arrival hides the ring until a key is pressed, a key-led arrival shows it', async () => {
+    reducedMotion(true);
+    await bootIntro();
+    for (let press = 0; press < 40 && !screen.queryByRole('button', { name: copy['CPY-F01-005'] }); press += 1) {
+      await userEvent.click(button(copy['CPY-F01-004']));
+    }
+    const board = button(copy['CPY-F01-005']);
+    expect(board).toHaveFocus();
+    expect(board).toHaveAttribute('data-quiet-focus');
+    await userEvent.keyboard('{Shift}');
+    expect(board).toHaveFocus();
+    expect(board).not.toHaveAttribute('data-quiet-focus');
+  });
+
+  test('keyboard-led arrival at boarding keeps the visible focus ring', async () => {
+    reducedMotion(true);
+    await bootIntro();
+    (document.activeElement as HTMLElement | null)?.blur();
+    for (let press = 0; press < 40 && !screen.queryByRole('button', { name: copy['CPY-F01-005'] }); press += 1) {
+      fireEvent.keyDown(document.body, { key: 'Enter' });
+      await act(async () => {});
+    }
+    const board = button(copy['CPY-F01-005']);
+    expect(board).toHaveFocus();
+    expect(board).not.toHaveAttribute('data-quiet-focus');
+  });
+
   test('boarding fades the intro into the canvas before F02 opens; Reduced Motion opens it at once (02 §7.1)', async () => {
     reducedMotion(false);
     const { router } = await bootIntro();
