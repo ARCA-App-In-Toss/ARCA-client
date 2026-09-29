@@ -1,5 +1,3 @@
-// Adopted strings from 04 §7 (04 is the SSOT). Only IDs used by implemented screens are listed.
-/** Root tab labels are fixed by 02 §9.8 (not CPY entries). */
 export const rootTabLabels = { today: '오늘', archive: '기록' } as const;
 
 export const copy = {
@@ -337,7 +335,6 @@ export const copy = {
   'CPY-F90-014': '고객센터를 열지 못했어요. 잠시 후 다시 시도해 주세요.',
 } as const;
 
-/** Fills `{name}` placeholders; values are inserted verbatim (04 §5.10). */
 export type CopyId = keyof typeof copy;
 
 export function fill(template: string, values: Record<string, string>): string {

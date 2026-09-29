@@ -10,10 +10,6 @@ import {
 } from 'react';
 import { type IconName, MemoryFragment, PixelIcon } from './pixel.tsx';
 
-// Native-HTML CMP baselines (02 §9) with the ARCA pixel grammar applied in ui.css. Semantics, native
-// controls and accessible names are unchanged by the visual pass.
-
-/** CMP-001 PixelAppShell + CMP-003 PixelCanvas. */
 export function PixelAppShell({
   children,
   tabs,
@@ -33,7 +29,6 @@ export function PixelAppShell({
   );
 }
 
-/** CMP-002 ScreenTitle: the single h1; receives programmatic focus after a route change (04 IX-018). */
 export function ScreenTitle({ children }: { children: ReactNode }) {
   const ref = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
@@ -46,7 +41,6 @@ export function ScreenTitle({ children }: { children: ReactNode }) {
   );
 }
 
-/** CMP-004 ScenePanel: plain 2-step silhouette; `art` centres a scene raster above its text. */
 export function ScenePanel({
   children,
   labelledBy,
@@ -55,9 +49,7 @@ export function ScenePanel({
 }: {
   children: ReactNode;
   labelledBy?: string | undefined;
-  /** Centres a scene raster above its text. */
   art?: boolean;
-  /** The screen's reading focus: more air around the content. */
   hero?: boolean;
 }) {
   return (
@@ -77,12 +69,10 @@ export function ScenePanel({
   );
 }
 
-/** CMP-006 InsetPanel (dark, plain, 1-step). */
 export function InsetPanel({ children }: { children: ReactNode }) {
   return <div className="arca-inset-panel arca-plain-small">{children}</div>;
 }
 
-/** CMP-021 PixelPlaceholder: decorative outline only; state is announced elsewhere. */
 export function PixelPlaceholder() {
   return (
     <div className="arca-placeholder" aria-hidden="true">
@@ -96,14 +86,11 @@ type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'danger-text' | 'ghost
 
 export interface PixelButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'type'> {
   variant?: ButtonVariant;
-  /** Keeps size and label, exposes aria-busy, blocks duplicate activation, stays focusable. */
   loading?: boolean;
-  /** Decorative leading icon (the label carries the meaning). */
   icon?: IconName;
   ref?: Ref<HTMLButtonElement>;
 }
 
-/** CMP-007 PixelButton. `row` is a list action: left text with a trailing chevron (F30). */
 export function PixelButton({
   variant = 'secondary',
   loading = false,
@@ -135,10 +122,6 @@ export function PixelButton({
   );
 }
 
-/**
- * CMP-012 PixelCheckboxRow: a native checkbox whose visible label toggles it. `accessibleName` carries
- * the required state in the name (04 CPY-F02-015/016); the document link is a separate control.
- */
 export function PixelCheckboxRow({
   id,
   label,
@@ -152,7 +135,6 @@ export function PixelCheckboxRow({
   label: string;
   badge: string;
   accessibleName: string;
-  /** An underlined inline control before `label` (e.g. a policy name that opens its full text). */
   link?: { text: string; accessibleName: string; onOpen: () => void };
   checked: boolean;
   onChange: (checked: boolean) => void;
@@ -168,8 +150,6 @@ export function PixelCheckboxRow({
         onChange={(event) => onChange(event.target.checked)}
       />
       {link ? (
-        // The link is a sibling of the labels, never inside one, so it opens without toggling;
-        // the text around it still toggles the checkbox.
         <span className="arca-checkbox-row__label">
           <label htmlFor={id}>
             <span className="arca-checkbox-row__badge">{badge}</span>
@@ -189,10 +169,6 @@ export function PixelCheckboxRow({
   );
 }
 
-/**
- * CMP-020 InlineStatus. `live` (default) makes it the screen's single polite source (02 §12.4); a
- * screen with several visible statuses renders them with `live={false}` and announces through one.
- */
 export function InlineStatus({
   message,
   tone = 'neutral',
@@ -211,7 +187,6 @@ export function InlineStatus({
   );
 }
 
-/** CMP-022 StatePanel: title/description/at most one recovery action live in the children. */
 export function StatePanel({ children, centered = false }: { children: ReactNode; centered?: boolean }) {
   return (
     <InsetPanel>
@@ -220,7 +195,6 @@ export function StatePanel({ children, centered = false }: { children: ReactNode
   );
 }
 
-/** CMP-005 RecordPanel: ink surface for the user's own words. */
 export function RecordPanel({
   children,
   labelledBy,
@@ -228,7 +202,6 @@ export function RecordPanel({
 }: {
   children: ReactNode;
   labelledBy?: string | undefined;
-  /** The screen's main reading area (F10 done, F21): wider padding. */
   hero?: boolean;
 }) {
   return (
@@ -241,7 +214,6 @@ export function RecordPanel({
   );
 }
 
-/** CMP-016 MemoryCount: readable full name, never a progress role; unknown counts are not shown as 0. */
 export function MemoryCount({ text }: { text: string }) {
   return (
     <p className="arca-memory-count">
@@ -251,7 +223,6 @@ export function MemoryCount({ text }: { text: string }) {
   );
 }
 
-/** CMP-008 PixelIconButton: 44×44 target with a required accessible name; the icon is decorative. */
 export function PixelIconButton({
   label,
   icon,
@@ -270,10 +241,6 @@ export function PixelIconButton({
   );
 }
 
-/**
- * CMP-009 PixelField + CMP-011 PixelTextarea. A native textarea keeps value, IME, selection and ref
- * semantics (06 §10.6): no maxLength, trimming or truncation. It grows with its content inside the page.
- */
 export function PixelTextareaField({
   id,
   label,
@@ -288,14 +255,13 @@ export function PixelTextareaField({
   describedBy: string;
   invalid: boolean;
   value: string;
-  /** Lets the screen move focus to the text (e.g. copy failure, 04 IX-040). */
   textareaRef?: { current: HTMLTextAreaElement | null };
 } & Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, 'id' | 'value' | 'aria-describedby' | 'aria-invalid'>) {
   const ref = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
     if (textareaRef) textareaRef.current = ref.current;
   });
-  // biome-ignore lint/correctness/useExhaustiveDependencies: height must follow every value change.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 높이는 value가 바뀔 때마다 다시 맞춰야 한다.
   useLayoutEffect(() => {
     const element = ref.current;
     if (!element) return;
@@ -320,10 +286,6 @@ export function PixelTextareaField({
   );
 }
 
-/**
- * CMP-009 PixelField + CMP-010 PixelTextField: a native single-line input with no maxLength, trimming
- * or truncation; IME, selection and paste stay native (04 IX-001, 06 §10.6).
- */
 export function PixelTextField({
   id,
   label,
@@ -361,7 +323,6 @@ export function PixelTextField({
 
 const tabIcons: Record<'today' | 'archive', IconName> = { today: 'today', archive: 'archive' };
 
-/** CMP-025 RootFloatingTabs: F10/F20 only; current tab exposed as aria-current, not colour alone. */
 export function RootFloatingTabs({
   current,
   tabs,
@@ -387,7 +348,6 @@ export function RootFloatingTabs({
   );
 }
 
-/** CMP-015 MemoryRow: one full-width hit area for the supplied record context. */
 export function MemoryRow({ onSelect, children }: { onSelect: () => void; children: ReactNode }) {
   return (
     <button type="button" className="arca-memory-row" onClick={onSelect}>

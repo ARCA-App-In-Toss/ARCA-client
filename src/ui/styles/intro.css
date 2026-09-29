@@ -1,0 +1,142 @@
+.arca-page--intro {
+  background: var(--color-bg-canvas-deep);
+}
+
+.arca-intro-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-bottom: 32dvh;
+  overflow: hidden;
+  background: var(--color-bg-canvas-deep);
+  pointer-events: none;
+}
+
+.arca-intro-scene {
+  --scene-cell: max(100vw / 156, min(100vw / 90, 100dvh / 110));
+  position: absolute;
+  top: max(0px, (100dvh - var(--scene-cell) * 156) / 2);
+  left: 50%;
+  width: calc(var(--scene-cell) * 156);
+  height: calc(var(--scene-cell) * 156);
+  max-width: none;
+  transform: translateX(-50%);
+  image-rendering: pixelated;
+}
+
+@supports (width: round(up, 1px, 1px)) {
+  .arca-intro-scene {
+    --scene-cell: max(round(up, 100vw / 156, 1px), min(round(down, 100vw / 90, 1px), round(down, 100dvh / 110, 1px)));
+    top: max(0px, round(down, (100dvh - var(--scene-cell) * 156) / 2, 1px));
+    left: round(down, calc(50% - var(--scene-cell) * 78), 1px);
+    transform: none;
+  }
+}
+
+.arca-intro-scene--entering {
+  animation: arca-intro-scene-enter var(--motion-duration-scene) steps(4, end) both;
+}
+
+.arca-intro-curtain {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  background: var(--color-bg-canvas);
+  animation: arca-intro-depart var(--motion-duration-depart) steps(8, end) both;
+}
+
+@keyframes arca-intro-depart {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes arca-intro-scene-enter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.arca-page--intro .arca-shell__content {
+  position: relative;
+  z-index: 1;
+  min-height: 100dvh;
+  gap: var(--space-400);
+  padding-block: max(var(--space-400), env(safe-area-inset-top)) max(var(--space-800), env(safe-area-inset-bottom));
+}
+
+.arca-intro-stage {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-400);
+  cursor: pointer;
+}
+
+.arca-intro-view {
+  flex: 1;
+}
+
+.arca-intro-art {
+  width: calc(var(--art-scene-width) / 4 * 5);
+}
+
+@media (min-width: 400px) {
+  .arca-intro-art {
+    width: calc(var(--art-scene-width) / 4 * 6);
+  }
+}
+
+.arca-intro-dialog {
+  --px-fill: var(--color-bg-scene);
+  --px-line: var(--color-text-on-dark-secondary);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-400);
+  padding: var(--space-500);
+  cursor: default;
+}
+
+.arca-intro-lines {
+  display: grid;
+  align-items: center;
+  min-height: calc(var(--type-narrative-line) * 2);
+  padding-right: var(--space-600);
+}
+
+.arca-intro-line {
+  grid-area: 1 / 1;
+  margin: 0;
+  text-wrap: balance;
+}
+
+.arca-intro-line--ghost {
+  visibility: hidden;
+}
+
+.arca-intro-line__rest {
+  visibility: hidden;
+}
+
+.arca-intro-next {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: var(--layout-target-min);
+  min-height: var(--layout-target-min);
+  color: var(--color-signal);
+}
+
+.arca-intro-next__mark.is-waiting {
+  visibility: hidden;
+}

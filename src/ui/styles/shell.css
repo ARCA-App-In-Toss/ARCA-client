@@ -1,0 +1,78 @@
+.arca-shell {
+  min-height: 100dvh;
+  background: var(--color-bg-canvas);
+}
+
+.arca-shell__content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-600);
+  width: 100%;
+  max-width: var(--layout-content-max);
+  margin-inline: auto;
+  padding-block: var(--space-500) max(var(--space-800), env(safe-area-inset-bottom));
+  padding-inline: max(var(--layout-gutter), env(safe-area-inset-left))
+    max(var(--layout-gutter), env(safe-area-inset-right));
+  animation: arca-screen-enter var(--motion-duration-base) var(--motion-easing-settle);
+}
+
+@media (max-width: 359.98px) {
+  .arca-shell__content {
+    padding-inline: max(var(--layout-gutter-compact), env(safe-area-inset-left))
+      max(var(--layout-gutter-compact), env(safe-area-inset-right));
+  }
+}
+
+.arca-pixel-voice {
+  font-family: var(--font-family-pixel);
+  font-weight: var(--font-weight-regular);
+  font-synthesis: none;
+  letter-spacing: 0;
+}
+
+.arca-screen-title {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-300);
+  font-family: var(--font-family-pixel);
+  font-size: var(--type-screen-title-size);
+  line-height: var(--type-screen-title-line);
+  font-weight: var(--font-weight-regular);
+  font-synthesis: none;
+  overflow-wrap: anywhere;
+  outline: none;
+  min-width: 0;
+  text-wrap: balance;
+}
+
+.arca-screen-title::before {
+  content: "";
+  flex: none;
+  width: var(--space-200);
+  height: var(--space-200);
+  margin-top: calc((var(--type-screen-title-line) - var(--space-200)) / 2);
+  background: var(--color-signal);
+  box-shadow: calc(var(--pixel-cell) * -1) 0 0 var(--color-signal-step-2);
+}
+
+.arca-screen-header .arca-screen-title::before {
+  display: none;
+}
+
+.arca-brand {
+  font-family: var(--font-family-pixel);
+  font-size: var(--type-display-size);
+  line-height: var(--type-display-line);
+  font-synthesis: none;
+  letter-spacing: 0.25em;
+  color: var(--color-signal);
+}
+
+.arca-text-secondary {
+  color: var(--color-text-on-dark-secondary);
+}
+
+.arca-caption {
+  font-size: var(--type-caption-size);
+  line-height: var(--type-caption-line);
+}

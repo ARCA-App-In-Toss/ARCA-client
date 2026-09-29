@@ -1,0 +1,24 @@
+.arca-formation {
+  display: flex;
+  justify-content: center;
+  padding-block: var(--space-200);
+}
+
+.arca-formation .arca-fragment {
+  animation: arca-fragment-form var(--motion-duration-memory) steps(4, end) 1 both;
+}
+
+@keyframes arca-fragment-form {
+  from {
+    opacity: 0.2;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.arca-start {
+  align-items: center;
+  text-align: center;
+  padding-block: var(--space-1200);
+}

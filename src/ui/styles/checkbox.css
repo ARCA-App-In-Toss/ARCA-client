@@ -1,0 +1,56 @@
+.arca-consent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-100);
+}
+
+.arca-checkbox-row {
+  display: flex;
+  align-items: flex-start;
+  gap: calc(var(--space-300) - (var(--layout-target-min) - var(--icon-size-default)) / 2);
+  min-height: var(--layout-target-min);
+}
+
+.arca-checkbox {
+  --px-fill: var(--color-bg-inset-dark);
+  --px-line: var(--color-border-on-dark);
+  appearance: none;
+  flex: none;
+  position: relative;
+  width: var(--layout-target-min);
+  height: var(--layout-target-min);
+  margin: 0;
+  border-width: calc((var(--layout-target-min) - var(--icon-size-default)) / 2);
+  background-origin: padding-box;
+  background-clip: padding-box;
+  cursor: pointer;
+}
+
+.arca-checkbox:checked {
+  --px-fill: var(--color-brand-primary);
+  --px-line: var(--color-text-on-dark-primary);
+}
+
+.arca-checkbox::before {
+  content: "";
+  position: absolute;
+  inset: var(--space-100);
+  background: transparent;
+}
+
+.arca-checkbox:checked::before {
+  background: var(--color-text-on-dark-primary);
+}
+
+.arca-checkbox-row__label {
+  flex: 1;
+  padding-block: var(--space-200);
+  min-width: 0;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.arca-checkbox-row__badge {
+  margin-inline-end: var(--space-200);
+  color: var(--color-brand-edge);
+}

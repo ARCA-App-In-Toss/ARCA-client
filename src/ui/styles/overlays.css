@@ -1,0 +1,149 @@
+.arca-dimmer {
+  position: fixed;
+  inset: 0;
+  z-index: var(--layer-sheet);
+  background: var(--color-dimmer);
+}
+
+.arca-alert-dialog {
+  --px-fill: var(--color-bg-scene);
+  --px-line: var(--color-border-on-dark);
+  position: fixed;
+  z-index: var(--layer-dialog);
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-400);
+  width: min(calc(100vw - var(--layout-gutter-compact) * 2), var(--layout-content-max));
+  max-height: calc(100dvh - var(--space-1200));
+  overflow-y: auto;
+  padding: var(--space-500);
+  overscroll-behavior: contain;
+  color: var(--color-text-on-dark-primary);
+  outline: none;
+}
+
+.arca-alert-dialog .arca-screen-title::before {
+  background: var(--color-status-danger-on-dark-fg);
+  box-shadow: calc(var(--pixel-cell) * -1) 0 0 var(--color-status-danger-on-dark-bg);
+}
+
+.arca-alert-dialog--neutral .arca-screen-title::before {
+  background: var(--color-signal);
+  box-shadow: calc(var(--pixel-cell) * -1) 0 0 var(--color-signal-step-2);
+}
+
+.arca-sheet {
+  --px-fill: var(--color-bg-scene);
+  --px-line: var(--color-border-on-dark);
+  position: fixed;
+  z-index: var(--layer-dialog);
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-400);
+  width: min(100vw, var(--layout-content-max));
+  max-height: calc(100dvh - var(--space-1200));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--space-600) var(--layout-gutter) calc(var(--space-600) + env(safe-area-inset-bottom));
+  color: var(--color-text-on-dark-primary);
+  outline: none;
+  border-bottom: 0;
+}
+
+.arca-sheet.arca-px {
+  background-size:
+    var(--px-line-w) var(--px-line-w),
+    var(--px-line-w) var(--px-line-w),
+    var(--px-line-w) var(--px-line-w),
+    var(--px-line-w) var(--px-line-w),
+    0 0,
+    0 0,
+    0 0,
+    0 0,
+    calc(100% - var(--px-cell) * 2) var(--px-line-w),
+    0 0,
+    var(--px-line-w) calc(100% - var(--px-cell)),
+    var(--px-line-w) calc(100% - var(--px-cell)),
+    100% calc(100% - var(--px-cell)),
+    calc(100% - var(--px-cell) * 2) 100%;
+  background-position:
+    var(--px-line-w) var(--px-cell),
+    var(--px-cell) var(--px-line-w),
+    calc(100% - var(--px-line-w)) var(--px-cell),
+    calc(100% - var(--px-cell)) var(--px-line-w),
+    0 0,
+    0 0,
+    0 0,
+    0 0,
+    50% 0,
+    0 0,
+    0 100%,
+    100% 100%,
+    0 100%,
+    50% 0;
+}
+
+.arca-sheet-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-200);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.arca-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-600);
+}
+
+.arca-list-end {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-300);
+}
+
+.arca-list-end:empty {
+  display: none;
+}
+
+.arca-archive-candidate {
+  --px-fill: var(--color-bg-scene);
+  --px-line: var(--color-signal-step-1);
+  position: fixed;
+  left: 50%;
+  bottom: calc(max(var(--space-400), env(safe-area-inset-bottom)) + var(--layout-tabs-height) + var(--space-400));
+  z-index: var(--layer-app-sticky);
+  transform: translateX(-50%);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-300);
+  width: min(calc(100% - 2 * var(--layout-gutter)), var(--layout-content-max));
+  padding: var(--space-300) var(--space-400);
+}
+
+.arca-dialog-context {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-200);
+}
+
+.arca-root-header {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-200);
+}
+
+.arca-root-header .arca-icon-button {
+  margin-right: calc(var(--space-300) * -1);
+}

@@ -1,0 +1,49 @@
+.arca-shell__content--with-tabs {
+  padding-bottom: calc(var(--layout-tabs-height) + var(--space-1200) + env(safe-area-inset-bottom));
+}
+
+.arca-root-tabs {
+  --px-fill: var(--color-bg-scene);
+  --px-line: var(--color-border-subtle);
+  width: min(calc(100% - var(--layout-gutter-compact) * 2), var(--layout-content-max));
+  position: fixed;
+  left: 50%;
+  bottom: max(var(--space-400), env(safe-area-inset-bottom));
+  z-index: var(--layer-app-sticky);
+  transform: translateX(-50%);
+  display: flex;
+  gap: var(--space-100);
+  padding: var(--space-100);
+}
+
+.arca-root-tab {
+  --px-fill: transparent;
+  --px-line: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-200);
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  min-height: var(--layout-target-min);
+  padding: var(--space-200);
+  border: var(--border-default) solid transparent;
+  background-color: transparent;
+  color: var(--color-text-on-dark-secondary);
+  font-family: var(--font-family-pixel);
+  font-size: var(--type-control-size);
+  line-height: var(--type-control-line);
+  font-synthesis: none;
+  cursor: pointer;
+}
+
+.arca-root-tab[aria-current="page"] {
+  --px-fill: var(--color-bg-inset-dark);
+  --px-line: var(--color-bg-inset-dark);
+  color: var(--color-text-on-dark-primary);
+}
+
+.arca-root-tab[aria-current="page"] .arca-icon {
+  color: var(--color-signal);
+}

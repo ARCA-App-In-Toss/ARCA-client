@@ -1,7 +1,5 @@
-/* ARCA visual tokens: quiet observatory surfaces, readable text, and integer pixel art. */
-
-/* 4.1 Neo둥근모 v1.601 Regular, self-hosted (AST-011, SIL OFL 1.1 — public/fonts/neodgm/LICENSE.txt).
-   `swap` keeps text readable in the system fallback while the file loads; nothing waits on it (06 §10.5). */
+/* Neo둥근모 v1.601 Regular, self-hosted (SIL OFL 1.1 - public/fonts/neodgm/LICENSE.txt).
+   `swap`: 파일을 받는 동안 시스템 글꼴로 읽히게 하며 어떤 동작도 글꼴 로드를 기다리지 않는다. */
 @font-face {
   font-family: "NeoDunggeunmo";
   src: url("/fonts/neodgm/neodgm.woff2") format("woff2");
@@ -11,7 +9,6 @@
 }
 
 :root {
-  /* 3.1 base & experience */
   --color-bg-canvas: #090f1d;
   --color-bg-scene: #111e32;
   --color-bg-record: #19263a;
@@ -29,8 +26,6 @@
   --color-memory: #b4a0ef;
   --color-warmth: #c98a3d;
 
-  /* 3.1 stepped light (02 §6.1: opaque blocks in brightness steps, never a gradient glow).
-     Adopted values in 02 §3.1; signal/memory/brand steps over the canvas. */
   --color-signal-step-1: #509dab;
   --color-signal-step-2: #265367;
   --color-signal-step-3: #172f43;
@@ -41,7 +36,6 @@
   --color-bg-scene-raised: #22354e;
   --color-bg-canvas-deep: #050b15;
 
-  /* 3.2 functional status, dark surface pair */
   --color-status-success-on-dark-fg: #63d7a4;
   --color-status-success-on-dark-bg: #123829;
   --color-status-warning-on-dark-fg: #f2b84b;
@@ -51,7 +45,6 @@
   --color-status-info-on-dark-fg: #89a7ff;
   --color-status-info-on-dark-bg: #172b5f;
 
-  /* Three text sizes; semantic aliases keep screen roles explicit without adding new sizes. */
   --font-family-pixel: "NeoDunggeunmo", system-ui, "Apple SD Gothic Neo", sans-serif;
   --font-family-body: system-ui, "Apple SD Gothic Neo", sans-serif;
   --font-weight-regular: 400;
@@ -80,7 +73,6 @@
   --type-narrative-size: var(--type-size-body);
   --type-narrative-line: var(--type-line-body);
 
-  /* Reading surfaces and small scene dimensions. */
   --color-border-subtle: #2d4059;
   --color-brand-edge: #91abe9;
   --color-tap-highlight: transparent;
@@ -97,7 +89,6 @@
     2
   );
 
-  /* 5 spacing & layout */
   --space-100: 4px;
   --space-200: 8px;
   --space-300: 12px;
@@ -115,10 +106,8 @@
   --layout-button-height: 52px;
   --icon-size-default: 24px;
   --icon-size-emphasis: 48px;
-  /* 8.1 pixel scale: 1 source px = 4 CSS px */
   --pixel-cell: 4px;
 
-  /* 6 shape, border, shadow, layer */
   --corner-control: 4px;
   --corner-panel: 8px;
   --corner-scene: 12px;
@@ -129,7 +118,6 @@
   --shadow-pressed: 2px 2px 0;
   --opacity-decorative-muted: 0.72;
   --opacity-disabled: 0.48;
-  /* 02 §6.2: dimmer is exactly rgba(3, 8, 18, 0.72) */
   --color-dimmer: rgba(3, 8, 18, 0.72);
   --layer-content: 0;
   --layer-raised: 10;
@@ -138,15 +126,12 @@
   --layer-dialog: 40;
   --layer-toast: 50;
 
-  /* 7 motion */
   --motion-press-offset: var(--border-default);
   --motion-duration-instant: 0ms;
   --motion-duration-fast: 120ms;
   --motion-duration-base: 180ms;
   --motion-duration-scene: 320ms;
-  /* F01 → F02: the intro sinks into the canvas after the boarding Primary. */
   --motion-duration-depart: 900ms;
-  /* F02 fragment glow: one full breath (brighten + dim). */
   --motion-duration-glow: 3000ms;
   --motion-duration-memory: 1600ms;
   --motion-easing-pixel: steps(2, end);

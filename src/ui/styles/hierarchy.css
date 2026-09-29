@@ -1,0 +1,259 @@
+.arca-scene-panel--hero {
+  gap: var(--space-500);
+  padding: var(--space-600) var(--space-500);
+}
+
+.arca-question--lead {
+  font-size: var(--type-question-lead-size);
+  line-height: var(--type-question-lead-line);
+}
+
+.arca-question--quiet {
+  font-size: var(--type-control-size);
+  line-height: var(--type-body-line);
+  color: var(--color-text-on-dark-secondary);
+}
+
+.arca-preface {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-200);
+  padding-left: var(--space-400);
+  border-left: var(--pixel-cell) solid var(--color-signal-step-2);
+}
+
+.arca-record-panel--hero {
+  gap: var(--space-300);
+  padding: var(--space-600);
+}
+
+.arca-user-text--reading {
+  font-size: var(--type-reading-size);
+  line-height: var(--type-reading-line);
+}
+
+.arca-sender--compact {
+  min-height: calc(var(--pixel-cell) * 9);
+  margin: 0;
+}
+
+.arca-excerpt {
+  --px-fill: var(--color-bg-record);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-200);
+  width: 100%;
+  padding: var(--space-400) var(--space-500);
+  text-align: start;
+}
+
+.arca-screen-title--result {
+  justify-content: center;
+  text-align: center;
+}
+
+.arca-button--ghost,
+.arca-button--danger-text {
+  min-height: var(--layout-target-min);
+  padding-block: var(--space-200);
+}
+
+.arca-inline-link {
+  display: inline;
+  margin: 0;
+  margin-block: calc(var(--space-200) * -1);
+  padding: var(--space-200) 0;
+  border: 0;
+  background: none;
+  color: var(--color-text-on-dark-primary);
+  font: inherit;
+  text-decoration: underline;
+  text-decoration-thickness: var(--border-default);
+  text-underline-offset: var(--space-100);
+  cursor: pointer;
+}
+
+.arca-inline-link:active {
+  color: var(--color-text-on-dark-secondary);
+}
+
+.arca-inline-link:focus-visible {
+  outline: var(--border-default) solid var(--color-signal);
+  outline-offset: var(--space-100);
+}
+
+.arca-checkbox-row__label > label {
+  cursor: pointer;
+}
+
+.arca-button--danger-text {
+  background: none;
+  border: var(--border-default) solid transparent;
+  color: var(--color-status-danger-on-dark-fg);
+  text-decoration: underline;
+  text-decoration-thickness: var(--border-default);
+  text-underline-offset: var(--space-100);
+}
+
+.arca-button--inline {
+  width: auto;
+  align-self: flex-start;
+  padding-inline: 0;
+}
+
+.arca-button--primary[aria-disabled="true"]:not(:disabled) {
+  --px-fill: var(--color-brand-primary-deep);
+  --px-line: var(--color-border-on-dark);
+  color: var(--color-text-on-dark-secondary);
+}
+
+.arca-consent-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-200);
+  padding: var(--space-300) var(--space-400);
+}
+
+.arca-memory-count {
+  --px-fill: var(--color-bg-inset-dark);
+  align-self: flex-start;
+  padding: var(--space-100) var(--space-300) var(--space-100) var(--space-200);
+  background-color: transparent;
+  background-repeat: no-repeat;
+  background-image: linear-gradient(var(--px-fill), var(--px-fill)), linear-gradient(var(--px-fill), var(--px-fill));
+  background-size:
+    100% calc(100% - var(--pixel-cell) * 2),
+    calc(100% - var(--pixel-cell) * 2) 100%;
+  background-position:
+    0 50%,
+    50% 0;
+}
+
+.arca-scene-panel--art .arca-memory-count {
+  align-self: center;
+}
+
+.arca-screen-title--result::before {
+  display: none;
+}
+
+.arca-screen-title--result,
+.arca-question--lead {
+  text-wrap: balance;
+}
+
+.arca-root-header > .arca-screen-title,
+.arca-screen-header > .arca-screen-title {
+  flex: 1;
+}
+
+.arca-question-source {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-400);
+}
+
+.arca-question-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-200) var(--space-400);
+}
+
+.arca-question-date {
+  font-family: var(--font-family-body);
+  font-size: var(--type-caption-size);
+  line-height: var(--type-caption-line);
+  color: var(--color-text-on-dark-secondary);
+  overflow-wrap: anywhere;
+}
+
+.arca-observation-art {
+  display: block;
+  width: var(--art-observation-width);
+  max-width: 100%;
+  height: auto;
+  align-self: center;
+}
+
+.arca-page--cta .arca-shell__content {
+  min-height: 100dvh;
+}
+
+.arca-cta-hero {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+}
+
+.arca-cta-bottom {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-600);
+  margin-top: auto;
+}
+
+.arca-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-200);
+}
+
+.arca-fragment-glow {
+  display: block;
+}
+
+.arca-fragment-glow__ring {
+  animation: calc(var(--motion-duration-glow) / 2) steps(6, jump-none) infinite alternate both;
+}
+
+.arca-fragment-glow__ring--1 {
+  animation-name: arca-glow-ring-1;
+}
+
+.arca-fragment-glow__ring--2 {
+  animation-name: arca-glow-ring-2;
+}
+
+.arca-fragment-glow__ring--3 {
+  animation-name: arca-glow-ring-3;
+}
+
+@keyframes arca-glow-ring-1 {
+  from {
+    opacity: 0.35;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes arca-glow-ring-2 {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes arca-glow-ring-3 {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 0.7;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arca-fragment-glow__ring {
+    animation: none;
+  }
+
+  .arca-fragment-glow__ring--3 {
+    opacity: 0.7;
+  }
+}

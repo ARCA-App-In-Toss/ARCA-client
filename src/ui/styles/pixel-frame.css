@@ -1,0 +1,90 @@
+.arca-px {
+  --px-fill: var(--color-bg-scene);
+  --px-line: var(--color-border-on-dark);
+  --px-cell: var(--pixel-cell);
+  --px-line-w: var(--border-default);
+  border: var(--border-default) solid transparent;
+  background-color: transparent;
+  background-origin: border-box;
+  background-clip: border-box;
+  background-repeat: no-repeat;
+  background-image:
+    linear-gradient(var(--px-line), var(--px-line)), linear-gradient(var(--px-line), var(--px-line)),
+    linear-gradient(var(--px-line), var(--px-line)), linear-gradient(var(--px-line), var(--px-line)),
+    linear-gradient(var(--px-line), var(--px-line)), linear-gradient(var(--px-line), var(--px-line)),
+    linear-gradient(var(--px-line), var(--px-line)), linear-gradient(var(--px-line), var(--px-line)),
+    linear-gradient(var(--px-line), var(--px-line)), linear-gradient(var(--px-line), var(--px-line)),
+    linear-gradient(var(--px-line), var(--px-line)), linear-gradient(var(--px-line), var(--px-line)),
+    linear-gradient(var(--px-fill), var(--px-fill)), linear-gradient(var(--px-fill), var(--px-fill));
+  background-size:
+    var(--px-line-w) var(--px-line-w),
+    var(--px-line-w) var(--px-line-w),
+    var(--px-line-w) var(--px-line-w),
+    var(--px-line-w) var(--px-line-w),
+    var(--px-line-w) var(--px-line-w),
+    var(--px-line-w) var(--px-line-w),
+    var(--px-line-w) var(--px-line-w),
+    var(--px-line-w) var(--px-line-w),
+    calc(100% - var(--px-cell) * 2) var(--px-line-w),
+    calc(100% - var(--px-cell) * 2) var(--px-line-w),
+    var(--px-line-w) calc(100% - var(--px-cell) * 2),
+    var(--px-line-w) calc(100% - var(--px-cell) * 2),
+    100% calc(100% - var(--px-cell) * 2),
+    calc(100% - var(--px-cell) * 2) 100%;
+  background-position:
+    var(--px-line-w) var(--px-cell),
+    var(--px-cell) var(--px-line-w),
+    calc(100% - var(--px-line-w)) var(--px-cell),
+    calc(100% - var(--px-cell)) var(--px-line-w),
+    var(--px-line-w) calc(100% - var(--px-cell)),
+    var(--px-cell) calc(100% - var(--px-line-w)),
+    calc(100% - var(--px-line-w)) calc(100% - var(--px-cell)),
+    calc(100% - var(--px-cell)) calc(100% - var(--px-line-w)),
+    50% 0,
+    50% 100%,
+    0 50%,
+    100% 50%,
+    0 50%,
+    50% 0;
+}
+
+.arca-plain {
+  --px-fill: var(--color-bg-scene);
+  --px-cell: var(--pixel-cell);
+  background-color: transparent;
+  background-repeat: no-repeat;
+  background-image:
+    linear-gradient(var(--px-fill), var(--px-fill)), linear-gradient(var(--px-fill), var(--px-fill)),
+    linear-gradient(var(--px-fill), var(--px-fill));
+  background-size:
+    100% calc(100% - var(--px-cell) * 4),
+    calc(100% - var(--px-cell) * 2) calc(100% - var(--px-cell) * 2),
+    calc(100% - var(--px-cell) * 4) 100%;
+  background-position:
+    0 50%,
+    50% 50%,
+    50% 0;
+}
+
+.arca-plain-small {
+  --px-fill: var(--color-bg-record);
+  --px-cell: var(--pixel-cell);
+  background-color: transparent;
+  background-repeat: no-repeat;
+  background-image: linear-gradient(var(--px-fill), var(--px-fill)), linear-gradient(var(--px-fill), var(--px-fill));
+  background-size:
+    100% calc(100% - var(--px-cell) * 2),
+    calc(100% - var(--px-cell) * 2) 100%;
+  background-position:
+    0 50%,
+    50% 0;
+}
+
+.arca-rule {
+  height: var(--border-default);
+  background: repeating-linear-gradient(
+    to right,
+    var(--color-border-subtle) 0 var(--pixel-cell),
+    transparent var(--pixel-cell) calc(var(--pixel-cell) * 2)
+  );
+}

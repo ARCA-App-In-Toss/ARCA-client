@@ -1,0 +1,112 @@
+.arca-scene-panel {
+  --px-fill: var(--color-bg-scene);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-400);
+  padding: var(--space-600);
+}
+
+.arca-scene-panel--art {
+  align-items: center;
+  text-align: center;
+}
+
+.arca-record-panel {
+  --px-fill: var(--color-bg-record);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-300);
+  padding: var(--space-500);
+}
+
+.arca-inset-panel {
+  --px-fill: var(--color-bg-inset-dark);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-300);
+  padding: var(--space-400) var(--space-500);
+}
+
+.arca-scene-art {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.arca-sender {
+  display: flex;
+  align-items: center;
+  gap: var(--space-300);
+  min-height: var(--icon-size-emphasis);
+}
+
+.arca-joy-mark {
+  flex: none;
+  display: block;
+}
+
+.arca-placeholder {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-200);
+}
+
+.arca-placeholder__bar {
+  height: var(--space-300);
+  background: var(--color-bg-inset-dark);
+}
+
+.arca-placeholder__bar:nth-child(2) {
+  width: 72%;
+}
+
+.arca-state-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-400);
+}
+
+.arca-state-panel--centered {
+  align-items: center;
+  text-align: center;
+}
+
+.arca-code {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-200);
+}
+
+.arca-code__pair {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-100);
+  margin: 0;
+}
+
+.arca-code__label {
+  font-family: var(--font-family-pixel);
+  font-size: var(--type-caption-size);
+  line-height: var(--type-caption-line);
+  font-synthesis: none;
+  color: var(--color-text-on-dark-secondary);
+}
+
+.arca-code__value {
+  margin: 0;
+  font-family: var(--font-family-pixel);
+  font-size: var(--type-question-size);
+  line-height: var(--type-question-line);
+  font-synthesis: none;
+  letter-spacing: 0.08em;
+  color: var(--color-signal);
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+.arca-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-300);
+}

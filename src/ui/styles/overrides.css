@@ -1,0 +1,116 @@
+.arca-page--compose .arca-scene-panel {
+  padding: 0 0 0 var(--space-400);
+  gap: var(--space-200);
+  border-left: var(--pixel-cell) solid var(--color-signal-step-2);
+  background: none;
+}
+
+.arca-page--compose .arca-record-panel {
+  padding: 0;
+  background: none;
+}
+
+.arca-page--compose .arca-textarea {
+  min-height: calc(var(--type-body-line) * 4 + var(--space-300) * 2 + var(--border-default) * 2);
+  scroll-margin-block: var(--space-600);
+}
+
+.arca-page--compose .arca-question {
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-line);
+  color: var(--color-text-on-dark-secondary);
+}
+
+.arca-page--compose .arca-sender--compact {
+  min-height: var(--icon-size-default);
+}
+
+.arca-page--compose .arca-field > .arca-label {
+  color: var(--color-text-on-dark-primary);
+}
+
+.arca-page--saved .arca-scene-panel {
+  background: none;
+  padding: var(--space-500) 0 0;
+  gap: var(--space-500);
+}
+
+.arca-page--saved .arca-excerpt {
+  padding: var(--space-600);
+  margin-block: var(--space-200);
+}
+
+.arca-screen-title--result,
+.arca-alert-dialog .arca-screen-title,
+.arca-sheet .arca-screen-title {
+  font-size: var(--type-question-size);
+  line-height: var(--type-question-line);
+}
+
+.arca-screen-title--result::before,
+.arca-alert-dialog .arca-screen-title::before,
+.arca-sheet .arca-screen-title::before {
+  margin-top: calc((var(--type-question-line) - var(--space-200)) / 2);
+}
+
+.arca-button--row {
+  background: none;
+  border: 0;
+  border-bottom: var(--border-default) solid var(--color-border-subtle);
+  padding-inline: 0;
+}
+
+.arca-settings-group .arca-actions {
+  gap: 0;
+}
+
+.arca-settings-danger .arca-button--danger {
+  --px-fill: var(--color-bg-inset-dark);
+  --px-line: var(--color-border-subtle);
+}
+
+.arca-consent-group {
+  padding-inline: var(--space-300);
+}
+
+.arca-consent + .arca-consent {
+  border-top: var(--border-default) solid var(--color-border-subtle);
+  padding-top: var(--space-200);
+}
+
+.arca-field-help > :last-child {
+  margin-left: auto;
+}
+
+.arca-root-tab,
+.arca-memory-row,
+.arca-button {
+  scroll-margin-block: var(--space-400) calc(var(--layout-tabs-height) + var(--space-800));
+}
+
+.arca-shell:has(> .arca-root-tabs)::after {
+  content: "";
+  position: fixed;
+  z-index: calc(var(--layer-app-sticky) - 1);
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: calc(var(--layout-tabs-height) + var(--space-400) + var(--space-300) + env(safe-area-inset-bottom));
+  background: var(--color-bg-canvas);
+  pointer-events: none;
+}
+
+.arca-button--ghost:active:not(:disabled, [aria-disabled="true"]),
+.arca-button--danger-text:active:not(:disabled, [aria-disabled="true"]) {
+  top: var(--motion-press-offset);
+  left: 0;
+}
+
+@keyframes arca-screen-enter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
