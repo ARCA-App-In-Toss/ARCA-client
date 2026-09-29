@@ -45,6 +45,13 @@ describe('F11 writing and device keeping (IX-001, IX-002, IX-005)', () => {
     expect((await axe.run(document.body)).violations).toEqual([]);
   });
 
+  test('the privacy note reads as two lines: who can see it, then where it is kept until saving', async () => {
+    await openWrite();
+    const lines = document.getElementById('f11-privacy')?.querySelectorAll('.arca-privacy__line') ?? [];
+    expect(Array.from(lines, (line) => line.textContent)).toEqual([copy['CPY-F11-005'], copy['CPY-F11-006']]);
+    expect(lines[0]?.querySelector('svg')).not.toBeNull();
+  });
+
   test('typing is kept only after read-back; leaving and returning restores it verbatim', async () => {
     const storage = createFakeStorage();
     const { textarea, router } = await openWrite({ storage });

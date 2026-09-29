@@ -32,7 +32,7 @@ describe('F20 first page (03 §6.1, 04 §6.9)', () => {
     expect(await findTitle(copy['CPY-F10-001'])).toBeInTheDocument();
   });
 
-  test('newest first, month headings only where the KST year-month changes, row opens F21', async () => {
+  test('newest first, month headings only where the KST year-month changes, date above question, row opens F21', async () => {
     const world = createMockWorld('server.activeUnanswered');
     const longQuestion = { ...world.sema.primaryQuestion, text: `${'질'.repeat(90)}` };
     world.seedAnswer(SYNTHETIC_KEYS.registered, '8월 합성', {
@@ -62,6 +62,7 @@ describe('F20 first page (03 §6.1, 04 §6.9)', () => {
       '2026년 8월 31일',
     ]);
     expect(rows[0]).toHaveTextContent(world.sema.primaryQuestion.text);
+    expect(rows[0]?.firstElementChild).toHaveClass('arca-memory-row__meta');
     expect(screen.queryByText('9월 둘째 합성')).not.toBeInTheDocument();
     const lastQuestion = rows[2]?.querySelector('.arca-memory-row__question')?.textContent ?? '';
     expect(lastQuestion).toBe(`${'질'.repeat(80)}…`);

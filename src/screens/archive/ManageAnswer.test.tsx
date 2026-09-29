@@ -92,6 +92,11 @@ describe('F22 edit (03 §6.3, 04 §6.11)', () => {
     const { storage, router } = await openDetail(world, '9월 합성 답변');
     const textarea = await openEdit();
     expect(textarea.value).toBe('9월 합성 답변');
+    const preface = screen.getByRole('region', { name: copy['CPY-F22-002'] });
+    const date = within(preface).getByText('2026년 9월 1일');
+    expect(date.tagName).toBe('TIME');
+    expect(date.nextElementSibling).toHaveTextContent('9월 합성 질문');
+    expect(preface).not.toHaveTextContent('작성일');
     const save = screen.getByRole('button', { name: copy['CPY-F22-014'] });
     expect(save).toBeDisabled();
 
@@ -249,7 +254,7 @@ describe('F22 leaving (04 IX-007, IX-024)', () => {
 });
 
 describe('F23 single delete (03 §6.4, 04 §6.12, 06 §9.2)', () => {
-  test('confirm shows date and question part only; cancel returns focus to the trigger', async () => {
+  test('confirm keeps only the irreversibility notice with cancel and delete side by side; cancel returns focus', async () => {
     const world = createMockWorld('server.activeUnanswered');
     seedTwo(world);
     const { router } = await openDetail(world, '9월 합성 답변');
@@ -257,10 +262,15 @@ describe('F23 single delete (03 §6.4, 04 §6.12, 06 §9.2)', () => {
     await userEvent.click(trigger);
     const dialog = await screen.findByRole('alertdialog', { name: copy['CPY-F23-001'] });
     expect(router.state.location.pathname).toBe(paths.deleteAnswer);
-    expect(within(dialog).getByText('2026년 9월 1일에 남긴 기억 조각이에요.')).toBeInTheDocument();
+    expect(within(dialog).queryByText('2026년 9월 1일에 남긴 기억 조각이에요.')).toBeNull();
+    expect(within(dialog).queryByText('받은 질문')).toBeNull();
+    expect(within(dialog).queryByText('9월 합성 질문')).toBeNull();
     expect(within(dialog).queryByText('9월 합성 답변')).toBeNull();
     expect(within(dialog).getByText(copy['CPY-F23-005'])).toBeInTheDocument();
-    expect(within(dialog).getByRole('button', { name: copy['CPY-F23-006'] })).toHaveFocus();
+    const cancel = within(dialog).getByRole('button', { name: copy['CPY-F23-006'] });
+    expect(cancel).toHaveFocus();
+    expect(cancel.parentElement).toHaveClass('arca-actions--pair');
+    expect(within(cancel.parentElement as HTMLElement).getByRole('button', { name: '삭제' })).toBeInTheDocument();
     await userEvent.click(within(dialog).getByRole('button', { name: copy['CPY-F23-006'] }));
     await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
     expect(router.state.location.pathname).toBe(paths.detail);
