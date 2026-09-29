@@ -11,14 +11,12 @@ export default defineConfig({
   retries: 0,
   reporter: 'list',
   projects: [
-    // Production bundle: no Toss bridge, no API host (start must end on F90).
     {
       name: 'chromium',
       testDir: 'tests/browser',
       use: { ...devices['Pixel 7'], baseURL: `http://127.0.0.1:${port}` },
     },
     { name: 'webkit', testDir: 'tests/browser', use: { ...devices['iPhone 15'], baseURL: `http://127.0.0.1:${port}` } },
-    // Dev server with the dev-only mock world (never part of the production build).
     {
       name: 'mock-chromium',
       testDir: 'tests/browser-mock',
@@ -29,7 +27,6 @@ export default defineConfig({
       testDir: 'tests/browser-mock',
       use: { ...devices['iPhone 15'], baseURL: `http://localhost:${mockPort}` },
     },
-    // Same dev mock, unregistered synthetic key: onboarding starts at F01.
     {
       name: 'onboarding-chromium',
       testDir: 'tests/browser-onboarding',
@@ -40,7 +37,6 @@ export default defineConfig({
       testDir: 'tests/browser-onboarding',
       use: { ...devices['iPhone 15'], baseURL: `http://localhost:${onboardingPort}` },
     },
-    // Same dev mock, the server day moves on before the first save (MS-TIME-002 → F13, Sheet).
     {
       name: 'time-chromium',
       testDir: 'tests/browser-time',
@@ -51,7 +47,6 @@ export default defineConfig({
       testDir: 'tests/browser-time',
       use: { ...devices['iPhone 15'], baseURL: `http://localhost:${timePort}` },
     },
-    // Same dev mock, 21 records across a month boundary (MS-LIST-003/004, F21~F23).
     {
       name: 'archive-chromium',
       testDir: 'tests/browser-archive',
@@ -65,7 +60,6 @@ export default defineConfig({
   ],
   webServer: [
     {
-      // Preview runs as a direct child so teardown stops it; the bundle is built by `test:browser`.
       command: `node node_modules/vite/bin/vite.js preview --host 127.0.0.1 --port ${port} --strictPort`,
       url: `http://127.0.0.1:${port}`,
       reuseExistingServer: false,

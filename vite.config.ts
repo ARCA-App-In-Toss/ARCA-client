@@ -6,7 +6,6 @@ import { defineConfig, type Plugin } from 'vite';
 
 const require = createRequire(import.meta.url);
 
-/** Serves the MSW worker from node_modules in dev only, so no mock file is ever copied into dist. */
 function mswDevWorker(): Plugin {
   return {
     name: 'arca-msw-dev-worker',
@@ -20,7 +19,6 @@ function mswDevWorker(): Plugin {
   };
 }
 
-// https://vite.dev/config/
 const { version } = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf-8')) as {
   version: string;
 };

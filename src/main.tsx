@@ -9,8 +9,6 @@ import './ui/tokens.css';
 import './ui/ui.css';
 
 async function createServices(): Promise<AppServices> {
-  // Dev-only mock world; `import.meta.env.DEV` is statically false in production builds, so the
-  // mock module, scenario selection and synthetic passenger never ship (07 §2.4, 06 §12).
   if (import.meta.env.DEV && import.meta.env.VITE_ARCA_MOCK_SCENARIO) {
     const { startDevMock } = await import('./mocks/dev.ts');
     return startDevMock(import.meta.env.VITE_ARCA_MOCK_SCENARIO);

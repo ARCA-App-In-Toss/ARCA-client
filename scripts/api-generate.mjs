@@ -1,6 +1,4 @@
 #!/usr/bin/env node
-// Derives wire TypeScript types and Zod 4 validators from the OpenAPI SSOT (06 §3.4).
-// The generated directory is never edited by hand; `--check` fails on drift.
 import { cpSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -12,9 +10,6 @@ const input = join(root, '.claude/spec/arca.openapi.json');
 const target = join(root, 'src/data/api/generated');
 const check = process.argv.includes('--check');
 
-// `additionalProperties: false` must reject unknown keys, not strip them (05 API-V-019
-// keeps other objects open). The zod plugin only emits z.object, so closed objects are
-// mapped to z.strictObject through the plugin's resolver hook instead of patching output.
 function closedObjectResolver(ctx) {
   const { schema } = ctx;
   const closed = schema.additionalProperties?.type === 'never';
