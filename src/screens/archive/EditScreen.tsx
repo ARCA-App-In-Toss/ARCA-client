@@ -187,6 +187,8 @@ function EditForm({
   const baseGone =
     (view.kind === 'notApplied' || view.kind === 'rejected') &&
     (view.code === 'REVISION_CONFLICT' || view.code === 'ANSWER_NOT_FOUND');
+  const restoredClean =
+    draft.load.kind === 'ready' && draft.load.restored && !unchanged && draft.status.kind === 'clean';
   const status = editStatus({
     view,
     loading,
@@ -195,8 +197,7 @@ function EditForm({
     rebaseState,
     unchanged,
     edited,
-    load: draft.load,
-    status: draft.status,
+    restoredClean,
     copyResult,
     saveProblem,
   });
@@ -236,7 +237,7 @@ function EditForm({
               {...input.fieldHandlers}
             />
             <div className="arca-field-help" id={helpId}>
-              <span>{keepLabel(draft.status, KEEP_LABELS) ?? ''}</span>
+              <span>{keepLabel(draft.status, KEEP_LABELS) ?? (restoredClean ? copy['CPY-F22-011'] : '')}</span>
               <span>{fill(copy['CPY-F22-007'], { currentCount: formatCount(currentCount) })}</span>
             </div>
             {overflow && (
@@ -244,16 +245,14 @@ function EditForm({
                 {fill(copy['CPY-F22-008'], { overCount: formatCount(measured.overCount) })}
               </p>
             )}
-            <p className="arca-privacy" id="f22-privacy">
-              <PixelIcon name="lock" />
-              <span>
-                {copy['CPY-F22-005']} {copy['CPY-F22-006']}
-              </span>
-            </p>
           </>
         )}
       </RecordPanel>
-      <InlineStatus message={status.message} tone={status.danger ? 'danger' : 'neutral'} />
+      <InlineStatus
+        message={status.message ?? status.announcement}
+        tone={status.danger ? 'danger' : 'neutral'}
+        quiet={status.message === null}
+      />
       {stale && !pending && (
         <RecordPanel labelledBy="f22-stale-label">
           <p className="arca-text-secondary" id="f22-stale-label">
@@ -322,6 +321,12 @@ function EditForm({
           </PixelButton>
         )}
       </div>
+      <p className="arca-privacy arca-privacy--centered" id="f22-privacy">
+        <PixelIcon name="lock" />
+        <span>
+          {copy['CPY-F22-005']} {copy['CPY-F22-006']}
+        </span>
+      </p>
       <PixelAlertDialog
         open={discardDialog}
         title={copy['CPY-F22-025']}

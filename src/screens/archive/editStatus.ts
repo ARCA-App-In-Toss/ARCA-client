@@ -1,6 +1,4 @@
-import type { DraftLoad } from '../../app/hooks/drafts.ts';
 import type { WriteView } from '../../domain/commands/answerWriteCoordinator.ts';
-import type { KeepStatus } from '../../domain/drafts/draftWriter.ts';
 import { copy } from '../../ui/copy.ts';
 import { type CopyResult, copyResultMessage, type KeepState } from '../shared/compose.ts';
 
@@ -14,15 +12,19 @@ export interface EditStatusInput {
   rebaseState: RebaseState;
   unchanged: boolean;
   edited: boolean;
-  load: DraftLoad;
-  status: KeepStatus;
+  restoredClean: boolean;
   copyResult: CopyResult;
   saveProblem: boolean;
 }
 
-export function editStatus(input: EditStatusInput): { message: string | null; danger: boolean } {
+export function editStatus(input: EditStatusInput): {
+  message: string | null;
+  danger: boolean;
+  announcement: string | null;
+} {
   const { view, keep, rebaseState } = input;
   const parts: string[] = [];
+  let announcement: string | null = null;
   if (input.loading) parts.push(copy['CPY-F22-009']);
   switch (view.kind) {
     case 'working':
@@ -64,14 +66,7 @@ export function editStatus(input: EditStatusInput): { message: string | null; da
     default:
       if (keep.failed) parts.push(copy['CPY-F22-012']);
       else if (input.unchanged && input.edited) parts.push(copy['CPY-F22-013']);
-      else if (
-        input.load.kind === 'ready' &&
-        input.load.restored &&
-        !input.unchanged &&
-        input.status.kind === 'clean'
-      ) {
-        parts.push(copy['CPY-F22-011']);
-      }
+      else if (input.restoredClean) announcement = copy['CPY-F22-011'];
   }
   const copied = copyResultMessage(input.copyResult);
   if (copied) parts.push(copied);
@@ -84,5 +79,6 @@ export function editStatus(input: EditStatusInput): { message: string | null; da
       keep.failed ||
       input.copyResult === 'failed' ||
       view.kind === 'localFailure',
+    announcement,
   };
 }
