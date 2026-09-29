@@ -45,6 +45,7 @@ export function AnswerDetailScreen() {
   const deleteUnresolved = deleteRunning && unresolved;
   const deleteUnconfirmed = deleteRunning && view.kind === 'unconfirmed';
   const autoOpened = useRef(false);
+  const leavingDeleted = useRef(false);
 
   useEffect(() => {
     if (pendingMode === 'DELETE' && !dialogRoute && routeState?.answerRef && !autoOpened.current) {
@@ -71,6 +72,7 @@ export function AnswerDetailScreen() {
         setNotice('editSaved');
         return;
       case 'deleted':
+        leavingDeleted.current = true;
         command.consume();
         noteDeleted();
         navigate(paths.archive, {}, { replace: true });
@@ -151,6 +153,7 @@ export function AnswerDetailScreen() {
   const status = detailStatus({ editUnresolved, deleteUnresolved, notice });
   const dialog = deleteDialogState(view, deleteRunning);
   const questionPart = questionPartOf(question.text);
+  const deleteBusy = (deleteRunning && view.kind === 'working') || leavingDeleted.current;
 
   return (
     <PixelAppShell>
@@ -209,8 +212,8 @@ export function AnswerDetailScreen() {
         cancelLabel={deleteUnconfirmed ? copy['CPY-F23-012'] : copy['CPY-F23-006']}
         actionLabel={dialog.actionLabel}
         danger={!deleteUnconfirmed}
-        locked={deleteRunning && view.kind === 'working'}
-        busy={deleteRunning && view.kind === 'working'}
+        locked={deleteBusy}
+        busy={deleteBusy}
         status={dialog.status}
         returnFocusRef={deleteButtonRef}
         onCancel={closeDialog}

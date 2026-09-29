@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { type BoardingPolicy, useBoarding } from '../../app/hooks/onboarding.ts';
 import { InlineStatus, PixelAppShell, PixelButton, PixelCheckboxRow, ScreenTitle } from '../../ui/components.tsx';
 import { type CopyId, copy } from '../../ui/copy.ts';
+import { usePendingReveal } from '../../ui/pendingReveal.ts';
 import { MemoryFragmentGlow } from '../../ui/pixel.tsx';
 
 const policyCopy: Record<string, { title: CopyId; open: CopyId; name: CopyId }> = {
@@ -26,6 +27,7 @@ export function BoardingScreen() {
 
   const allAgreed = policies.length > 0 && policies.every((p) => agreed.has(agreementKey(p)));
   const submitting = status.kind === 'submitting';
+  const submittingShown = usePendingReveal(submitting);
 
   const toggle = (policy: BoardingPolicy, checked: boolean) => {
     const next = new Set(agreed);
@@ -48,8 +50,7 @@ export function BoardingScreen() {
     if (result.kind === 'unavailable') setStatus({ kind: 'message', id: 'CPY-F02-014' });
   };
 
-  const message =
-    status.kind === 'submitting' ? copy['CPY-F02-011'] : status.kind === 'message' ? copy[status.id] : null;
+  const message = submittingShown ? copy['CPY-F02-011'] : status.kind === 'message' ? copy[status.id] : null;
 
   return (
     <PixelAppShell className="arca-page--cta">

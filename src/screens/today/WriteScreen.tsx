@@ -21,6 +21,7 @@ import {
 } from '../../ui/components.tsx';
 import { copy, fill } from '../../ui/copy.ts';
 import { formatCount } from '../../ui/format.ts';
+import { usePendingReveal } from '../../ui/pendingReveal.ts';
 import { JoyMark, PixelIcon } from '../../ui/pixel.tsx';
 import { type CopyResult, keepLabel, keepStateOf, useAnswerInput } from '../shared/compose.ts';
 import { LEAVE_KEEP_WAIT_MS, LeaveConfirmDialog, useLeaveGuard, withinMs } from '../shared/leaveGuard.tsx';
@@ -84,7 +85,9 @@ export function WriteScreen() {
   const view = write.view;
 
   const busy = view.kind === 'working';
+  const busyShown = usePendingReveal(busy);
   const pending = busy || view.kind === 'unconfirmed';
+  const pendingShown = busyShown || view.kind === 'unconfirmed';
   const draftKept = draft.status.kind === 'persisted' || draft.status.kind === 'clean';
   const trackerKept = (view.kind === 'working' || view.kind === 'unconfirmed') && view.trackerKept;
   const canLeaveWhilePending = pending && draftKept && trackerKept;
@@ -213,6 +216,7 @@ export function WriteScreen() {
     view.kind === 'localFailure';
   const status = writeStatus({
     view,
+    workingShown: busyShown,
     loading,
     semaStopped,
     keep,
@@ -222,7 +226,8 @@ export function WriteScreen() {
     copyResult,
     saveProblem,
   });
-  const showCopy = pending || keep.failed || saveProblem || reviewCurrent;
+  const showCopy = pendingShown || keep.failed || saveProblem || reviewCurrent;
+  const leavingSaved = handledSuccess.current || (view.kind === 'succeeded' && savedThisVisit);
   const textLocked = pending || semaStopped || reviewCurrent || leavingForPast;
 
   const helpId = 'f11-help';
@@ -346,8 +351,8 @@ export function WriteScreen() {
         ) : (
           <PixelButton
             variant="primary"
-            loading={busy}
-            disabled={loading || (!busy && !measured.savable)}
+            loading={busy || leavingSaved}
+            disabled={loading || (!busy && !leavingSaved && !measured.savable)}
             onClick={
               view.kind === 'notApplied' || view.kind === 'rejected' || view.kind === 'reconciled'
                 ? () => {
@@ -365,7 +370,9 @@ export function WriteScreen() {
             {copy['CPY-F11-029']}
           </PixelButton>
         )}
-        {canLeaveWhilePending && <PixelButton onClick={() => navigate(paths.today)}>{copy['CPY-F11-040']}</PixelButton>}
+        {canLeaveWhilePending && pendingShown && (
+          <PixelButton onClick={() => navigate(paths.today)}>{copy['CPY-F11-040']}</PixelButton>
+        )}
       </div>
       <p className="arca-privacy arca-privacy--centered" id="f11-privacy">
         <PixelIcon name="lock" />

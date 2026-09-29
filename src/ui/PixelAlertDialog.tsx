@@ -1,5 +1,6 @@
 import * as AlertDialog from '@radix-ui/react-alert-dialog';
 import type { ReactNode, RefObject } from 'react';
+import { usePendingReveal } from './pendingReveal.ts';
 
 export interface PixelAlertDialogProps {
   open: boolean;
@@ -32,6 +33,7 @@ export function PixelAlertDialog({
   status = null,
   danger = false,
 }: PixelAlertDialogProps) {
+  const busyShown = usePendingReveal(busy);
   return (
     <AlertDialog.Root
       open={open}
@@ -57,7 +59,7 @@ export function PixelAlertDialog({
           <AlertDialog.Description className="arca-user-text">{description}</AlertDialog.Description>
           {children}
           <div role="status" aria-live="polite" className="arca-inline-status">
-            {status}
+            {busy && !busyShown ? null : status}
           </div>
           <div className="arca-actions">
             <AlertDialog.Cancel asChild>

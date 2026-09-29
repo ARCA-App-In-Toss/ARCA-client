@@ -4,6 +4,7 @@ import { type CopyResult, copyResultMessage, type KeepState } from '../shared/co
 
 export interface WriteStatusInput {
   view: WriteView;
+  workingShown: boolean;
   loading: boolean;
   semaStopped: boolean;
   keep: KeepState;
@@ -30,7 +31,7 @@ export function writeStatus(input: WriteStatusInput): {
   } else {
     switch (view.kind) {
       case 'working':
-        parts.push(view.stage === 'confirming' ? copy['CPY-F11-024'] : copy['CPY-F11-019']);
+        if (input.workingShown) parts.push(view.stage === 'confirming' ? copy['CPY-F11-024'] : copy['CPY-F11-019']);
         break;
       case 'unconfirmed':
         if (view.recovery === 'cleanUpExpired') {

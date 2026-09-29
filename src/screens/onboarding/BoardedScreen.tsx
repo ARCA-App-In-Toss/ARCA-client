@@ -13,6 +13,7 @@ import {
   ScreenTitle,
 } from '../../ui/components.tsx';
 import { type CopyId, copy, fill } from '../../ui/copy.ts';
+import { usePendingReveal } from '../../ui/pendingReveal.ts';
 import { type NicknameProblem, nicknameProblem, useNicknameInput } from '../shared/nickname.ts';
 
 const errorCopy: Record<NicknameError, CopyId> = {
@@ -32,6 +33,7 @@ export function BoardedScreen() {
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
   const [problem, setProblem] = useState<NicknameProblem | null>(null);
+  const savingShown = usePendingReveal(saving);
 
   const blocker = useBlocker(() => savingRef.current);
   useEffect(() => {
@@ -59,13 +61,13 @@ export function BoardedScreen() {
     setProblem(null);
     const result = await save(current.normalized);
     savingRef.current = false;
-    setSaving(false);
     if (result.kind === 'saved') return toToday();
+    setSaving(false);
     if (result.kind === 'expired') input.replace(result.currentNickname ?? '');
     setProblem(nicknameProblem(result, { unsent: 'CPY-F03-017', rejected: 'CPY-F03-015' }));
   };
 
-  const status = saving ? copy['CPY-F03-014'] : problem ? copy[problem.id] : announcement;
+  const status = savingShown ? copy['CPY-F03-014'] : problem ? copy[problem.id] : announcement;
   const describedBy = `f03-help f03-count${visibleError ? ' f03-error' : ''}`;
 
   return (
