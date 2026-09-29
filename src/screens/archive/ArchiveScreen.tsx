@@ -9,8 +9,10 @@ import {
   MemoryRow,
   PixelAppShell,
   PixelButton,
+  PixelLoader,
   PixelPlaceholder,
   RecordPanel,
+  ScrollTopButton,
   StatePanel,
 } from '../../ui/components.tsx';
 import { copy, fill } from '../../ui/copy.ts';
@@ -26,6 +28,7 @@ function monthOf(dateKst: string) {
 }
 
 const TOP_SLACK_PX = 8;
+const PREFETCH_MARGIN_PX = 480;
 const atTop = () => window.scrollY <= TOP_SLACK_PX;
 
 export function ArchiveScreen() {
@@ -134,12 +137,10 @@ export function ArchiveScreen() {
         <RootHeader title={copy['CPY-F20-001']} count={count} />
         {body}
       </div>
-      {view.phase === 'ready' && view.candidateReady && (
-        <div className="arca-archive-candidate">
-          <InlineStatus message={copy['CPY-F20-023']} live={false} />
-          <PixelButton onClick={() => archive.applyCandidate({ focus: true })}>{copy['CPY-F20-024']}</PixelButton>
-        </div>
-      )}
+      <ScrollTopButton
+        label={copy['CPY-F20-025']}
+        onTop={() => containerRef.current?.querySelector<HTMLElement>('h1')?.focus({ preventScroll: true })}
+      />
       <div role="status" aria-live="polite" className="arca-visually-hidden">
         {announcement}
       </div>
@@ -150,7 +151,6 @@ export function ArchiveScreen() {
 function announcementOf(view: ArchiveView, deletedNotice: boolean): string | null {
   if (view.more === 'failed' || view.more === 'cursorInvalid') return copy['CPY-F20-019'];
   if (view.more === 'loading') return copy['CPY-F20-017'];
-  if (view.candidateReady) return copy['CPY-F20-023'];
   if (view.refreshFailed) return copy['CPY-F20-022'];
   if (view.added) return fill(copy['CPY-F20-018'], { loadedCount: formatCount(view.added.count) });
   if (deletedNotice) return copy['CPY-F23-009'];
@@ -168,47 +168,36 @@ function ListEnd({
   onReloadFirst: () => void;
   onRefresh: () => void;
 }) {
-  const endRef = useRef<HTMLParagraphElement>(null);
-  const moreRef = useRef<HTMLButtonElement>(null);
-  const moreFocused = useRef(false);
-  const showMore = view.hasMore && (view.more === 'idle' || view.more === 'loading');
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const awaitingMore = view.hasMore && view.more === 'idle';
+  const loadedCount = view.items.length;
   const showEnd = !view.hasMore && view.loadedExtra && view.more === 'idle';
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 새 페이지가 붙은 뒤에도 끝이 가까우면 다시 불러온다.
   useEffect(() => {
-    if (!showMore && showEnd && moreFocused.current) endRef.current?.focus({ preventScroll: true });
-    moreFocused.current = false;
-  }, [showMore, showEnd]);
+    const sentinel = sentinelRef.current;
+    if (!awaitingMore || !sentinel) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) onMore();
+      },
+      { rootMargin: `0px 0px ${PREFETCH_MARGIN_PX}px 0px` },
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [awaitingMore, loadedCount, onMore]);
   return (
     <div className="arca-list-end">
-      {view.more === 'loading' && <InlineStatus message={copy['CPY-F20-017']} live={false} />}
-      {view.more === 'failed' && (
+      {awaitingMore && <div ref={sentinelRef} className="arca-list-sentinel" aria-hidden="true" />}
+      {view.more === 'loading' && <PixelLoader />}
+      {(view.more === 'failed' || view.more === 'cursorInvalid') && (
         <>
           <InlineStatus message={copy['CPY-F20-019']} tone="danger" live={false} />
-          <PixelButton onClick={onMore}>{copy['CPY-F20-020']}</PixelButton>
+          <PixelButton onClick={view.more === 'cursorInvalid' ? onReloadFirst : onMore}>
+            {copy['CPY-F20-020']}
+          </PixelButton>
         </>
       )}
-      {view.more === 'cursorInvalid' && (
-        <>
-          <InlineStatus message={copy['CPY-F20-019']} tone="danger" live={false} />
-          <PixelButton onClick={onReloadFirst}>{copy['CPY-F20-024']}</PixelButton>
-        </>
-      )}
-      {showMore && (
-        <PixelButton
-          ref={moreRef}
-          loading={view.more === 'loading'}
-          onClick={() => {
-            moreFocused.current = document.activeElement === moreRef.current;
-            onMore();
-          }}
-        >
-          {copy['CPY-F20-016']}
-        </PixelButton>
-      )}
-      {showEnd && (
-        <p ref={endRef} tabIndex={-1} className="arca-inline-status">
-          {copy['CPY-F20-021']}
-        </p>
-      )}
+      {showEnd && <p className="arca-inline-status">{copy['CPY-F20-021']}</p>}
       {view.refreshFailed && (
         <>
           <InlineStatus message={copy['CPY-F20-022']} live={false} />

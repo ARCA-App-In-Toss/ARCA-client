@@ -114,20 +114,78 @@
   display: none;
 }
 
-.arca-archive-candidate {
+.arca-list-sentinel {
+  height: var(--a11y-pixel);
+}
+
+.arca-pixel-loader {
+  display: flex;
+  justify-content: center;
+  gap: var(--pixel-cell);
+  padding-block: var(--space-300);
+}
+
+.arca-pixel-loader > span {
+  width: calc(var(--pixel-cell) * 2);
+  height: calc(var(--pixel-cell) * 2);
+  background: var(--color-signal-step-2);
+  animation: arca-loader-step var(--motion-duration-loader) steps(1, end) infinite;
+}
+
+.arca-pixel-loader > span:nth-child(2) {
+  animation-delay: calc(var(--motion-duration-loader) / 3);
+}
+
+.arca-pixel-loader > span:nth-child(3) {
+  animation-delay: calc(var(--motion-duration-loader) * 2 / 3);
+}
+
+@keyframes arca-loader-step {
+  0% {
+    background: var(--color-signal);
+  }
+  33.333% {
+    background: var(--color-signal-step-2);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arca-pixel-loader > span {
+    animation: none;
+    background: var(--color-signal-step-1);
+  }
+}
+
+.arca-scroll-top {
   --px-fill: var(--color-bg-scene);
-  --px-line: var(--color-signal-step-1);
+  --px-line: var(--color-border-subtle);
   position: fixed;
-  left: 50%;
+  right: max(var(--layout-gutter-compact), env(safe-area-inset-right), (100% - var(--layout-content-max)) / 2);
   bottom: calc(max(var(--space-400), env(safe-area-inset-bottom)) + var(--layout-tabs-height) + var(--space-400));
   z-index: var(--layer-app-sticky);
-  transform: translateX(-50%);
-  display: flex;
-  flex-wrap: wrap;
+  display: inline-flex;
   align-items: center;
-  gap: var(--space-300);
-  width: min(calc(100% - 2 * var(--layout-gutter)), var(--layout-content-max));
-  padding: var(--space-300) var(--space-400);
+  justify-content: center;
+  width: var(--layout-target-min);
+  height: var(--layout-target-min);
+  padding: 0;
+  color: var(--color-text-on-dark-primary);
+  cursor: pointer;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity var(--motion-duration-base) var(--motion-easing-settle),
+    visibility 0s linear var(--motion-duration-base);
+}
+
+.arca-scroll-top--shown {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity var(--motion-duration-base) var(--motion-easing-settle);
+}
+
+.arca-scroll-top:active {
+  --px-fill: var(--color-bg-scene-raised);
 }
 
 .arca-dialog-context {

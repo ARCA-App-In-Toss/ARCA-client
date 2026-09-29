@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { scrollPageToTop } from './motion.ts';
 import { type IconName, MemoryFragment, PixelIcon } from './pixel.tsx';
 
 export function PixelAppShell({
@@ -269,6 +270,44 @@ export function RollingCount({ from, to }: { from: string; to: string }) {
   );
 }
 
+export function PixelLoader() {
+  return (
+    <div className="arca-pixel-loader" aria-hidden="true">
+      <span />
+      <span />
+      <span />
+    </div>
+  );
+}
+
+export function ScrollTopButton({ label, onTop }: { label: string; onTop: () => void }) {
+  const [shown, setShown] = useState(false);
+  useEffect(() => {
+    const update = () => setShown(window.scrollY > window.innerHeight);
+    update();
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+    return () => {
+      window.removeEventListener('scroll', update);
+      window.removeEventListener('resize', update);
+    };
+  }, []);
+  return (
+    <button
+      type="button"
+      className={shown ? 'arca-scroll-top arca-scroll-top--shown arca-px' : 'arca-scroll-top arca-px'}
+      aria-label={label}
+      inert={!shown}
+      onClick={() => {
+        scrollPageToTop();
+        onTop();
+      }}
+    >
+      <PixelIcon name="to-top" />
+    </button>
+  );
+}
+
 export function PixelIconButton({
   label,
   icon,
@@ -395,7 +434,7 @@ export function RootFloatingTabs({
           type="button"
           className="arca-root-tab arca-px"
           aria-current={tab.id === current ? 'page' : undefined}
-          onClick={tab.id === current ? undefined : tab.onSelect}
+          onClick={tab.id === current ? scrollPageToTop : tab.onSelect}
         >
           <PixelIcon name={tabIcons[tab.id]} />
           <span>{tab.label}</span>
