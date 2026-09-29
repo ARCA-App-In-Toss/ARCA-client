@@ -214,10 +214,10 @@ function EditForm({
         <p className="arca-visually-hidden" id="f22-question-label">
           {copy['CPY-F22-002']}
         </p>
+        <time className="arca-question-date" dateTime={base.createdDateKst}>
+          {formatDateKst(base.createdDateKst)}
+        </time>
         <p className="arca-question arca-question--quiet">{base.question.text}</p>
-        <p className="arca-label">
-          {fill(copy['CPY-F21-006'], { createdDateKst: formatDateKst(base.createdDateKst) })}
-        </p>
       </section>
       <RecordPanel>
         {loading ? (

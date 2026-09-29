@@ -255,13 +255,13 @@ function ArchiveList({
                   if (row) onSelect(item.answerId, row);
                 }}
               >
+                <span className="arca-memory-row__meta">
+                  <span>{formatDateKst(item.createdDateKst)}</span>
+                </span>
                 <span className="arca-visually-hidden">{copy['CPY-F20-007']}</span>
                 <span className="arca-memory-row__question">
                   {question.text}
                   {question.isTruncated && <span aria-hidden="true">…</span>}
-                </span>
-                <span className="arca-memory-row__meta">
-                  <span>{formatDateKst(item.createdDateKst)}</span>
                 </span>
               </MemoryRow>
             </li>
