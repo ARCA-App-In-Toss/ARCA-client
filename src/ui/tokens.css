@@ -8,6 +8,15 @@
   font-display: swap;
 }
 
+/* Pretendard v1.3.9 Regular, self-hosted (SIL OFL 1.1 - public/fonts/pretendard/LICENSE.txt). */
+@font-face {
+  font-family: "Pretendard";
+  src: url("/fonts/pretendard/Pretendard-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --color-bg-canvas: #090f1d;
   --color-bg-scene: #111e32;
@@ -46,7 +55,7 @@
   --color-status-info-on-dark-bg: #172b5f;
 
   --font-family-pixel: "NeoDunggeunmo", system-ui, "Apple SD Gothic Neo", sans-serif;
-  --font-family-body: system-ui, "Apple SD Gothic Neo", sans-serif;
+  --font-family-body: "Pretendard", system-ui, "Apple SD Gothic Neo", sans-serif;
   --font-weight-regular: 400;
   --type-size-title: 1.25rem;
   --type-size-body: 1rem;
