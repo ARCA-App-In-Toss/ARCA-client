@@ -120,6 +120,10 @@
   outline-offset: var(--focus-offset);
 }
 
+.arca-button[data-quiet-focus]:focus-visible {
+  outline: none;
+}
+
 .arca-button:disabled,
 .arca-button[aria-disabled="true"] {
   cursor: not-allowed;

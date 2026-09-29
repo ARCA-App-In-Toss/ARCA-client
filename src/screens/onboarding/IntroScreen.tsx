@@ -13,8 +13,19 @@ const nextMark: readonly string[] = ['#####', '.###.', '..#..'];
 export function IntroScreen() {
   const navigate = useArcaNavigate();
   const deletedNotice = useAllDeletedNotice();
-  const { position, sceneSentences, sentenceText, characters, typed, done, announce, boarding, boardRef, advance } =
-    useIntroPlayback();
+  const {
+    position,
+    sceneSentences,
+    sentenceText,
+    characters,
+    typed,
+    done,
+    announce,
+    boarding,
+    boardRef,
+    quietFocus,
+    advance,
+  } = useIntroPlayback();
   const [departing, setDeparting] = useState(false);
 
   const toJoin = () => navigate(paths.join);
@@ -69,7 +80,7 @@ export function IntroScreen() {
         <div className="arca-intro-view" />
         {boarding ? (
           <div className="arca-actions">
-            <PixelButton ref={boardRef} variant="primary" onClick={board}>
+            <PixelButton ref={boardRef} variant="primary" data-quiet-focus={quietFocus || undefined} onClick={board}>
               {copy['CPY-F01-005']}
             </PixelButton>
           </div>

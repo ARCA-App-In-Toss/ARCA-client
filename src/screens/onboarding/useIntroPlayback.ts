@@ -23,6 +23,8 @@ const sentenceLength = (scene: number, sentence: number) => Array.from(scenes[sc
 export function useIntroPlayback() {
   const [position, setPosition] = useState({ scene: 0, sentence: 0 });
   const [boarding, setBoarding] = useState(false);
+  const [quietFocus, setQuietFocus] = useState(false);
+  const pointerLedRef = useRef(false);
   const sceneSentences = scenes[position.scene] ?? [];
   const sentenceText = sceneSentences[position.sentence] ?? '';
   const characters = Array.from(sentenceText);
@@ -55,6 +57,22 @@ export function useIntroPlayback() {
   }, [position]);
 
   useEffect(() => {
+    const onPointer = () => {
+      pointerLedRef.current = true;
+    };
+    const onKey = () => {
+      pointerLedRef.current = false;
+      setQuietFocus(false);
+    };
+    document.addEventListener('pointerdown', onPointer, true);
+    document.addEventListener('keydown', onKey, true);
+    return () => {
+      document.removeEventListener('pointerdown', onPointer, true);
+      document.removeEventListener('keydown', onKey, true);
+    };
+  }, []);
+
+  useEffect(() => {
     if (boarding) boardRef.current?.focus();
   }, [boarding]);
 
@@ -83,6 +101,7 @@ export function useIntroPlayback() {
       return;
     }
     setAnnounce(null);
+    setQuietFocus(pointerLedRef.current);
     setBoarding(true);
   }, [boarding, characters.length, lastSentence, moveTo, position.scene, position.sentence]);
 
@@ -108,6 +127,7 @@ export function useIntroPlayback() {
     announce,
     boarding,
     boardRef,
+    quietFocus,
     advance,
   };
 }
