@@ -24,7 +24,7 @@ describe('F10 unanswered (IX-006, IX-033)', () => {
     expect(within(question).getByText('2026년 9월 27일')).toHaveAttribute('datetime', '2026-09-27');
     expect(screen.queryByText('SEMA 코드 · SEMA-0270')).not.toBeInTheDocument();
     expect(screen.queryByText(copy['CPY-F10-008'])).not.toBeInTheDocument();
-    expect(screen.getByText('기억 조각 0개')).toBeInTheDocument();
+    expect(screen.getByText('기억 조각 0개').closest('.arca-root-header')).not.toBeNull();
     expect(opCount(world, 'OP-005')).toBe(1);
     expect((await axe.run(document.body)).violations).toEqual([]);
   });
@@ -61,15 +61,35 @@ describe('F10 unanswered (IX-006, IX-033)', () => {
   });
 });
 
+describe('F10 capsule sky', () => {
+  test('follows the device hour on entry and re-reads it only when the app returns to the foreground', async () => {
+    let now = new Date(2026, 8, 27, 18, 30).getTime();
+    const { platform, started } = bootApp(server, { now: () => now });
+    await act(() => started);
+    await findTitle(copy['CPY-F10-001']);
+    const sky = () => document.querySelector('[data-sky]');
+    expect(sky()).toHaveAttribute('data-sky', 'dusk');
+
+    now = new Date(2026, 8, 27, 20, 0).getTime();
+    expect(sky()).toHaveAttribute('data-sky', 'dusk');
+    act(() => platform.setVisible(false));
+    expect(sky()).toHaveAttribute('data-sky', 'dusk');
+    act(() => platform.setVisible(true));
+    expect(sky()).toHaveAttribute('data-sky', 'night');
+    expect(sky()?.closest('[aria-hidden="true"]')).not.toBeNull();
+  });
+});
+
 describe('F10 answered (IX-027, IX-033)', () => {
-  test('own excerpt first, no switch or new write, saved question snapshot shown', async () => {
+  test('saved question, completion line and detail entry only: no answer text, switch or new write', async () => {
     const { world, started } = bootApp(server, { base: 'server.activeAnswered' });
     await act(() => started);
     await findTitle(copy['CPY-F10-001']);
 
-    const record = screen.getByRole('region', { name: copy['CPY-F10-012'] });
-    expect(within(record).getByText(copy['CPY-F10-011'])).toBeInTheDocument();
-    expect(record.querySelector('.arca-user-text')?.textContent).toBe(SYNTHETIC_ANSWER_TEXT);
+    expect(document.querySelector('.arca-sender')).toHaveTextContent(copy['CPY-F10-011']);
+    expect(screen.getByRole('button', { name: copy['CPY-F10-016'] })).toBeInTheDocument();
+    expect(document.querySelector('.arca-user-text')).toBeNull();
+    expect(document.body.textContent).not.toContain(SYNTHETIC_ANSWER_TEXT);
     expect(screen.queryByRole('button', { name: copy['CPY-F10-005'] })).toBeNull();
     expect(screen.queryByRole('button', { name: copy['CPY-F10-006'] })).toBeNull();
     expect(screen.getByRole('region', { name: copy['CPY-F10-015'] })).toHaveTextContent(
@@ -84,30 +104,14 @@ describe('F10 answered (IX-027, IX-033)', () => {
     expect((await axe.run(document.body)).violations).toEqual([]);
   });
 
-  test('truncated excerpt: "내 답변 일부", visual ellipsis only, stored prefix unchanged', async () => {
+  test('a long answer is not shown on F10 even though the excerpt is available', async () => {
     const world = createMockWorld('server.activeUnanswered');
-    const long = `  앞 공백 유지\n\n${'가'.repeat(200)}`;
-    world.seedAnswer(SYNTHETIC_KEYS.registered, long);
+    world.seedAnswer(SYNTHETIC_KEYS.registered, `긴 합성 답변 ${'가'.repeat(200)}`);
     const { started } = bootApp(server, { world });
     await act(() => started);
     await findTitle(copy['CPY-F10-001']);
-
-    const record = screen.getByRole('region', { name: copy['CPY-F10-013'] });
-    const text = record.querySelector('.arca-user-text');
-    const ellipsis = text?.querySelector('[aria-hidden="true"]');
-    expect(ellipsis?.textContent).toBe('…');
-    const shown = (text?.textContent ?? '').slice(0, -1);
-    expect(long.startsWith(shown)).toBe(true);
-    expect(shown.startsWith('  앞 공백 유지\n\n')).toBe(true);
-  });
-
-  test('whitespace-only answer keeps the empty area and adds the explanation', async () => {
-    const world = createMockWorld('server.activeUnanswered');
-    world.seedAnswer(SYNTHETIC_KEYS.registered, '   ');
-    const { started } = bootApp(server, { world });
-    await act(() => started);
-    await findTitle(copy['CPY-F10-001']);
-    expect(screen.getByText(copy['CPY-COM-004'])).toBeInTheDocument();
+    expect(document.querySelector('.arca-sender')).toHaveTextContent(copy['CPY-F10-011']);
+    expect(document.body.textContent).not.toContain('긴 합성 답변');
   });
 
   test('detail action opens F21 with a local opaque ref in history state: no server id in history or URL', async () => {

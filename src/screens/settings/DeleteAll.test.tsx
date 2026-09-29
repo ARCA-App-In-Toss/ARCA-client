@@ -6,7 +6,7 @@ import { paths } from '../../app/navigation.ts';
 import { createFakeStorage, type FakeStorage } from '../../mocks/platform.ts';
 import { createMockWorld, type MockWorld, SYNTHETIC_KEYS } from '../../mocks/world.ts';
 import { bootApp, findTitle, opCount } from '../../test/boot.tsx';
-import { copy } from '../../ui/copy.ts';
+import { copy, rootTabLabels } from '../../ui/copy.ts';
 
 const server = setupServer();
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
@@ -33,7 +33,7 @@ async function openDeleteAll(world = createMockWorld('server.activeUnanswered'),
   await waitFor(() => expect(hasText(storage, '기기에 남은 합성 임시본')).toBe(true), { timeout: 3_000 });
   await userEvent.click(screen.getByRole('button', { name: copy['CPY-COM-005'] }));
   await findTitle(copy['CPY-F10-001']);
-  await userEvent.click(screen.getByRole('button', { name: copy['CPY-F10-002'] }));
+  await userEvent.click(screen.getByRole('button', { name: rootTabLabels.settings }));
   await findTitle(copy['CPY-F30-001']);
   await userEvent.click(screen.getByRole('button', { name: copy['CPY-F30-034'] }));
   await findTitle(copy['CPY-F31-001']);

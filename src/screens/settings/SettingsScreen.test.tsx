@@ -32,7 +32,7 @@ async function openSettings(options: { nickname?: string | null; from?: 'today' 
     await userEvent.click(screen.getByRole('button', { name: rootTabLabels.archive }));
     await findTitle(copy['CPY-F20-001']);
   }
-  await userEvent.click(screen.getByRole('button', { name: copy['CPY-F10-002'] }));
+  await userEvent.click(screen.getByRole('button', { name: rootTabLabels.settings }));
   await findTitle(copy['CPY-F30-001']);
   await waitFor(() => expect(displayName()).toBeTruthy());
   return { ...booted, storage };
@@ -58,17 +58,17 @@ describe('F30 settings (03 §7.1, 04 §6.13)', () => {
     expect(input).toHaveAttribute('aria-invalid', 'true');
   });
 
-  test('read: nickname or passenger code as the name, the code, no tabs; Back returns to the entering root', async () => {
+  test('read: nickname or passenger code as the name, the code; settings is the current root tab without Back', async () => {
     const { router } = await openSettings({ nickname: '합성 승객', from: 'archive' });
     expect(router.state.location.pathname).toBe(paths.settings);
     expect(displayName()).toBe('합성 승객');
     expect(within(passengerGroup()).getByText('ARC-2417')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: rootTabLabels.today })).toBeNull();
-    expect(screen.queryByRole('button', { name: copy['CPY-F10-002'] })).toBeNull();
+    expect(screen.getByRole('button', { name: rootTabLabels.settings })).toHaveAttribute('aria-current', 'page');
+    expect(screen.queryByRole('button', { name: copy['CPY-COM-005'] })).toBeNull();
     expect(document.body.textContent).not.toContain(SYNTHETIC_KEYS.registered);
     expect(screen.getByText(copy['CPY-F30-024'])).toBeInTheDocument();
     expect(screen.getByRole('button', { name: copy['CPY-F30-034'] })).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: copy['CPY-COM-005'] }));
+    await userEvent.click(screen.getByRole('button', { name: rootTabLabels.archive }));
     await findTitle(copy['CPY-F20-001']);
   });
 
@@ -79,6 +79,7 @@ describe('F30 settings (03 §7.1, 04 §6.13)', () => {
     const field = screen.getByRole('textbox', { name: copy['CPY-F30-008'] });
     expect(field).toHaveValue('합성 승객');
     expect(field).toHaveFocus();
+    expect(screen.queryByRole('button', { name: rootTabLabels.today })).toBeNull();
     const save = screen.getByRole('button', { name: copy['CPY-F30-015'] });
     expect(save).toBeDisabled();
     fireEvent.change(field, { target: { value: '  합성 승객 ' } });
@@ -91,6 +92,7 @@ describe('F30 settings (03 §7.1, 04 §6.13)', () => {
     expect(displayName()).toBe('새 합성 이름');
     expect(screen.queryByRole('textbox', { name: copy['CPY-F30-008'] })).toBeNull();
     expect(screen.getByRole('button', { name: copy['CPY-F30-007'] })).toHaveFocus();
+    expect(screen.getByRole('button', { name: rootTabLabels.today })).toBeInTheDocument();
     expect(opCount(world, 'OP-004')).toBe(1);
     expect(world.passengers.get(SYNTHETIC_KEYS.registered)?.nickname).toBe('새 합성 이름');
     expect([...storage.data.values()].some((v) => v.includes('새 합성 이름'))).toBe(false);

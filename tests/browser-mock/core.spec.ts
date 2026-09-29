@@ -5,7 +5,7 @@ const TEXT = '  브라우저 합성 답변\n\n빈 줄 뒤 👩‍👩‍👧  ';
 async function writeAndSave(page: Page) {
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1, name: '오늘의 항해' })).toBeVisible({ timeout: 15_000 });
-  await page.getByRole('button', { name: '답변 쓰기' }).click();
+  await page.getByRole('button', { name: '답변 작성하기' }).click();
   const field = page.getByRole('textbox', { name: '내 답변' });
   await field.fill(TEXT);
   await expect(page.getByText('기기에 임시 보관됨')).toBeVisible();
@@ -36,7 +36,7 @@ test('320px with 200% text: no horizontal scroll and the save control stays reac
   await page.goto('/');
   await page.addStyleTag({ content: 'html { font-size: 200%; }' });
   await expect(page.getByRole('heading', { level: 1, name: '오늘의 항해' })).toBeVisible({ timeout: 15_000 });
-  await page.getByRole('button', { name: '답변 쓰기' }).click();
+  await page.getByRole('button', { name: '답변 작성하기' }).click();
   await page.getByRole('textbox', { name: '내 답변' }).fill('긴 글 합성\n'.repeat(30));
   const save = page.getByRole('button', { name: '기억 조각으로 저장' });
   await save.scrollIntoViewIfNeeded();
@@ -64,5 +64,5 @@ test('MS-CORE-009 fonts and images blocked: question, writing, result and moves 
   await writeAndSave(page);
   await page.getByRole('button', { name: '오늘의 항해로' }).click();
   await expect(page.getByRole('heading', { level: 1, name: '오늘의 항해' })).toBeVisible();
-  await expect(page.locator('.arca-user-text').first()).toHaveText(TEXT, { useInnerText: false });
+  await expect(page.getByRole('button', { name: '내 기억 조각 보기' })).toBeVisible();
 });

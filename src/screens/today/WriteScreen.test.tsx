@@ -178,8 +178,8 @@ describe('MS-CORE-001 question → write → save → read again', () => {
 
     await userEvent.click(screen.getByRole('button', { name: copy['CPY-F12-014'] }));
     await findTitle(copy['CPY-F10-001']);
-    const record = await screen.findByRole('region', { name: copy['CPY-F10-012'] });
-    expect(record.querySelector('.arca-user-text')?.textContent).toBe(text);
+    await waitFor(() => expect(document.querySelector('.arca-sender')).toHaveTextContent(copy['CPY-F10-011']));
+    expect(document.querySelector('.arca-user-text')).toBeNull();
 
     await userEvent.click(screen.getByRole('button', { name: copy['CPY-F10-016'] }));
     await findTitle(copy['CPY-F21-001']);
@@ -389,8 +389,8 @@ describe('MS-CORE-007 success confirmed after leaving F11', () => {
     await userEvent.click(screen.getByRole('button', { name: '오늘' }));
     await findTitle(copy['CPY-F10-001']);
 
-    const record = await screen.findByRole('region', { name: copy['CPY-F10-012'] });
-    expect(record.querySelector('.arca-user-text')?.textContent).toBe('떠난 뒤 확인될 합성');
+    await waitFor(() => expect(document.querySelector('.arca-sender')).toHaveTextContent(copy['CPY-F10-011']));
+    expect(document.body.textContent).not.toContain('떠난 뒤 확인될 합성');
     await waitFor(() =>
       expect(screen.getAllByRole('status').some((s) => s.textContent === copy['CPY-F10-011'])).toBe(true),
     );
