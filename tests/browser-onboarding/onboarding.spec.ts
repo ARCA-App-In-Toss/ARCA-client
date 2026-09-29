@@ -69,7 +69,7 @@ test('320px with 200% text: every intro scene and consent screen reflow without 
 });
 
 test('typing never moves a character to another line (balanced wrapping stays fixed)', async ({ page }) => {
-  const target = '탑승구가 닫히면, 당신의 이야기와 함께 항해가 시작됩니다.';
+  const target = '한 사람의 생애를 펼쳐 보이는 인공지능,\nJOY를 ARCA에 실었습니다.';
   for (const width of [320, 360, 390]) {
     await page.setViewportSize({ width, height: 740 });
     await page.goto('/');

@@ -55,7 +55,7 @@ describe('F01 intro (IX-030, MS-ONB-003)', () => {
     const { world, router } = await bootIntro();
     expect(screen.getByRole('img', { name: '6개 중 1번째 장면' })).toHaveTextContent('1 / 6');
     const [first, second] = sentencesOf('CPY-F01-013');
-    expect(first).toBe('2999년,\n인류는 평행우주가 실재한다는 것을 확인했습니다.');
+    expect(first).toBe('2999년 지구,\n인류는 평행우주의 실재를 확인했습니다.');
     expect(visibleLine()).toBe(first);
 
     const next = button(copy['CPY-F01-004']);
@@ -70,9 +70,9 @@ describe('F01 intro (IX-030, MS-ONB-003)', () => {
     expect(screen.getByRole('status').textContent).toBe(`${label}. ${sentencesOf('CPY-F01-014')[0]}`);
     expect(next).toHaveFocus();
 
-    for (let press = 0; press < 9; press += 1) await userEvent.click(next);
+    for (let press = 0; press < 10; press += 1) await userEvent.click(next);
     expect(screen.getByRole('img', { name: '6개 중 6번째 장면' })).toBeInTheDocument();
-    expect(visibleLine()).toBe(sentencesOf('CPY-F01-018')[1]);
+    expect(visibleLine()).toBe(sentencesOf('CPY-F01-018')[2]);
     expect(screen.queryByRole('button', { name: copy['CPY-F01-005'] })).toBeNull();
     await userEvent.click(next);
     expect(document.querySelector('.arca-intro-dialog')).toBeNull();
