@@ -117,3 +117,9 @@
     padding: var(--space-500) var(--space-400);
   }
 }
+
+.arca-capsule-actions {
+  gap: var(--space-100);
+  margin-top: var(--space-400);
+  margin-bottom: calc(var(--space-200) * -1);
+}

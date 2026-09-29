@@ -165,7 +165,7 @@ function Unanswered({
 
   return (
     <QuestionCapsule today={today} text={questionOf(today, role).text}>
-      <div className="arca-actions">
+      <div className="arca-actions arca-capsule-actions">
         <PixelButton variant="primary" onClick={() => navigate(paths.write, { questionRole: role })}>
           {copy['CPY-F10-005']}
         </PixelButton>
@@ -197,7 +197,7 @@ function Answered({ today, answer }: { today: Today; answer: TodayAnswer }) {
         <QuestionDate dateKst={today.dateKst} />
         <p className="arca-question arca-question--quiet">{answer.question.text}</p>
       </section>
-      <p className="arca-sender arca-sender--compact">
+      <p className="arca-sender arca-sender--compact arca-sender--centered">
         <MemoryFragment cell={2} />
         <span className="arca-label arca-label--signal">{copy['CPY-F10-011']}</span>
       </p>

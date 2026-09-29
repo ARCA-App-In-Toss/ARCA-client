@@ -32,6 +32,11 @@
   margin: 0;
 }
 
+.arca-sender--centered {
+  justify-content: center;
+  text-align: center;
+}
+
 .arca-excerpt {
   --px-fill: var(--color-bg-record);
   display: flex;
