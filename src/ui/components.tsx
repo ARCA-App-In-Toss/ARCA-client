@@ -13,14 +13,17 @@ import { type IconName, MemoryFragment, PixelIcon } from './pixel.tsx';
 export function PixelAppShell({
   children,
   tabs,
+  backdrop,
   className,
 }: {
   children: ReactNode;
   tabs?: ReactNode;
+  backdrop?: ReactNode;
   className?: string;
 }) {
   return (
     <div className={['arca-shell', className].filter(Boolean).join(' ')}>
+      {backdrop}
       <main className={tabs ? 'arca-shell__content arca-shell__content--with-tabs' : 'arca-shell__content'}>
         {children}
       </main>
@@ -45,25 +48,24 @@ export function ScenePanel({
   children,
   labelledBy,
   art = false,
-  hero = false,
 }: {
   children: ReactNode;
   labelledBy?: string | undefined;
   art?: boolean;
-  hero?: boolean;
 }) {
   return (
     <section
-      className={[
-        'arca-scene-panel',
-        'arca-plain',
-        art ? 'arca-scene-panel--art' : null,
-        hero ? 'arca-scene-panel--hero' : null,
-      ]
-        .filter(Boolean)
-        .join(' ')}
+      className={['arca-scene-panel', 'arca-plain', art ? 'arca-scene-panel--art' : null].filter(Boolean).join(' ')}
       aria-labelledby={labelledBy}
     >
+      {children}
+    </section>
+  );
+}
+
+export function CapsuleDisplay({ labelledBy, children }: { labelledBy?: string | undefined; children: ReactNode }) {
+  return (
+    <section className="arca-capsule-display arca-px" aria-labelledby={labelledBy}>
       {children}
     </section>
   );

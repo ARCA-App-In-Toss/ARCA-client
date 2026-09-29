@@ -244,39 +244,6 @@ function sceneBoarding(): string[] {
   return rowsOf(g);
 }
 
-function sceneObservation(): string[] {
-  const g = canvas();
-  rect(g, 1, 1, 54, 13, 'R');
-  rect(g, 3, 2, 50, 10, 'C');
-  plot(
-    g,
-    [
-      [8, 4],
-      [20, 6],
-      [28, 3],
-      [48, 5],
-    ],
-    'l',
-  );
-  rect(g, 37, 4, 8, 8, 'T');
-  rect(g, 39, 3, 6, 1, 't');
-  rect(g, 41, 6, 4, 6, 'c');
-  rect(g, 3, 12, 50, 1, 't');
-  rect(g, 0, 15, 56, 2, 'i');
-  rect(g, 4, 11, 12, 4, 'R');
-  rect(g, 6, 12, 8, 2, 'T');
-  rect(g, 7, 12, 2, 1, 's');
-  rect(g, 11, 12, 2, 1, 'S');
-  rect(g, 47, 14, 4, 1, 'l');
-  return rowsOf(g).slice(0, 18);
-}
-
-const observation = sceneObservation();
-
-export function ObservationScene() {
-  return <PixelArt rows={observation} className="arca-observation-art" />;
-}
-
 export const introScenes: readonly (readonly string[])[] = [
   sceneMirror(false),
   sceneVoyage(),

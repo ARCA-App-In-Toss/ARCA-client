@@ -1,8 +1,3 @@
-.arca-scene-panel--hero {
-  gap: var(--space-500);
-  padding: var(--space-600) var(--space-500);
-}
-
 .arca-question--lead {
   font-size: var(--type-question-lead-size);
   line-height: var(--type-question-lead-line);
@@ -147,12 +142,6 @@
   flex: 1;
 }
 
-.arca-question-source {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-400);
-}
-
 .arca-question-heading {
   display: flex;
   flex-wrap: wrap;
@@ -167,14 +156,6 @@
   line-height: var(--type-caption-line);
   color: var(--color-text-on-dark-secondary);
   overflow-wrap: anywhere;
-}
-
-.arca-observation-art {
-  display: block;
-  width: var(--art-observation-width);
-  max-width: 100%;
-  height: auto;
-  align-self: center;
 }
 
 .arca-page--cta .arca-shell__content {

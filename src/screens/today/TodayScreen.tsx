@@ -1,10 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { usePastDrafts } from '../../app/hooks/pastDrafts.ts';
+import { useSkyPhase } from '../../app/hooks/sky.ts';
 import { useToday, useTodayRefreshEvents } from '../../app/hooks/today.ts';
 import { useAnswerWrite, usePendingWrite } from '../../app/hooks/writes.ts';
 import { paths, type QuestionRole, useAnswerRefs, useArcaNavigate } from '../../app/navigation.ts';
 import type { Today, TodayAnswer } from '../../domain/models.ts';
 import {
+  CapsuleDisplay,
   InlineStatus,
   InsetPanel,
   MemoryRow,
@@ -12,26 +14,22 @@ import {
   PixelButton,
   PixelPlaceholder,
   RecordPanel,
-  ScenePanel,
   StatePanel,
 } from '../../ui/components.tsx';
 import { copy, fill } from '../../ui/copy.ts';
 import { formatDateKst, formatInstantKst, isWhitespaceOnly } from '../../ui/format.ts';
 import { PixelSheet } from '../../ui/PixelSheet.tsx';
-import { MemoryFragment, ObservationScene } from '../../ui/pixel.tsx';
+import { CapsuleBackdrop, MemoryFragment } from '../../ui/pixel.tsx';
 import { RootHeader, RootTabs } from '../RootTabs.tsx';
 import { useOfflineOnFailure } from '../shared/offline.ts';
 
 function QuestionLabel({ id, text, dateKst }: { id: string; text: string; dateKst: string }) {
   return (
-    <div className="arca-question-source">
-      <ObservationScene />
-      <div className="arca-question-heading">
-        <p className="arca-label arca-label--signal" id={id}>
-          {text}
-        </p>
-        <QuestionDate dateKst={dateKst} />
-      </div>
+    <div className="arca-question-heading">
+      <p className="arca-label arca-label--signal" id={id}>
+        {text}
+      </p>
+      <QuestionDate dateKst={dateKst} />
     </div>
   );
 }
@@ -40,6 +38,7 @@ export function TodayScreen() {
   const today = useToday();
   useTodayRefreshEvents({ onEntry: true });
   const offline = useOfflineOnFailure(today.error);
+  const sky = useSkyPhase();
 
   const refetch = () => void today.refetch();
   const dailySemaId = today.data?.sema.dailySemaId ?? null;
@@ -55,9 +54,11 @@ export function TodayScreen() {
     write.consume();
   }, [write]);
 
+  const backdrop = <CapsuleBackdrop sky={sky} />;
+
   if (!today.data) {
     return (
-      <PixelAppShell tabs={<RootTabs current="today" />}>
+      <PixelAppShell className="arca-page--capsule" backdrop={backdrop} tabs={<RootTabs current="today" />}>
         <RootHeader title={copy['CPY-F10-001']} />
         {today.isError ? (
           <StatePanel>
@@ -67,10 +68,10 @@ export function TodayScreen() {
             </PixelButton>
           </StatePanel>
         ) : (
-          <ScenePanel>
+          <CapsuleDisplay>
             <PixelPlaceholder />
             <InlineStatus message={copy['CPY-F10-019']} />
-          </ScenePanel>
+          </CapsuleDisplay>
         )}
       </PixelAppShell>
     );
@@ -93,7 +94,7 @@ export function TodayScreen() {
     (answeredExcerptMissing ? copy['CPY-F10-018'] : null) ??
     announcement;
   return (
-    <PixelAppShell tabs={<RootTabs current="today" />}>
+    <PixelAppShell className="arca-page--capsule" backdrop={backdrop} tabs={<RootTabs current="today" />}>
       <RootHeader title={copy['CPY-F10-001']} count={data.activeAnswerCount} />
       {data.answer.state === 'UNANSWERED' ? (
         <Unanswered today={data} onAnnounce={setAnnouncement} pendingQuestionId={pendingQuestionId} />
@@ -111,12 +112,12 @@ export function TodayScreen() {
         <InlineStatus message={liveMessage} />
       </div>
       {refreshFailed && (
-        <div className="arca-actions">
+        <InsetPanel>
           <InlineStatus message={copy['CPY-F10-022']} tone="danger" live={false} />
           <PixelButton loading={today.isFetching} onClick={refetch}>
             {copy['CPY-F10-023']}
           </PixelButton>
-        </div>
+        </InsetPanel>
       )}
     </PixelAppShell>
   );
@@ -134,12 +135,13 @@ function questionOf(today: Today, role: QuestionRole) {
   return role === 'PRIMARY' ? today.sema.primaryQuestion : today.sema.alternateQuestion;
 }
 
-function QuestionHero({ today, text }: { today: Today; text: string }) {
+function QuestionCapsule({ today, text, children }: { today: Today; text: string; children: ReactNode }) {
   return (
-    <ScenePanel labelledBy="f10-question-label" hero>
+    <CapsuleDisplay labelledBy="f10-question-label">
       <QuestionLabel id="f10-question-label" text={copy['CPY-F10-003']} dateKst={today.dateKst} />
       <p className="arca-question arca-question--lead">{text}</p>
-    </ScenePanel>
+      {children}
+    </CapsuleDisplay>
   );
 }
 
@@ -159,21 +161,19 @@ function Unanswered({
     const pendingRole: QuestionRole =
       pendingQuestionId === today.sema.alternateQuestion.questionId ? 'ALTERNATE' : 'PRIMARY';
     return (
-      <>
-        <QuestionHero today={today} text={questionOf(today, pendingRole).text} />
+      <QuestionCapsule today={today} text={questionOf(today, pendingRole).text}>
         <InlineStatus message={copy['CPY-F10-038']} live={false} />
         <div className="arca-actions">
           <PixelButton variant="primary" onClick={() => navigate(paths.write, { questionRole: pendingRole })}>
             {copy['CPY-F10-039']}
           </PixelButton>
         </div>
-      </>
+      </QuestionCapsule>
     );
   }
 
   return (
-    <>
-      <QuestionHero today={today} text={questionOf(today, role).text} />
+    <QuestionCapsule today={today} text={questionOf(today, role).text}>
       <div className="arca-actions">
         <PixelButton variant="primary" onClick={() => navigate(paths.write, { questionRole: role })}>
           {copy['CPY-F10-005']}
@@ -189,7 +189,7 @@ function Unanswered({
           {role === 'PRIMARY' ? copy['CPY-F10-006'] : copy['CPY-F10-007']}
         </PixelButton>
       </div>
-    </>
+    </QuestionCapsule>
   );
 }
 
@@ -211,7 +211,7 @@ function Answered({
   const excerpt = answer.excerpt.state === 'AVAILABLE' ? answer.excerpt.value : null;
 
   return (
-    <>
+    <CapsuleDisplay>
       <section className="arca-preface" aria-labelledby="f10-saved-question-label">
         <p className="arca-visually-hidden" id="f10-saved-question-label">
           {copy['CPY-F10-015']}
@@ -256,7 +256,7 @@ function Answered({
           {copy['CPY-F10-016']}
         </PixelButton>
       </div>
-    </>
+    </CapsuleDisplay>
   );
 }
 

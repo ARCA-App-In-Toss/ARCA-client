@@ -74,11 +74,35 @@
   --type-narrative-line: var(--type-line-body);
 
   --color-border-subtle: #2d4059;
+  --color-sky-night-1: #050b15;
+  --color-sky-night-2: #090f1d;
+  --color-sky-night-3: #0d1728;
+  --color-sky-night-4: #111e32;
+  --color-sky-night-horizon: #172f43;
+  --color-sky-dawn-1: #0b1430;
+  --color-sky-dawn-2: #15204a;
+  --color-sky-dawn-3: #2a2e5e;
+  --color-sky-dawn-4: #4b3d6e;
+  --color-sky-dawn-horizon: #7a5a6e;
+  --color-sky-day-1: #0e2244;
+  --color-sky-day-2: #143058;
+  --color-sky-day-3: #1b3d6b;
+  --color-sky-day-4: #24497a;
+  --color-sky-day-horizon: #3a5f94;
+  --color-sky-dusk-1: #0c1330;
+  --color-sky-dusk-2: #221d46;
+  --color-sky-dusk-3: #3d2448;
+  --color-sky-dusk-4: #5e2f45;
+  --color-sky-dusk-horizon: #c98a3d;
+  --color-sky-star: #607795;
+  --color-sky-star-bright: #afbdd0;
+  --color-capsule-display-fill: rgb(25 38 58 / 0.9);
+  --color-capsule-display-line: #509dab;
   --color-brand-edge: #91abe9;
   --color-tap-highlight: transparent;
   --a11y-pixel: 1px;
   --art-scene-width: 224px;
-  --art-observation-width: 224px;
+  --layout-capsule-display-offset: 8dvh;
   --layout-tabs-height: calc(
     var(--type-control-line) +
     var(--space-200) *

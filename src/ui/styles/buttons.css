@@ -42,7 +42,8 @@
 }
 
 .arca-scene-panel .arca-button--secondary,
-.arca-record-panel .arca-button--secondary {
+.arca-record-panel .arca-button--secondary,
+.arca-capsule-display .arca-button--secondary {
   --px-fill: var(--color-bg-scene-raised);
 }
 

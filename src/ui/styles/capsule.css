@@ -1,0 +1,119 @@
+.arca-page--capsule {
+  position: relative;
+  isolation: isolate;
+}
+
+.arca-capsule-backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: -1;
+  width: 100%;
+  height: 100dvh;
+  overflow: hidden;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.arca-capsule-backdrop--ready {
+  visibility: visible;
+  background: var(--color-bg-scene);
+}
+
+.arca-capsule-scene {
+  --capsule-cell: max(100vw / 156, 100dvh / 170);
+  --sky-1: var(--color-sky-night-1);
+  --sky-2: var(--color-sky-night-2);
+  --sky-3: var(--color-sky-night-3);
+  --sky-4: var(--color-sky-night-4);
+  --sky-horizon: var(--color-sky-night-horizon);
+  --sky-star: var(--color-sky-star);
+  --sky-star-bright: var(--color-sky-star-bright);
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: calc(var(--capsule-cell) * 156);
+  height: calc(var(--capsule-cell) * 156);
+  transform: translateX(-50%);
+}
+
+@supports (width: round(up, 1px, 1px)) {
+  .arca-capsule-scene {
+    --capsule-cell: max(round(up, 100vw / 156, 1px), round(100dvh / 170, 1px));
+    left: round(down, calc(50% - var(--capsule-cell) * 78), 1px);
+    transform: none;
+  }
+}
+
+.arca-capsule-scene[data-sky="dawn"] {
+  --sky-1: var(--color-sky-dawn-1);
+  --sky-2: var(--color-sky-dawn-2);
+  --sky-3: var(--color-sky-dawn-3);
+  --sky-4: var(--color-sky-dawn-4);
+  --sky-horizon: var(--color-sky-dawn-horizon);
+}
+
+.arca-capsule-scene[data-sky="day"] {
+  --sky-1: var(--color-sky-day-1);
+  --sky-2: var(--color-sky-day-2);
+  --sky-3: var(--color-sky-day-3);
+  --sky-4: var(--color-sky-day-4);
+  --sky-horizon: var(--color-sky-day-horizon);
+}
+
+.arca-capsule-scene[data-sky="dusk"] {
+  --sky-1: var(--color-sky-dusk-1);
+  --sky-2: var(--color-sky-dusk-2);
+  --sky-3: var(--color-sky-dusk-3);
+  --sky-4: var(--color-sky-dusk-4);
+  --sky-horizon: var(--color-sky-dusk-horizon);
+}
+
+.arca-capsule-scene__layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+}
+
+.arca-capsule-display {
+  --px-fill: transparent;
+  --px-line: var(--color-capsule-display-line);
+  --cut: var(--pixel-cell);
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-500);
+  margin-top: var(--layout-capsule-display-offset);
+  padding: var(--space-600) var(--space-500);
+}
+
+.arca-capsule-display::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--color-capsule-display-fill);
+  clip-path: polygon(
+    0 var(--cut),
+    var(--cut) var(--cut),
+    var(--cut) 0,
+    calc(100% - var(--cut)) 0,
+    calc(100% - var(--cut)) var(--cut),
+    100% var(--cut),
+    100% calc(100% - var(--cut)),
+    calc(100% - var(--cut)) calc(100% - var(--cut)),
+    calc(100% - var(--cut)) 100%,
+    var(--cut) 100%,
+    var(--cut) calc(100% - var(--cut)),
+    0 calc(100% - var(--cut))
+  );
+}
+
+@media (max-width: 359.98px) {
+  .arca-capsule-display {
+    padding: var(--space-500) var(--space-400);
+  }
+}
