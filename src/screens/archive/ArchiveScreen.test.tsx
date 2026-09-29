@@ -7,6 +7,7 @@ import { paths } from '../../app/navigation.ts';
 import { mockErrors } from '../../mocks/handlers.ts';
 import { createMockWorld, type MockWorld, SYNTHETIC_KEYS } from '../../mocks/world.ts';
 import { bootApp, findTitle, opCount } from '../../test/boot.tsx';
+import { revealObservedTargets } from '../../test/intersection.ts';
 import { copy, fill, rootTabLabels } from '../../ui/copy.ts';
 
 const server = setupServer();
@@ -122,6 +123,8 @@ const rowTexts = () =>
     .map((r) => r.querySelector('.arca-memory-row__question')?.textContent);
 const liveText = () => document.querySelector('.arca-visually-hidden[role="status"]')?.textContent ?? '';
 const setScrollY = (value: number) => Object.defineProperty(window, 'scrollY', { value, configurable: true });
+const listEndWatched = () => document.querySelector('.arca-list-sentinel') !== null;
+const nearListEnd = () => act(() => revealObservedTargets());
 
 describe('F20 page chain (06 §6.3, IX-023, IX-042)', () => {
   beforeEach(() => {
@@ -129,27 +132,32 @@ describe('F20 page chain (06 §6.3, IX-023, IX-042)', () => {
     setScrollY(0);
   });
 
-  test('MS-LIST-001/002: 1, 2 and exactly 20 rows show no "more" action and no end message', async () => {
+  test('MS-LIST-001/002: 1, 2 and exactly 20 rows watch for no next page and show no end message', async () => {
     for (const n of [1, 2, 20]) {
       const world = createMockWorld('server.activeUnanswered');
       seedMany(world, n);
       const { view } = await openArchive(world);
       await vi.waitFor(() => expect(rowTexts()).toHaveLength(n));
-      expect(screen.queryByRole('button', { name: copy['CPY-F20-016'] })).toBeNull();
+      expect(listEndWatched()).toBe(false);
       expect(screen.queryByText(copy['CPY-F20-021'])).toBeNull();
       view.unmount();
     }
   });
 
-  test('MS-LIST-003/004: 21 rows = 20 + 1 on request, one heading per KST year-month across the page edge', async () => {
+  test('MS-LIST-003/004: 21 rows = 20 + 1 when the list end comes near, one heading per KST year-month across the page edge', async () => {
     const world = createMockWorld('server.activeUnanswered');
     seedMany(world, 21, '2027-01-10');
     await openArchive(world);
     await vi.waitFor(() => expect(rowTexts()).toHaveLength(20));
     expect(screen.queryByText(copy['CPY-F20-021'])).toBeNull();
-    const more = screen.getByRole('button', { name: copy['CPY-F20-016'] });
-    more.focus();
-    await userEvent.click(more);
+    expect(screen.queryByRole('button', { name: '기록 더 보기' })).toBeNull();
+    expect(listEndWatched()).toBe(true);
+    const focused = document.activeElement;
+    let release!: () => void;
+    world.addFault('OP-010', { kind: 'hold', release: new Promise<void>((r) => (release = r)) });
+    await nearListEnd();
+    await vi.waitFor(() => expect(document.querySelector('.arca-pixel-loader')).toHaveAttribute('aria-hidden', 'true'));
+    release();
 
     await vi.waitFor(() => expect(rowTexts()).toHaveLength(21));
     expect(rowTexts()).toEqual(Array.from({ length: 21 }, (_, i) => `합성 질문 ${i + 1}`));
@@ -157,7 +165,9 @@ describe('F20 page chain (06 §6.3, IX-023, IX-042)', () => {
     expect(headings).toEqual(['2027년 1월', '2026년 12월']);
     expect(screen.getByText(copy['CPY-F20-021'])).toBeInTheDocument();
     expect(liveText()).toBe(fill(copy['CPY-F20-018'], { loadedCount: '1' }));
-    expect(document.activeElement).toBe(screen.getByText(copy['CPY-F20-021']));
+    expect(document.activeElement).toBe(focused);
+    expect(document.querySelector('.arca-pixel-loader')).toBeNull();
+    expect(listEndWatched()).toBe(false);
     expect(opCount(world, 'OP-010')).toBe(2);
   });
 
@@ -167,9 +177,10 @@ describe('F20 page chain (06 §6.3, IX-023, IX-042)', () => {
     await openArchive(world);
     await vi.waitFor(() => expect(rowTexts()).toHaveLength(20));
     world.addFault('OP-010', { kind: 'network' }, { kind: 'network' });
-    await userEvent.click(screen.getByRole('button', { name: copy['CPY-F20-016'] }));
+    await nearListEnd();
     expect(await screen.findByText(copy['CPY-F20-019'], { selector: 'p' })).toBeInTheDocument();
     expect(rowTexts()).toHaveLength(20);
+    expect(listEndWatched()).toBe(false);
     await userEvent.click(screen.getByRole('button', { name: copy['CPY-F20-020'] }));
     await vi.waitFor(() => expect(rowTexts()).toHaveLength(21));
     expect(screen.queryByText(copy['CPY-F20-019'], { selector: 'p' })).toBeNull();
@@ -187,7 +198,7 @@ describe('F20 page chain (06 §6.3, IX-023, IX-042)', () => {
       createdDateKst: '2026-09-28',
     });
     world.answers.delete(seeded[20]?.answerId ?? '');
-    await userEvent.click(screen.getByRole('button', { name: copy['CPY-F20-016'] }));
+    await nearListEnd();
     await vi.waitFor(() => expect(rowTexts()).toHaveLength(21));
     const texts = rowTexts();
     expect(texts).not.toContain('다른 기기 새 질문');
@@ -196,23 +207,24 @@ describe('F20 page chain (06 §6.3, IX-023, IX-042)', () => {
     expect(new Set(texts).size).toBe(texts.length);
   });
 
-  test('MS-LIST-005: CURSOR_INVALID keeps the rows and offers a fresh first page', async () => {
+  test('MS-LIST-005: CURSOR_INVALID keeps the rows; the same retry starts over from a fresh first page', async () => {
     const world = createMockWorld('server.activeUnanswered');
     seedMany(world, 21);
     await openArchive(world);
     await vi.waitFor(() => expect(rowTexts()).toHaveLength(20));
     world.addFault('OP-010', mockErrors.cursorInvalid);
-    await userEvent.click(screen.getByRole('button', { name: copy['CPY-F20-016'] }));
+    await nearListEnd();
     expect(await screen.findByText(copy['CPY-F20-019'], { selector: 'p' })).toBeInTheDocument();
     expect(rowTexts()).toHaveLength(20);
-    expect(screen.queryByRole('button', { name: copy['CPY-F20-016'] })).toBeNull();
+    expect(listEndWatched()).toBe(false);
     world.seedAnswer(SYNTHETIC_KEYS.registered, '새 첫 page 합성', {
       question: { ...world.sema.primaryQuestion, text: '새 첫 page 질문' },
       dailySemaId: 'd-new',
       createdAt: '2026-09-28T01:00:00Z',
       createdDateKst: '2026-09-28',
     });
-    await userEvent.click(screen.getByRole('button', { name: copy['CPY-F20-024'] }));
+    expect(screen.queryByRole('button', { name: '최신 기록 보기' })).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: copy['CPY-F20-020'] }));
     await vi.waitFor(() => expect(rowTexts()[0]).toBe('새 첫 page 질문'));
     expect(rowTexts()).toHaveLength(20);
     expect(document.activeElement).toBe(
@@ -220,7 +232,7 @@ describe('F20 page chain (06 §6.3, IX-023, IX-042)', () => {
     );
   });
 
-  test('MS-LIST-006: a deep reader gets a held candidate; rows stay until the user applies it', async () => {
+  test('MS-LIST-006: a deep reader keeps the rows with no notice; the top button leads to the top where the newer list applies', async () => {
     const world = createMockWorld('server.activeUnanswered');
     seedMany(world, 2);
     await openArchive(world);
@@ -232,7 +244,6 @@ describe('F20 page chain (06 §6.3, IX-023, IX-042)', () => {
     await userEvent.click(screen.getByRole('button', { name: rootTabLabels.archive }));
     await findTitle(copy['CPY-F20-001']);
     await vi.waitFor(() => expect(opCount(world, 'OP-010')).toBe(2));
-    expect(screen.queryByText(copy['CPY-F20-023'], { selector: 'p' })).toBeNull();
 
     await userEvent.click(screen.getByRole('button', { name: rootTabLabels.today }));
     await findTitle(copy['CPY-F10-001']);
@@ -243,16 +254,25 @@ describe('F20 page chain (06 §6.3, IX-023, IX-042)', () => {
       createdDateKst: '2026-09-28',
     });
     await userEvent.click(screen.getByRole('button', { name: rootTabLabels.archive }));
-    await findTitle(copy['CPY-F20-001']);
-    expect(await screen.findByText(copy['CPY-F20-023'], { selector: 'p' })).toBeInTheDocument();
-    expect(liveText()).toBe(copy['CPY-F20-023']);
+    const title = await findTitle(copy['CPY-F20-001']);
+    await vi.waitFor(() => expect(opCount(world, 'OP-010')).toBe(3));
     expect(rowTexts()).toEqual(['합성 질문 1', '합성 질문 2']);
+    expect(screen.queryByRole('button', { name: '최신 기록 보기' })).toBeNull();
+    expect(liveText()).toBe('');
 
-    await userEvent.click(screen.getByRole('button', { name: copy['CPY-F20-024'] }));
+    const toTop = document.querySelector('.arca-scroll-top') as HTMLButtonElement;
+    setScrollY(1200);
+    fireEvent.scroll(window);
+    await vi.waitFor(() => expect(toTop).toHaveClass('arca-scroll-top--shown'));
+    await userEvent.click(screen.getByRole('button', { name: copy['CPY-F20-025'] }));
+    expect(window.scrollTo).toHaveBeenCalledWith({ top: 0, behavior: 'smooth' });
+    expect(title).toHaveFocus();
+    setScrollY(0);
+    fireEvent.scroll(window);
     await vi.waitFor(() => expect(rowTexts()[0]).toBe('후보 질문'));
-    expect(screen.queryByText(copy['CPY-F20-023'], { selector: 'p' })).toBeNull();
-    expect(window.scrollTo).toHaveBeenCalledWith(0, 0);
-    expect(document.activeElement?.classList.contains('arca-memory-row')).toBe(true);
+    expect(toTop).not.toHaveClass('arca-scroll-top--shown');
+    expect(toTop).toHaveAttribute('inert');
+    expect(title).toHaveFocus();
   });
 
   test('MS-LIST-006: returning to the top applies the candidate without moving focus; a failed refresh shows no candidate', async () => {
@@ -270,7 +290,9 @@ describe('F20 page chain (06 §6.3, IX-023, IX-042)', () => {
       createdDateKst: '2026-09-28',
     });
     await userEvent.click(screen.getByRole('button', { name: rootTabLabels.archive }));
-    await screen.findByText(copy['CPY-F20-023'], { selector: 'p' });
+    await findTitle(copy['CPY-F20-001']);
+    await vi.waitFor(() => expect(opCount(world, 'OP-010')).toBe(2));
+    expect(rowTexts()).toHaveLength(2);
     const focused = document.activeElement;
     setScrollY(0);
     fireEvent.scroll(window);
@@ -283,8 +305,21 @@ describe('F20 page chain (06 §6.3, IX-023, IX-042)', () => {
     world.addFault('OP-010', { kind: 'network' }, { kind: 'network' });
     await userEvent.click(screen.getByRole('button', { name: rootTabLabels.archive }));
     expect(await screen.findByText(copy['CPY-F20-022'], { selector: 'p' })).toBeInTheDocument();
-    expect(screen.queryByText(copy['CPY-F20-023'], { selector: 'p' })).toBeNull();
     expect(rowTexts()).toHaveLength(3);
+  });
+
+  test('tapping the current 기록 tab again scrolls to the top and keeps focus on the tab', async () => {
+    const world = createMockWorld('server.activeUnanswered');
+    seedMany(world, 21);
+    await openArchive(world);
+    await vi.waitFor(() => expect(rowTexts()).toHaveLength(20));
+    setScrollY(1200);
+    const current = screen.getByRole('button', { name: rootTabLabels.archive });
+    expect(current).toHaveAttribute('aria-current', 'page');
+    await userEvent.click(current);
+    expect(window.scrollTo).toHaveBeenCalledWith({ top: 0, behavior: 'smooth' });
+    expect(current).toHaveFocus();
+    expect(screen.getByRole('heading', { level: 1, name: copy['CPY-F20-001'] })).toBeInTheDocument();
   });
 
   test('MS-LIST-007: list and count fail independently; the count is never taken from rows', async () => {
@@ -320,7 +355,7 @@ describe('F20 page chain (06 §6.3, IX-023, IX-042)', () => {
     seedMany(world, 21);
     const { router } = await openArchive(world);
     await vi.waitFor(() => expect(rowTexts()).toHaveLength(20));
-    await userEvent.click(screen.getByRole('button', { name: copy['CPY-F20-016'] }));
+    await nearListEnd();
     await vi.waitFor(() => expect(rowTexts()).toHaveLength(21));
     const before = opCount(world, 'OP-010');
 

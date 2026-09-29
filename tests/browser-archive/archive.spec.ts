@@ -22,12 +22,15 @@ async function expectNoTapHighlight(page: Page) {
 
 const noIdsInUrl = (page: Page) => expect(page.url()).not.toMatch(/synthetic|token|합성|answer-/);
 
-test('20 + 1 on request, one heading per month, F21 → Back restores the chain and the row', async ({ page }) => {
+test('20 + 1 as the list end nears, one heading per month, F21 → Back restores the chain and the row', async ({
+  page,
+}) => {
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await openArchive(page);
   await expect(page.getByText('모든 기록을 불러왔어요.')).toHaveCount(0);
-  await page.getByRole('button', { name: '기록 더 보기' }).click();
+  await expect(page.getByRole('button', { name: '기록 더 보기' })).toHaveCount(0);
+  await page.locator('.arca-memory-row').nth(19).scrollIntoViewIfNeeded();
   await expect(page.locator('.arca-memory-row')).toHaveCount(21);
   await expect(page.getByText('모든 기록을 불러왔어요.')).toBeVisible();
   await expect(page.getByRole('heading', { level: 2 })).toHaveText(['2026년 9월', '2026년 8월']);
@@ -82,8 +85,31 @@ test('delete: Escape cancels with focus back; confirm removes the row and return
   await expect(page.getByText(deletedDate, { exact: true })).toHaveCount(0);
   await expect(page.locator('.arca-memory-row')).toHaveCount(20);
   await expect(page.getByText('기억 조각 20개')).toBeVisible();
-  await expect(page.getByRole('button', { name: '기록 더 보기' })).toHaveCount(0);
   await noIdsInUrl(page);
+});
+
+test('the top button appears after a deep scroll above the tabs on the right, and returns to the title', async ({
+  page,
+}) => {
+  await openArchive(page);
+  const toTop = page.getByRole('button', { name: '맨 위로' });
+  await expect(toTop).toHaveCount(0);
+  await page.evaluate(() => window.scrollTo(0, window.innerHeight * 1.5));
+  await expect(toTop).toBeVisible();
+  const [button, tabs, width] = await Promise.all([
+    toTop.boundingBox(),
+    page.locator('.arca-root-tabs').boundingBox(),
+    page.evaluate(() => window.innerWidth),
+  ]);
+  expect(button && tabs).toBeTruthy();
+  if (!button || !tabs) return;
+  expect(button.y + button.height).toBeLessThan(tabs.y);
+  expect(Math.round(button.x + button.width)).toBe(Math.round(tabs.x + tabs.width));
+  expect(width - (button.x + button.width)).toBeGreaterThanOrEqual(16);
+  await toTop.click();
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+  await expect(page.getByRole('heading', { level: 1, name: '항해 기록' })).toBeFocused();
+  await expect(toTop).toHaveCount(0);
 });
 
 test('320px with 200% text: F21 actions and the F23 dialog stay reachable, no horizontal scroll', async ({ page }) => {
