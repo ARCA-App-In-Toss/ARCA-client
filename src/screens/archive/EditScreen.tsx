@@ -21,7 +21,6 @@ import {
 import { copy, fill } from '../../ui/copy.ts';
 import { formatCount, formatDateKst } from '../../ui/format.ts';
 import { PixelAlertDialog } from '../../ui/PixelAlertDialog.tsx';
-import { PixelIcon } from '../../ui/pixel.tsx';
 import { type CopyResult, copyResultMessage, keepLabel, keepStateOf, useAnswerInput } from '../shared/compose.ts';
 import { LeaveConfirmDialog, useLeaveGuard } from '../shared/leaveGuard.tsx';
 import { editStatus, type RebaseState } from './editStatus.ts';
@@ -322,10 +321,7 @@ function EditForm({
         )}
       </div>
       <p className="arca-privacy arca-privacy--centered" id="f22-privacy">
-        <PixelIcon name="lock" />
-        <span>
-          {copy['CPY-F22-005']} {copy['CPY-F22-006']}
-        </span>
+        {copy['CPY-F22-006']}
       </p>
       <PixelAlertDialog
         open={discardDialog}

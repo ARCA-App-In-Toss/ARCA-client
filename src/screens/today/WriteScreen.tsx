@@ -15,6 +15,7 @@ import {
   PixelIconButton,
   PixelPlaceholder,
   PixelTextareaField,
+  PrivacyNote,
   RecordPanel,
   ScenePanel,
   ScreenTitle,
@@ -22,7 +23,7 @@ import {
 import { copy, fill } from '../../ui/copy.ts';
 import { formatCount } from '../../ui/format.ts';
 import { usePendingReveal } from '../../ui/pendingReveal.ts';
-import { JoyMark, PixelIcon } from '../../ui/pixel.tsx';
+import { JoyMark } from '../../ui/pixel.tsx';
 import { type CopyResult, keepLabel, keepStateOf, useAnswerInput } from '../shared/compose.ts';
 import { LEAVE_KEEP_WAIT_MS, LeaveConfirmDialog, useLeaveGuard, withinMs } from '../shared/leaveGuard.tsx';
 import { writeStatus } from './writeStatus.ts';
@@ -374,12 +375,7 @@ export function WriteScreen() {
           <PixelButton onClick={() => navigate(paths.today)}>{copy['CPY-F11-040']}</PixelButton>
         )}
       </div>
-      <p className="arca-privacy arca-privacy--centered" id="f11-privacy">
-        <PixelIcon name="lock" />
-        <span>
-          {copy['CPY-F11-005']} {copy['CPY-F11-006']}
-        </span>
-      </p>
+      <PrivacyNote id="f11-privacy" lead={copy['CPY-F11-005']} detail={copy['CPY-F11-006']} />
       <LeaveConfirmDialog guard={guard} returnFocusRef={backButtonRef} />
     </PixelAppShell>
   );

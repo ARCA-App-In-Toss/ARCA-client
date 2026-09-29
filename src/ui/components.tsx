@@ -235,6 +235,18 @@ export function MemoryCount({ label, value }: { label: string; value: string }) 
   );
 }
 
+export function PrivacyNote({ id, lead, detail }: { id: string; lead: string; detail: string }) {
+  return (
+    <p className="arca-privacy arca-privacy--centered" id={id}>
+      <span className="arca-privacy__line">
+        <PixelIcon name="lock" />
+        {lead}
+      </span>{' '}
+      <span className="arca-privacy__line">{detail}</span>
+    </p>
+  );
+}
+
 export function PixelIconButton({
   label,
   icon,

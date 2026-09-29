@@ -104,6 +104,10 @@
   text-wrap: balance;
 }
 
+.arca-privacy__line {
+  display: block;
+}
+
 .arca-privacy--centered .arca-icon {
   display: inline-block;
   margin: 0 var(--space-100) 0 0;
