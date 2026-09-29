@@ -1,6 +1,6 @@
 # ARCA 에셋 매니페스트
 
-- 문서 버전: v1.22
+- 문서 버전: v1.23
 - 최근 수정일: 2026년 9월 29일
 - 상태: 확정
 - 승인 주체: 제품 책임자
@@ -35,12 +35,13 @@
 | AST-008 | 기본 조작 픽셀 아이콘 | P0 | 검토 중 | Pixelarticons는 이전 후보이며 추가하지 않음. 2026-09-28 현행 ARCA 자체 제작 12×12 격자 아이콘 12종(back·chevron-right·settings·today·archive·memory·edit·delete·copy·check·close·lock)을 `src/ui/pixel.tsx`에 코드 원본으로 두고 24px(2 CSS px/셀)로 표시; 이 자체 격자 아이콘을 현행 UI에 사용 | ARCA 전용 신규 코드 제작(Codex), 외부 팩 미포함 | Back·Close·Settings·Edit·Delete·Copy·Retry·Check·Chevron·Today·Archive를 선별. 02 §8.2에 따라 원본 격자·표시 크기·선 굵기·광학적 크기 통일; 실제 import는 06 | 텍스트 동반 아이콘은 장식 처리, 아이콘 전용 버튼은 의미 이름과 44px 타깃 제공 |
 | AST-009 | 화면 진입·기억 조각 모션 소스 | P0 | 검토 중 | `src/ui/ui.css`: `arca-screen-enter` 180ms opacity 진입, `arca-fragment-form` 1,600ms·4단계 1회, F01 대화창 글자 표시 35ms/글자, F02 `arca-glow-ring-*` 3,000ms 호흡(유일한 반복 예외 D-UI-091); Reduced Motion 0ms·정지 | ARCA 코드와 에셋의 권리 기준 적용 | CSS·WAAPI와 승인 sprite로 구현. 질문→작성 공간 연결은 입력·포커스를 지연시키지 않음. 작은 상태 타이밍은 기본값, 기억 연출 최대 2,000ms와 무한 반복 금지는 필수, 채택 원본·버전 기록 | `prefers-reduced-motion`에서 같은 정보의 즉시 정적 전환, 기억 연출의 탭·Button·키보드 건너뛰기 필수 |
 | AST-010 | 사운드·음악 | 제외 | 사용 안 함 | 없음 | 해당 없음 | MVP 번들에 음원과 자동 재생 코드 미포함 | 시각·촉각만으로 모든 상태를 이해 가능하게 함 |
-| AST-011 | Neo둥근모 브랜드·조작 서체 | P0 | 검토 중 | [Neo둥근모 공식 저장소](https://github.com/neodgm/neodgm) `v1.601` Regular WOFF2, 44,352 bytes. 2026-09-28 저장소에 self-host: `public/fonts/neodgm/neodgm.woff2`(SHA-256 `0c0ca9cd…ef0a33bf`)와 `LICENSE.txt`(OFL 1.1 원문), `src/ui/tokens.css`의 `@font-face`·`font-display: swap` | SIL Open Font License 1.1과 저작권 고지를 font 파일과 함께 보존 | 픽셀 역할에 공식 WOFF2를 self-host, 외부 CDN·Bold·Italic 합성 금지, 본문은 별도 시스템 서체, preload는 06에서 결정 | 픽셀·본문 역할 조합, 시스템 fallback·200% 글자·한글·영문·숫자·이모지 실제 기기 검증 |
+| AST-011 | Neo둥근모 브랜드·조작 서체 | P0 | 검토 중 | [Neo둥근모 공식 저장소](https://github.com/neodgm/neodgm) `v1.601` Regular WOFF2, 44,352 bytes. 2026-09-28 저장소에 self-host: `public/fonts/neodgm/neodgm.woff2`(SHA-256 `0c0ca9cd…ef0a33bf`)와 `LICENSE.txt`(OFL 1.1 원문), `src/ui/tokens.css`의 `@font-face`·`font-display: swap` | SIL Open Font License 1.1과 저작권 고지를 font 파일과 함께 보존 | 픽셀 역할에 공식 WOFF2를 self-host, 외부 CDN·Bold·Italic 합성 금지, 본문은 AST-013, preload는 06에서 결정 | 픽셀·본문 역할 조합, 시스템 fallback·200% 글자·한글·영문·숫자·이모지 실제 기기 검증 |
 | AST-012 | F10 투명 캡슐 배경(덮개·관측 돔과 시간대 하늘) | P0 | 검토 중 | 2026-09-29 생성 이미지 v2(사용자 피드백: 머리부터 발끝까지 덮는 깨끗한 유리, 유리 위 뼈대 제거): 지시 `prompts/AST-012_CAPSULE_PROMPTS.md`(로컬), ChatGPT 기본 이미지 생성(모델명 표시 없음), v1을 참조로 1:1 생성, 원본 `AST-012/source/capsule-square-v2.png`(v1 원본은 2026-09-29 삭제). `AST-012/tools/build_capsule.py`(AST-004 방식 양자화, 구조·선·시안 + 키 색만 허용, 키 색은 과반일 때만)로 156×156 격자, 키 색 칸(유리 한 덩어리, 16~136행·14~142열)을 투명 처리하고 상태등 세 칸을 3×3 대칭으로 정리(`tools/fixes.py`). 결과물 `export/capsule.webp`(lossless, alpha, 약 2.6KB). 하늘은 `src/ui/pixel/capsule.tsx`의 같은 격자 코드 층(`color.sky.*`, 2×2 디더링·고정 별 배치) | ARCA 전용 신규 제작. 생성 이미지는 도구·모델·날짜·프롬프트 버전 기록, 약관상 상업 이용·수정 가능 여부 확인 전 | D-UI-095. 셀당 `max(ceil(폭/156), round(높이/170))` px, 화면 맨 위·가로 가운데, 넘치는 좌우·아래만 crop, 이미지보다 긴 화면은 `bg.scene` 면. 150KB 이하 | `aria-hidden` 장식. 글자·조작은 불투명 디스플레이·면 위에만. 로딩 전·실패 시 배경 없음(평면 canvas). 정지 장면이라 Reduced Motion 차이 없음 |
+| AST-013 | Pretendard 본문 서체 | P0 | 검토 중 | [Pretendard 공식 저장소](https://github.com/orioncactus/pretendard) `v1.3.9`(npm `pretendard@1.3.9`의 `dist/web/static/woff2/Pretendard-Regular.woff2`) Regular WOFF2, 765,892 bytes, subset 없는 전체 파일. 2026-09-29 저장소에 self-host: `public/fonts/pretendard/Pretendard-Regular.woff2`(SHA-256 `fad853f7…e8a61d63`)와 `LICENSE.txt`(v1.3.9 태그의 OFL 1.1 원문), `src/ui/tokens.css`의 `@font-face`·`font-display: swap` | SIL Open Font License 1.1과 저작권 고지를 font 파일과 함께 보존 | 질문·응답·설명·메타의 본문 역할에 Regular 한 굵기만 self-host, 외부 CDN·굵기 합성 금지. 사용자 응답의 모든 한글 음절을 위해 KS X 1001 subset을 쓰지 않음. preload·전송량은 06 §10.5에서 측정 | 로드 전·실패 시 시스템 fallback으로 즉시 읽기, 픽셀·본문 역할 조합·200% 글자·한글·영문·숫자·이모지 실제 기기 검증 |
 
 <br>
 
-시스템 본문 서체는 OS 제공 글꼴을 사용하므로 별도 폰트 파일을 배포하지 않습니다. 역할·fallback 기준은 [02 §4](../../.claude/spec/02_DESIGN_SYSTEM.md), 환경별 검증은 AST-011의 조합 검증으로 추적합니다.
+본문 서체는 2026-09-29부터 OS 제공 글꼴 대신 AST-013 Pretendard를 self-host합니다(D-UI-103). 시스템 서체는 로드 전·실패 시 fallback으로만 사용합니다. 역할·fallback 기준은 [02 §4](../../.claude/spec/02_DESIGN_SYSTEM.md), 환경별 검증은 AST-011·AST-013의 조합 검증으로 추적합니다.
 
 핵심 비교 시안과 시각 채택은 아직 완료되지 않았습니다. [01 §10](../../.claude/spec/01_UI_OVERVIEW.md)의 비교 증거와 기준 원본이 준비되면 이 표에 실제 경로·버전·채택일을 연결합니다. 방향 승인만으로 에셋을 `사용 승인`으로 전환하지 않습니다.
 
@@ -77,7 +78,7 @@ AST-004 후속 장면·AST-006 형성 자원·AST-007·AST-009의 비필수 moti
 - 배경·JOY·기억 표현은 ChatGPT 등으로 생성/제작할 수 있습니다. 기존 AST-004~007·009에 도구·생성 이력 또는 참조 위치·원본/편집본·실제 export·표시 규격을 연결합니다. 생성 계획만으로 제작·사용 승인을 완료 처리하지 않습니다.
 - 생성 지시에는 02의 팔레트 역할·픽셀 밀도·명암·전경/배경 분리·텍스트 안전 영역과 실제 컨테이너 구도를 포함합니다. 결과물은 UI와 함께 표시해 계단형 윤곽·정수 배율·crop·가독성을 확인하고, 텍스트나 조작을 이미지에 굽지 않습니다.
 - UI 코드의 출처·정확 버전/commit·로컬 수정·갱신 기록은 06 §2.4가 소유합니다. 이 문서는 실제 포함하는 아이콘·폰트·이미지·sprite와 관련 권리를 추적합니다. 라이브러리 코드와 포함 에셋의 사용 조건은 각각 확인하며, 코드의 MIT 표기를 아이콘 팩 등에 일괄 적용하지 않습니다.
-- AST-008의 선별 목록에는 개별 원본·원본 격자·채택 표시 크기·수정 여부·license/고지 조건을 기록합니다. 재배포/표시 의무가 있는 에셋은 실제 배포에 필요한 고지를 연결합니다. 라이브러리 기본 폰트와 원격 폰트 import는 AST-011·시스템 본문 역할로 교체합니다.
+- AST-008의 선별 목록에는 개별 원본·원본 격자·채택 표시 크기·수정 여부·license/고지 조건을 기록합니다. 재배포/표시 의무가 있는 에셋은 실제 배포에 필요한 고지를 연결합니다. 라이브러리 기본 폰트와 원격 폰트 import는 AST-011·AST-013으로 교체합니다.
 - 현재 후보와 생성 계획은 확보된 자산을 뜻하지 않습니다. 채택할 때 기존 항목 안에 상세를 추가하며 별도 매니페스트나 출처 파일을 만들지 않습니다(D-TECH-053~054).
 
 <br>
@@ -125,3 +126,4 @@ AST-004 후속 장면·AST-006 형성 자원·AST-007·AST-009의 비필수 moti
 | v1.20 | 2026-09-29 | D-UI-095·D-UI-096 | 사용자 피드백으로 AST-004 장면 6을 최소 정수 배율(원본 구도 거의 전체)·길면 아래 기준·짧은 아래 계단으로 표시. AST-012를 작은 창 띠(코드 원본)에서 화면 전체 투명 캡슐 생성 이미지 v1로 교체(키 색 투명, 코드 하늘 층); 상태 `검토 중` 유지(실기기 검증·약관 확인 전) |
 | v1.21 | 2026-09-29 | D-UI-095 | 사용자 피드백으로 AST-012를 v2(뼈대 없는 전신 유리)로 교체·상태등 정리, 코드 하늘을 디더링 띠와 별 세 종류로 개선; 상태 `검토 중` 유지 |
 | v1.22 | 2026-09-29 | D-UI-100 | AST-006 `MemoryFragment` 격자를 둥근 기록편에서 면을 깎은 결정 조각으로 교체(후보 비교 뒤 사용자 직접 수정본 채택). 누적 수·F10 완료·F12·F02 발광이 같은 원본을 쓰며 발광 테두리는 모양에서 자동 계산; 상태 `검토 중` 유지 |
+| v1.23 | 2026-09-29 | D-UI-103 | 본문 서체를 OS 시스템 서체에서 self-host Pretendard v1.3.9 Regular(AST-013)로 교체하고 파일·해시·OFL 고지 경로를 기록. Light·Regular·Medium을 오늘 질문 화면에서 비교한 뒤 Regular 채택; 상태 `검토 중`(실기기 검증 전) |

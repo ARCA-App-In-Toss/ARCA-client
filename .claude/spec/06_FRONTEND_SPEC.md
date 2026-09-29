@@ -1,6 +1,6 @@
 # ARCA 프런트엔드 구현 명세
 
-- 문서 버전: v1.8
+- 문서 버전: v1.9
 - 최근 수정일: 2026년 9월 29일
 - 상태: 확정
 - 승인 주체: 제품 책임자
@@ -66,7 +66,7 @@ composition root·레이어/port·route/guard·상태/cache·session epoch/gener
 | HTTP·검증 | native `fetch`, Zod 4, `ArcaApi` adapter | Axios 없음. Zod 4.6.5, `@hey-api/openapi-ts` 0.99.0(typescript+zod plugin)을 `scripts/api-generate.mjs`로 `src/data/api/generated`에 생성. `additionalProperties: false`는 plugin resolver로 `z.strictObject` 매핑(생성물 수기 patch 없음). contract 예시 58건 일치, orval 8.38.0은 schema 단위 validator·closed object 미지원으로 제외 |
 | UI·스타일 | native HTML의 의미 보존, ARCA 의미 기반 CSS 변수, 픽셀 UI 컴포넌트 선별 도입 | Tailwind 사용 허용, Emotion은 필요한 범위에 한정. 후보·설치 상태는 §2.4, 스타일 소유는 §2.5 |
 | 복합 Overlay | `@radix-ui/react-dialog`·`@radix-ui/react-alert-dialog`만 ARCA wrapper 뒤에서 사용 | `@radix-ui/react-alert-dialog` 1.1.23(MIT, React 19 peer)을 `src/ui/PixelAlertDialog.tsx` wrapper 안에서만 사용(단계 3, F11 이탈 확인). `@radix-ui/react-dialog` 1.1.23(MIT)을 `src/ui/PixelSheet.tsx` wrapper 안에서만 사용(단계 5, F10 지난 임시본 Sheet). Sheet는 Dialog를 시각 변형해 사용 |
-| 아이콘·서체 | 자체 12×12 격자 SVG·Neo둥근모 self-host·시스템 본문 | `src/ui/pixel.tsx`, `public/fonts/neodgm/`, Asset Manifest AST-004~011. 외부 아이콘 팩 미포함, 실기기 확인 남음 |
+| 아이콘·서체 | 자체 12×12 격자 SVG·Neo둥근모·Pretendard self-host | `src/ui/pixel.tsx`, `public/fonts/neodgm/`, `public/fonts/pretendard/`, Asset Manifest AST-004~011·013. 외부 아이콘 팩 미포함, 실기기 확인 남음 |
 | 모션·날짜 | CSS/Web Animations API, `Intl.DateTimeFormat`, 주입 `Clock` | Motion/date utility library 없음 |
 | Mock·검증 | AIT Devtools, MSW 2, Vitest 5, RTL, user-event, axe-core, Playwright Chromium·WebKit, 실제 iOS·Android QR | MSW 2.15.0(postinstall 비허용, worker는 사용 slice에서 생성), Vitest 5.0.2(jsdom 30.1.1, `unit`·`contract` project), RTL 16.3.3, user-event 14.6.7, jest-dom 7.0.1, axe-core 4.13.0, Playwright 1.63.0(Chromium·WebKit). AIT Devtools는 Vite plugin 연결. 기기 QR 미실행 |
 | 정적 품질·패키지 | TypeScript strict 옵션, Biome 2, Node 24 LTS, 고정 pnpm·lockfile | strict·`noUncheckedIndexedAccess`·`exactOptionalPropertyTypes`(`tsc -b`, noEmit), Biome 2.5.14 recommended, pnpm 12.6.0(`packageManager`)·`pnpm-lock.yaml`, `.nvmrc`=24·`engines` ≥24. 로컬 확인 Node는 25.2.1이며 Node 24 실행 증거·CI 없음 |
@@ -127,7 +127,7 @@ SDK 출시 제약은 [플랫폼 기준 §3 · L30–34](../../spec/platform/ARCA
 - 선택한 소스가 요구하는 Tailwind 빌드 구성을 허용합니다. 현재 비교 후보의 Tailwind v4 구성은 실제 template·WebView와 함께 확인해 고정합니다. 선택한 UI는 해당 CSS/Tailwind 경로로 구현합니다. Emotion은 이를 보완할 필요가 확인된 자체 컴포넌트에만 사용합니다(D-TECH-051).
 - reset/preflight·theme·component 스타일을 한 진입점에서 조립합니다. reset 중복과 전역 body/button/input 오염을 제거하고 외부 변수/selector는 ARCA 소유 범위로 제한합니다. portal에도 같은 theme를 전달하고 플랫폼 소유 UI에 앱 스타일이 번지지 않게 합니다.
 - CSS layer와 주입 순서를 고정하고 비계층 Emotion 규칙까지 포함해 실제 우선순위를 확인합니다. 같은 요소·상태의 속성을 여러 엔진에서 경쟁적으로 덮어쓰거나 반복적인 `!important`로 통합하지 않습니다.
-- 외부 기본 폰트·원격 Google Fonts import·자동 테마 감지/영속화·전역 모션은 제거하거나 ARCA 정책으로 연결합니다. 앱은 기존 단일 테마·역할별 self-host/시스템 서체·SDK Storage 경계를 따릅니다.
+- 외부 기본 폰트·원격 Google Fonts import·자동 테마 감지/영속화·전역 모션은 제거하거나 ARCA 정책으로 연결합니다. 앱은 기존 단일 테마·역할별 self-host 서체·SDK Storage 경계를 따릅니다.
 - 허용된 개별 export와 필요한 CSS만 포함하는지 production build에서 확인합니다. 미사용 테이블·캐러셀·게임 기능·form 엔진, 중복 Radix와 스타일 runtime의 실제 포함 여부를 점검합니다. 제거 효과가 없거나 수정 비용이 크면 필요한 소스 편입/네이티브 구현과 비교합니다. tree shaking 성공을 사전 가정하지 않습니다.
 
 ## 3. 최소 구조와 의존 방향
@@ -645,7 +645,7 @@ local storage 오류, protocol 오류, transport 오류, domain 오류는 합치
 
 픽셀 정체성은 02의 형태·서체 역할·아이콘과 정적 장면을 함께 적용합니다. 래스터 픽셀 에셋에는 `image-rendering: pixelated`와 승인된 정수 배율·기준 위치를 적용하고, 컨테이너는 reflow하되 에셋을 무조건 늘리지 않습니다. 픽셀 윤곽에는 임의의 소수 배율·blur·subpixel 이동을 피하고 작은 상태 이동도 02의 셀·모션 규칙을 따릅니다. 포커스 선은 clip/mask에 잘리지 않게 분리하며 확대·조작 가능성을 우선합니다. Reduced Motion·장식 로딩 실패에도 정적 픽셀 UI와 읽기 영역을 유지합니다(D-TECH-053).
 
-첫 질문/작성에는 최소 셸·CSS·본문 시스템 서체·선별한 필수 아이콘을 우선 제공합니다. Neo둥근모는 self-host/fallback으로 실제 텍스트를 즉시 읽게 하고 폰트 완료를 F00 종료 조건으로 삼지 않습니다. preload는 첫 경로의 최소 파일부터 비교합니다.
+첫 질문/작성에는 최소 셸·CSS·선별한 필수 아이콘을 우선 제공합니다. Neo둥근모·Pretendard는 self-host/시스템 fallback으로 실제 텍스트를 즉시 읽게 하고 폰트 완료를 F00 종료 조건으로 삼지 않습니다. preload는 첫 경로의 최소 파일부터 비교하며, Pretendard 전체 음절 파일(765,892 bytes)의 전송량과 swap 뒤 줄바꿈 변화도 아래 실기기 측정에 포함합니다.
 
 인트로 후속 장면·기억 형성 sprite/motion·빈 상태 이미지는 해당 route 또는 유휴 시점에 지연 로딩합니다. 영역/대체 구도를 먼저 확보해 자원 도착이 입력·커서·버튼을 밀지 않게 합니다. 실패는 해당 장식의 정적 fallback으로 격리하고 성공 heading·원문·이동 행동을 기다리게 하지 않습니다. 뒤늦게 자원이 도착해 연출을 다시 시작하지 않습니다.
 
