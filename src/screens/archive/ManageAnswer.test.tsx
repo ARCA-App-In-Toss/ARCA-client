@@ -86,7 +86,7 @@ describe('F22 edit (03 §6.3, 04 §6.11)', () => {
     expect(screen.getByRole('button', { name: copy['CPY-F22-014'] })).toBeDisabled();
   });
 
-  test('MS-EDIT-001: exact edit → F21 with the new text, 수정됨, one notice; F20 row patched; no F12', async () => {
+  test('MS-EDIT-001: exact edit → F21 with the new text and no visible edited badge or notice, one announcement; F20 row patched; no F12', async () => {
     const world = createMockWorld('server.activeUnanswered');
     const [, newer] = seedTwo(world);
     const { storage, router } = await openDetail(world, '9월 합성 답변');
@@ -109,8 +109,10 @@ describe('F22 edit (03 §6.3, 04 §6.11)', () => {
     expect(
       screen.getByRole('region', { name: copy['CPY-F21-004'] }).querySelector('.arca-user-text')?.textContent,
     ).toBe(edited);
-    expect(screen.getByText(copy['CPY-F21-007'])).toBeInTheDocument();
-    expect(await screen.findByText(copy['CPY-F21-014'])).toBeInTheDocument();
+    expect(screen.queryByText('수정됨')).toBeNull();
+    const notice = await screen.findByText(copy['CPY-F21-014']);
+    expect(notice).toHaveAttribute('role', 'status');
+    expect(notice).toHaveClass('arca-inline-status--quiet');
     const stored = world.answers.get(newer.answerId);
     expect(stored?.content).toBe(edited);
     expect(stored?.isEdited).toBe(true);

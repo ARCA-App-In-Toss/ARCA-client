@@ -47,7 +47,7 @@ test('20 + 1 as the list end nears, one heading per month, F21 → Back restores
   expect(errors).toEqual([]);
 });
 
-test('edit: exact text saved, F21 shows it with 수정됨; no F12', async ({ page }) => {
+test('edit: exact text saved, F21 shows it without an edited badge or visible notice; no F12', async ({ page }) => {
   await openArchive(page);
   await page.locator('.arca-memory-row').first().click();
   await page.getByRole('button', { name: '수정하기' }).click();
@@ -58,8 +58,9 @@ test('edit: exact text saved, F21 shows it with 수정됨; no F12', async ({ pag
   await field.fill(edited);
   await page.getByRole('button', { name: '저장하기', exact: true }).click();
   await expect(page.getByRole('heading', { level: 1, name: '기억 조각' })).toBeVisible();
-  await expect(page.getByText('수정한 내용을 저장했어요.')).toBeVisible();
-  await expect(page.getByText('수정됨')).toBeVisible();
+  await expect(page.getByText('수정한 내용을 저장했어요.')).toHaveClass(/arca-inline-status--quiet/);
+  await expect(page.getByText('수정됨')).toHaveCount(0);
+  await expect(page.getByText('나만 볼 수 있어요.')).toHaveCount(0);
   await expect(page.locator('.arca-record-panel .arca-user-text')).toHaveText(edited, { useInnerText: false });
   await noIdsInUrl(page);
 });
