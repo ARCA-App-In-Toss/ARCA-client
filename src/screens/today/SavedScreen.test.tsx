@@ -45,6 +45,27 @@ describe('F12 completion hierarchy (IX-039)', () => {
     expect(second).toHaveTextContent(copy['CPY-F12-013']);
   });
 
+  test('the count dials up from the previous total like lock wheels, carrying into a new place; the group reads the new total', async () => {
+    const world = createMockWorld('server.activeUnanswered');
+    for (let day = 1; day <= 9; day += 1) {
+      world.seedAnswer(SYNTHETIC_KEYS.registered, `지난 합성 ${day}`, {
+        dailySemaId: `synthetic-day-${day}`,
+        createdAt: `2026-09-0${day}T01:00:00Z`,
+        createdDateKst: `2026-09-0${day}`,
+      });
+    }
+    await saveOnce(world, '열 번째 합성');
+    const group = screen.getByRole('group', { name: copy['CPY-F12-019'] });
+    expect(group.querySelector('.arca-visually-hidden')).toHaveTextContent('기억 조각 10개');
+    const reels = Array.from(group.querySelectorAll('.arca-rolling-count__reel'), (reel) =>
+      Array.from(reel.children, (face) => face.textContent),
+    );
+    expect(reels).toEqual([
+      [' ', '1'],
+      ['9', '0'],
+    ]);
+  });
+
   test('MS-CORE-008 info unavailable: result kept, today first, re-query fills info without re-saving', async () => {
     const world = createMockWorld('server.activeUnanswered');
     world.presentationUnavailable = true;

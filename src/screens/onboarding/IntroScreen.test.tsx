@@ -212,13 +212,28 @@ describe('F01 intro (IX-030, MS-ONB-003)', () => {
     expect(board).not.toHaveAttribute('data-quiet-focus');
   });
 
+  test('the last sentence fades the dialog out before the boarding Primary fades in (02 §7.1)', async () => {
+    reducedMotion(false);
+    await bootIntro();
+    const closing = () => document.querySelector('.arca-intro-dialog--closing');
+    for (let press = 0; press < 40 && !closing(); press += 1) {
+      await userEvent.click(button(copy['CPY-F01-004']));
+    }
+    expect(closing()).not.toBeNull();
+    expect(screen.queryByRole('button', { name: copy['CPY-F01-005'] })).toBeNull();
+    const board = await screen.findByRole('button', { name: copy['CPY-F01-005'] });
+    expect(document.querySelector('.arca-intro-dialog')).toBeNull();
+    expect(board.parentElement).toHaveClass('arca-intro-board');
+    expect(board).toHaveFocus();
+  });
+
   test('boarding fades the intro into the canvas before F02 opens; Reduced Motion opens it at once (02 §7.1)', async () => {
     reducedMotion(false);
     const { router } = await bootIntro();
-    for (let press = 0; press < 40 && !screen.queryByRole('button', { name: copy['CPY-F01-005'] }); press += 1) {
+    for (let press = 0; press < 40 && !document.querySelector('.arca-intro-dialog--closing'); press += 1) {
       await userEvent.click(button(copy['CPY-F01-004']));
     }
-    await userEvent.click(button(copy['CPY-F01-005']));
+    await userEvent.click(await screen.findByRole('button', { name: copy['CPY-F01-005'] }));
     expect(document.querySelector('.arca-intro-curtain')).not.toBeNull();
     expect(router.state.location.pathname).not.toBe(paths.join);
     expect(
