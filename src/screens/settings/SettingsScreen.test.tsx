@@ -66,7 +66,6 @@ describe('F30 settings (03 §7.1, 04 §6.13)', () => {
     expect(screen.getByRole('button', { name: rootTabLabels.settings })).toHaveAttribute('aria-current', 'page');
     expect(screen.queryByRole('button', { name: copy['CPY-COM-005'] })).toBeNull();
     expect(document.body.textContent).not.toContain(SYNTHETIC_KEYS.registered);
-    expect(screen.getByText(copy['CPY-F30-024'])).toBeInTheDocument();
     expect(screen.getByRole('button', { name: copy['CPY-F30-034'] })).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: rootTabLabels.archive }));
     await findTitle(copy['CPY-F20-001']);

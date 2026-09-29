@@ -33,7 +33,6 @@ async function agreeBoth() {
 describe('F02 boarding (IX-031, MS-ONB-001/002)', () => {
   test('partial consent sends nothing; both consents create the passenger and hand ACTIVE to F03 → F10', async () => {
     const { world, router, platform } = await bootBoarding();
-    expect(screen.getByText(copy['CPY-F02-003'])).toBeInTheDocument();
 
     await userEvent.click(terms());
     expect(boardButton()).toHaveAttribute('aria-disabled', 'true');

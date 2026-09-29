@@ -153,7 +153,8 @@ describe('F22 edit (03 §6.3, 04 §6.11)', () => {
 
     textarea = await openEdit();
     expect(textarea.value).toBe('임시 수정 합성');
-    expect(screen.getByText(copy['CPY-F22-011'])).toBeInTheDocument();
+    expect(document.getElementById('f22-help')?.textContent).toContain(copy['CPY-F22-011']);
+    expect(screen.getByRole('status')).toHaveClass('arca-inline-status--quiet');
 
     const discardTrigger = screen.getByRole('button', { name: copy['CPY-F22-024'] });
     await userEvent.click(discardTrigger);

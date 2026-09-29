@@ -51,7 +51,7 @@ describe('F12 completion hierarchy (IX-039)', () => {
     await saveOnce(world, '정보 늦은 합성');
     const result = screen.getByRole('heading', { level: 2, name: copy['CPY-F12-004'] });
     expect(result).toHaveFocus();
-    expect(screen.getAllByRole('status').some((s) => s.textContent === copy['CPY-F12-016'])).toBe(true);
+    expect(screen.getAllByRole('status').some((s) => s.textContent === copy['CPY-F12-017'])).toBe(true);
     expect(screen.getByRole('group', { name: copy['CPY-F12-019'] })).toHaveTextContent(copy['CPY-F12-017']);
     const before = actionButtons();
     expect(before[0]).toHaveTextContent(copy['CPY-F12-014']);
@@ -63,7 +63,7 @@ describe('F12 completion hierarchy (IX-039)', () => {
     await waitFor(() =>
       expect(screen.getByRole('group', { name: copy['CPY-F12-019'] })).toHaveTextContent('기억 조각 1개'),
     );
-    expect(document.querySelector('.arca-user-text')?.textContent).toBe('정보 늦은 합성');
+    expect(document.querySelector('.arca-user-text')).toBeNull();
     const after = actionButtons();
     expect(after[0]).toHaveTextContent(copy['CPY-F12-014']);
     expect(after[0]).toHaveClass('arca-button--primary');

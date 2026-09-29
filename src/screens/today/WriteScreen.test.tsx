@@ -62,7 +62,10 @@ describe('F11 writing and device keeping (IX-001, IX-002, IX-005)', () => {
     await userEvent.click(screen.getByRole('button', { name: copy['CPY-F10-005'] }));
     const restored = await screen.findByRole('textbox', { name: copy['CPY-F11-003'] });
     await waitFor(() => expect(restored).toHaveValue(text));
-    expect(screen.getAllByRole('status').some((s) => s.textContent === copy['CPY-F11-012'])).toBe(true);
+    expect(help()).toContain(copy['CPY-F11-012']);
+    const notice = screen.getByRole('status');
+    expect(notice).toHaveTextContent(copy['CPY-F11-012']);
+    expect(notice).toHaveClass('arca-inline-status--quiet');
   });
 
   test('2,001 graphemes: text kept whole, over-count error, save disabled', async () => {
@@ -129,6 +132,9 @@ describe('F11 question switch (IX-006)', () => {
     );
     const alternate = await screen.findByRole('textbox', { name: copy['CPY-F11-003'] });
     await waitFor(() => expect(alternate).toHaveValue(''));
+    const switched = screen.getByRole('status');
+    expect(switched).toHaveTextContent(copy['CPY-F11-015']);
+    expect(switched).toHaveClass('arca-inline-status--quiet');
     expect(draftRecords(storage)).toHaveLength(1);
 
     await userEvent.click(screen.getByRole('button', { name: copy['CPY-F10-007'] }));
@@ -165,7 +171,7 @@ describe('MS-CORE-001 question → write → save → read again', () => {
     expect(result).toHaveFocus();
     expect(router.state.location.pathname).toBe(paths.saved);
     expect(router.state.location.state).toMatchObject({ answerRef: expect.any(String) });
-    expect(document.querySelector('.arca-user-text')?.textContent).toBe(text);
+    expect(document.querySelector('.arca-user-text')).toBeNull();
     expect(screen.getByRole('group', { name: copy['CPY-F12-019'] })).toHaveTextContent('기억 조각 1개');
     const [first, second] = screen.getAllByRole('button');
     expect(first).toHaveAccessibleName(copy['CPY-F12-013']);

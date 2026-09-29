@@ -18,7 +18,7 @@ test('question → write → save → read again in the browser', async ({ page 
   page.on('pageerror', (error) => errors.push(error.message));
   await writeAndSave(page);
   await expect(page).toHaveURL(/\/today\/saved$/);
-  await expect(page.locator('.arca-user-text')).toHaveText(TEXT, { useInnerText: false });
+  await expect(page.locator('.arca-user-text')).toHaveCount(0);
 
   await page.getByRole('button', { name: '항해 기록 보기' }).click();
   await expect(page.getByRole('heading', { level: 1, name: '항해 기록' })).toBeVisible();
