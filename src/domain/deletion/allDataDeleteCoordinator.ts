@@ -1,19 +1,16 @@
 import { z } from 'zod';
-import type { ArcaApi, Bearer } from '../../data/api/arcaApi.ts';
-import type { AllDataDeleteResult } from '../../data/api/models.ts';
-import { DomainFailure, LocalPersistenceFailure, TransportFailure } from '../../data/failures.ts';
-import type { ManifestScope, StorageJournal } from '../../data/storage/journal.ts';
-import type { NetworkPort } from '../../platform/ports.ts';
 import { RESULT_CHECK_OFFSETS_MS, TRANSPORT_MAX_MS } from '../commands/answerWriteCoordinator.ts';
+import { DomainFailure, LocalPersistenceFailure, TransportFailure } from '../failures.ts';
+import type { AllDataDeleteResult } from '../models.ts';
+import type { ArcaApi, Bearer } from '../ports/api.ts';
+import type { NetworkPort } from '../ports/platform.ts';
+import type { JournalPort, ManifestScope } from '../ports/storage.ts';
 import {
   SessionChangedFailure,
   type SessionController,
   SessionModeMismatchFailure,
   StaleResultFailure,
 } from '../session/sessionController.ts';
-
-// F31 all-data delete (06 §4.3 `generation:*`, §9.3–9.4; 05 §6.6). Nothing local or remote is removed
-// before an authenticated SUCCEEDED; after it, only the deleted generation's device area goes.
 
 const TRACKER = 'allDataDelete';
 
@@ -23,17 +20,6 @@ const zTracker = z.object({
 });
 type Tracker = z.output<typeof zTracker>;
 
-/**
- * - blocked: another command's outcome is still unknown; no deletion was prepared (06 §9.3).
- * - unsent: offline before reaching the server; nothing started (CPY-F31-017).
- * - prepared: a reserved request that was not executed; the user runs or ends it explicitly.
- * - unconfirmed: the outcome is not known; the request stays tracked. `cleanUpExpired`: the past
- *   result is gone and only an explicit OP-015 cleanup continues (04 IX-041).
- * - notApplied: an authenticated terminal NOT_APPLIED; server and device data are as they were.
- * - failed: definite refusal or a local write failure before anything was sent.
- * - cleanupFailed: SUCCEEDED, but the device area could not be removed yet; retry stays here.
- * - finished: server success and device cleanup confirmed; the app moves to F01.
- */
 export type DeletionView =
   | { kind: 'idle' }
   | { kind: 'working' }
@@ -49,21 +35,14 @@ export type DeletionView =
 export interface AllDataDeleteCoordinatorDeps {
   session: SessionController;
   api: ArcaApi;
-  journal: StorageJournal;
+  journal: JournalPort;
   network: NetworkPort;
-  /** The confirmed generation area right now (null in DELETION_RECOVERY before bootstrap found it). */
   area: () => ManifestScope | null;
-  /** Other kept commands whose outcome is unknown (writes, answers, nickname). */
   hasUnresolvedCommands: () => Promise<boolean>;
-  /** One bounded check of those commands before refusing to prepare. */
   recheckCommands: () => Promise<void>;
-  /** Fence on: no other mutation or PREPARED execution; off: normal work resumes. */
   setFence: (active: boolean) => void;
-  /** Drops the old generation's memory (queries, refs, views) right after SUCCEEDED (06 §9.4). */
   discardMemory: () => void;
-  /** Local cleanup done: drop the restricted token and start again from OP-001 (→ F01). */
   finish: () => void;
-  /** Re-establish after a NOT_APPLIED so the normal ACTIVE session comes back (05 §6.1 #4). */
   restart: () => void;
   sleep?: (ms: number) => Promise<void>;
   newOperationId?: () => string;
@@ -82,13 +61,8 @@ export class AllDataDeleteCoordinator {
   private view: DeletionView = IDLE;
   private readonly listeners = new Set<() => void>();
   private inFlight: Promise<void> | null = null;
-  /** Area of the generation being deleted, captured at the start (the live area may go null). */
   private target: { scope: ManifestScope & { kind: 'generation' }; generation: string } | null = null;
   private ticketId: string | null = null;
-  /**
-   * Finalizations per ticket in this visit. The gate re-appears only when the ack did not reach the
-   * server; one more automatic round is tried, then it waits for the user (never an endless loop).
-   */
   private readonly finalized = new Map<string, number>();
 
   constructor(deps: AllDataDeleteCoordinatorDeps) {
@@ -102,7 +76,6 @@ export class AllDataDeleteCoordinator {
     return () => this.listeners.delete(listener);
   };
 
-  /** A kept request in this generation area (restart: F31 opens before plain screens, 06 §5.3 #5). */
   async hasPending(area: ManifestScope): Promise<boolean> {
     try {
       return zTracker.safeParse(await this.deps.journal.getRecord(area, TRACKER)).success;
@@ -111,16 +84,9 @@ export class AllDataDeleteCoordinator {
     }
   }
 
-  /**
-   * F31 entry: the server result comes before the plain page (04 IX-036 #5). In the recovery gate the
-   * ticket is checked; in ACTIVE a kept ticket is queried (safe), and a kept key without a ticket
-   * waits for the user's "삭제 결과 확인하기" instead of re-sending a prepare on its own.
-   */
   enter(): Promise<void> {
     if (this.inFlight) return this.inFlight;
-    // The gate always re-reads its ticket (a second gate after a lost ack included).
     if (this.deps.session.summary?.mode === 'DELETION_RECOVERY') return this.recover();
-    // A finished deletion belongs to the previous generation; a new visit starts clean.
     if (this.view.kind === 'finished') this.setView(IDLE);
     if (this.view.kind !== 'idle') return Promise.resolve();
     return this.single(async () => {
@@ -138,13 +104,11 @@ export class AllDataDeleteCoordinator {
     });
   }
 
-  /** Clears a settled failure once F31 has shown it and the user starts again or leaves. */
   acknowledge(): void {
     const kind = this.view.kind;
     if (kind === 'blocked' || kind === 'unsent' || kind === 'notApplied' || kind === 'failed') this.setView(IDLE);
   }
 
-  /** The second confirmation's action (IX-026): prepare, then execute the same ticket. */
   start(): Promise<void> {
     return this.single(async () => {
       const area = this.deps.area();
@@ -155,7 +119,6 @@ export class AllDataDeleteCoordinator {
       this.target = { scope: area, generation: summary.generation };
       this.setView({ kind: 'working' });
       this.deps.setFence(true);
-      // Compatibility first: a deletion is never prepared over an unknown outcome (06 §9.3).
       if (await this.deps.hasUnresolvedCommands()) {
         await this.deps.recheckCommands().catch(() => undefined);
         if (await this.deps.hasUnresolvedCommands()) return this.release({ kind: 'blocked' });
@@ -170,10 +133,6 @@ export class AllDataDeleteCoordinator {
     });
   }
 
-  /**
-   * "삭제 결과 확인하기" / restart recovery in ACTIVE mode: the kept request is checked once through
-   * the same ticket (or the same prepare key when no ticket was confirmed).
-   */
   recheck(): Promise<void> {
     return this.single(async () => {
       const summary = this.deps.session.summary;
@@ -196,10 +155,6 @@ export class AllDataDeleteCoordinator {
     });
   }
 
-  /**
-   * App-wide DELETION_RECOVERY gate (06 §5.3 #4): only this ticket's OP-008/009 and the local cleanup.
-   * A ticket already finalized twice in this visit waits for the user instead of looping.
-   */
   recover(options: { userRetry?: boolean } = {}): Promise<void> {
     return this.single(async () => {
       const summary = this.deps.session.summary;
@@ -212,17 +167,12 @@ export class AllDataDeleteCoordinator {
     });
   }
 
-  /**
-   * "다시 시도하기" after a failed device cleanup: the SUCCEEDED proof kept in memory finishes the
-   * cleanup directly; without it (restart) the recovery gate re-reads the result.
-   */
   retryCleanup(): Promise<void> {
     const proof = this.succeeded;
     if (!proof) return this.recover({ userRetry: true });
     return this.single(() => this.finalize(proof.ticketId, proof.resultExpiresAt));
   }
 
-  /** Runs the kept PREPARED ticket after the user confirms again. */
   executePrepared(): Promise<void> {
     return this.single(async () => {
       if (!this.ticketId) return;
@@ -231,7 +181,6 @@ export class AllDataDeleteCoordinator {
     });
   }
 
-  /** Explicit OP-015 (04 IX-041): ends a prepared request, or cleans up after an expired result. */
   close(): Promise<void> {
     return this.single(async () => {
       const ticketId = this.ticketId;
@@ -243,11 +192,9 @@ export class AllDataDeleteCoordinator {
           this.deps.api.closeAllDataDelete(auth, ticketId, TRANSPORT_MAX_MS),
         );
       } catch {
-        // A failed close says nothing about the request; it stays tracked (05 §6.10).
         return this.setView(this.view.kind === 'working' ? { kind: 'unconfirmed' } : this.view);
       }
       if (closure.state === 'CLOSED_OUTCOME_UNAVAILABLE') {
-        // Normal work resumes only from the current OP-001 generation (05 §6.10).
         await this.dropTracker();
         this.deps.setFence(false);
         this.setView(IDLE);
@@ -257,8 +204,6 @@ export class AllDataDeleteCoordinator {
       await this.settle(closure);
     });
   }
-
-  // ---- flow ----------------------------------------------------------------------------------
 
   private async prepareAndRun(
     area: ManifestScope,
@@ -275,7 +220,6 @@ export class AllDataDeleteCoordinator {
         prepared = await prepare();
       } catch (error) {
         if (error instanceof DomainFailure && error.category !== 'AUTH') {
-          // The fence is not set by a refused prepare; pending work is checked, nothing was deleted.
           await this.dropTracker(area);
           if (error.code === 'COMMAND_ALREADY_PENDING') {
             await this.deps.recheckCommands().catch(() => undefined);
@@ -283,8 +227,6 @@ export class AllDataDeleteCoordinator {
           }
           return this.release({ kind: 'failed' });
         }
-        // "Nothing started" only when no earlier attempt could have reached the server; after a
-        // timeout the reservation may exist, so the key and the fence stay (05 §8.3, 06 §9.3).
         const neverSent =
           attempt === 0 &&
           error instanceof TransportFailure &&
@@ -293,7 +235,6 @@ export class AllDataDeleteCoordinator {
         if (neverSent) return this.release({ kind: 'unsent' });
       }
     }
-    // The same key is kept: a later check re-sends it and joins the same ticket (05 §9.2).
     if (!prepared) return this.setView({ kind: 'unconfirmed' });
     this.ticketId = prepared.ticketId;
     try {
@@ -301,9 +242,7 @@ export class AllDataDeleteCoordinator {
         operationId: tracker.operationId,
         ticketId: prepared.ticketId,
       });
-    } catch {
-      // Not kept locally: the ticket stays in memory; OP-001 recovery also names it after execution.
-    }
+    } catch {}
     if (prepared.state === 'PREPARED') {
       if (options.executeAfterPrepare === false) return this.setView({ kind: 'prepared' });
       return this.executeAndConfirm(prepared.ticketId);
@@ -322,7 +261,6 @@ export class AllDataDeleteCoordinator {
       if (error instanceof StaleResultFailure && error.outcome.kind === 'result') {
         result = error.outcome.value as AllDataDeleteResult;
       }
-      // Otherwise unknown: acceptance may already have ended the normal session (05 §6.6).
     }
     if (result && (result.state === 'SUCCEEDED' || result.state === 'NOT_APPLIED')) return this.settle(result);
     await this.resultLoop();
@@ -340,9 +278,7 @@ export class AllDataDeleteCoordinator {
     await this.resultLoop();
   }
 
-  /** Generation named by the recovery session when its area is already gone locally. */
   private targetGeneration: string | null = null;
-  /** SUCCEEDED proof held by the deletion finalizer until the device cleanup is confirmed (06 §9.4). */
   private succeeded: { ticketId: string; resultExpiresAt: string } | null = null;
 
   private async resultLoop(): Promise<void> {
@@ -358,14 +294,12 @@ export class AllDataDeleteCoordinator {
           this.deps.api.getAllDataDeleteResult(auth, ticketId, TRANSPORT_MAX_MS),
         );
       } catch {
-        // A safe query failed: try the next slot; never read as "not applied" (05 §8.3).
         continue;
       }
       if (result.state === 'SUCCEEDED' || result.state === 'NOT_APPLIED') return this.settle(result);
       if (result.state === 'CLOSED_OUTCOME_UNAVAILABLE') {
         return this.setView({ kind: 'unconfirmed', recovery: 'cleanUpExpired' });
       }
-      // Reserved but never executed: only the user runs or ends it.
       if (result.state === 'PREPARED') return this.setView({ kind: 'prepared' });
     }
     this.setView({ kind: 'unconfirmed' });
@@ -374,7 +308,6 @@ export class AllDataDeleteCoordinator {
   private async settle(result: AllDataDeleteResult): Promise<void> {
     if (result.state === 'SUCCEEDED') return this.finalize(result.ticketId, result.resultExpiresAt);
     if (result.state !== 'NOT_APPLIED') return this.resultLoop();
-    // Terminal NOT_APPLIED: server and device data stay; the tracker goes, then ack (05 §6.7 OP-009).
     await this.dropTracker();
     const ticketId = result.ticketId;
     await this.runRestricted((auth) => this.deps.api.acknowledgeCommand(auth, ticketId)).catch(() => undefined);
@@ -384,11 +317,6 @@ export class AllDataDeleteCoordinator {
     if (this.deps.session.summary?.mode === 'DELETION_RECOVERY') this.deps.restart();
   }
 
-  /**
-   * 06 §9.4 order: proof in memory → old memory dropped → old device area removed (confirmed) →
-   * minimal receipt → OP-009 with the restricted token → token dropped and F01. A failed removal
-   * keeps the recovery state; a failed receipt or ack never undoes the server success.
-   */
   private async finalize(ticketId: string, resultExpiresAt: string): Promise<void> {
     this.succeeded = { ticketId, resultExpiresAt };
     this.setView({ kind: 'working' });
@@ -413,15 +341,13 @@ export class AllDataDeleteCoordinator {
     this.ticketId = null;
     this.target = null;
     this.targetGeneration = null;
-    // The deleted generation's lock ends with its confirmed cleanup; a new boarding starts unfenced.
     this.deps.setFence(false);
     this.setView({ kind: 'finished' });
     this.deps.finish();
   }
 
-  /** Recovery without a known area ref: the root decides between a targeted removal and a wipe. */
   private async purgeUnknownArea(generation: string | null): Promise<number> {
-    let root: Awaited<ReturnType<StorageJournal['readRoot']>> = null;
+    let root: Awaited<ReturnType<JournalPort['readRoot']>> = null;
     try {
       root = await this.deps.journal.readRoot();
     } catch {
@@ -432,12 +358,6 @@ export class AllDataDeleteCoordinator {
     return (await this.deps.journal.purgeGeneration(scope, generation ?? '')).routeEpoch;
   }
 
-  // ---- helpers -------------------------------------------------------------------------------
-
-  /**
-   * Deletion calls run in whatever mode the owner is in now. Execution acceptance ends the normal
-   * session, so one re-establishment may move ACTIVE → DELETION_RECOVERY (or PRE with the receipt).
-   */
   private async runRestricted<T>(call: (auth: Bearer) => Promise<T>): Promise<T> {
     const mode = this.deps.session.summary?.mode ?? 'ACTIVE';
     try {
@@ -457,7 +377,6 @@ export class AllDataDeleteCoordinator {
     const kept = await this.readTracker(area);
     if (kept) return kept;
     const tracker: Tracker = { operationId: (this.deps.newOperationId ?? defaultOperationId)(), ticketId: null };
-    // Kept and read back before anything is sent (06 §8.3).
     await this.deps.journal.putRecord(area, TRACKER, tracker);
     const back = await this.readTracker(area);
     if (!back || back.operationId !== tracker.operationId) throw new LocalPersistenceFailure('read-back');

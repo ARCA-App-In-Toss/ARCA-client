@@ -1,9 +1,8 @@
-import type { AnonymousKeyResult } from '../platform/ports.ts';
+import type { AnonymousKeyResult } from '../domain/ports/platform.ts';
 import { seedDemo } from './demo.ts';
 import { mockErrors } from './handlers.ts';
 import { createMockWorld, type MockWorld, type ServerBase, SYNTHETIC_KEYS } from './world.ts';
 
-// Named dev/test starting points (07 §4). Selected only by env/test helper, never by URL or Storage.
 export interface ScenarioDefinition {
   id: string;
   base: ServerBase;
@@ -11,7 +10,6 @@ export interface ScenarioDefinition {
   setup?: (world: MockWorld) => void;
 }
 
-/** Short fictional lines for the 21-record list; the index suffix keeps rows distinguishable. */
 const LIST_TEXTS = [
   '역 뒤편 공원의 세 번째 벤치에서 한 정거장을 걸을지 고민했다.',
   '천천히 해도 괜찮아. 늦은 게 아니라 네 속도야.',
@@ -38,7 +36,6 @@ export const scenarios: Record<string, ScenarioDefinition> = {
     base: 'server.activeUnanswered',
     anonymousKey: { kind: 'unavailable', reason: 'error' },
   },
-  // Draft written just before midnight, first saved after it (07 MS-TIME-002 → F13, then the Sheet).
   'MS-TIME-002': {
     id: 'MS-TIME-002',
     base: 'server.activeUnanswered',
@@ -47,7 +44,6 @@ export const scenarios: Record<string, ScenarioDefinition> = {
       world.advanceDayOnFirstPrepare = true;
     },
   },
-  // 21 records across a month boundary: the first page, "기록 더 보기", edit and delete (07 MS-LIST-003/004).
   'MS-LIST-003': {
     id: 'MS-LIST-003',
     base: 'server.activeUnanswered',
@@ -64,7 +60,6 @@ export const scenarios: Record<string, ScenarioDefinition> = {
       }
     },
   },
-  // Design review: a fictional passenger with a month of realistic records (dev only, `pnpm dev:demo`).
   demo: {
     id: 'demo',
     base: 'server.activeUnanswered',

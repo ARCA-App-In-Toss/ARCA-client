@@ -4,10 +4,10 @@ import { createMemoryRouter } from 'react-router';
 import { App } from '../app/App.tsx';
 import { createAppServices } from '../app/composition.ts';
 import { paths, routes } from '../app/routes.tsx';
+import type { AnonymousKeyResult } from '../domain/ports/platform.ts';
 import { createHandlers } from '../mocks/handlers.ts';
 import { createFakePlatform, type FakeStorage } from '../mocks/platform.ts';
 import { createMockWorld, MOCK_API_BASE, type MockWorld, type ServerBase, SYNTHETIC_KEYS } from '../mocks/world.ts';
-import type { AnonymousKeyResult } from '../platform/ports.ts';
 
 export interface BootOptions {
   base?: ServerBase;
@@ -15,11 +15,9 @@ export interface BootOptions {
   storage?: FakeStorage;
   initialPath?: string;
   world?: MockWorld;
-  /** Device clock (06 §7.4 expiry); defaults to the real clock. */
   now?: () => number;
 }
 
-/** Full app on a memory router against the MSW mock world (component + MSW layer, 08 §3.2). */
 export function bootApp(server: SetupServer, options: BootOptions = {}) {
   const world = options.world ?? createMockWorld(options.base ?? 'server.activeUnanswered');
   server.use(...createHandlers(world));

@@ -2,7 +2,6 @@ import { InlineStatus, PixelAppShell, ScenePanel, ScreenTitle } from '../../ui/c
 import { copy } from '../../ui/copy.ts';
 import { JoyMark } from '../../ui/pixel.tsx';
 
-/** F00 — start and state check (03 §4.1, 04 §6.1). No user action; no cached private data. */
 export function StartScreen() {
   return (
     <PixelAppShell>

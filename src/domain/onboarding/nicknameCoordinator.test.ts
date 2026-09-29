@@ -2,10 +2,11 @@ import { setupServer } from 'msw/node';
 import { afterAll, afterEach, beforeAll, describe, expect, test, vi } from 'vitest';
 import { createArcaApi } from '../../data/api/arcaApi.ts';
 import { createHttpTransport } from '../../data/api/transport.ts';
-import { type ManifestScope, StorageJournal } from '../../data/storage/journal.ts';
+import { StorageJournal } from '../../data/storage/journal.ts';
 import { createHandlers } from '../../mocks/handlers.ts';
 import { createFakePlatform } from '../../mocks/platform.ts';
 import { createMockWorld, MOCK_API_BASE } from '../../mocks/world.ts';
+import type { ManifestScope } from '../ports/storage.ts';
 import { SessionController } from '../session/sessionController.ts';
 import { NicknameCoordinator } from './nicknameCoordinator.ts';
 

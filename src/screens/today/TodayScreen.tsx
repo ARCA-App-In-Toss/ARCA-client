@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { useIsOffline, useToday, useTodayRefreshEvents } from '../../app/AppServices.tsx';
+import { usePastDrafts } from '../../app/hooks/pastDrafts.ts';
+import { useToday, useTodayRefreshEvents } from '../../app/hooks/today.ts';
+import { useAnswerWrite, usePendingWrite } from '../../app/hooks/writes.ts';
 import { paths, type QuestionRole, useAnswerRefs, useArcaNavigate } from '../../app/navigation.ts';
-import { usePastDrafts } from '../../app/pastDrafts.ts';
-import { useAnswerWrite, usePendingWrite } from '../../app/writes.ts';
-import type { Today, TodayAnswer } from '../../data/api/models.ts';
-import { TransportFailure } from '../../data/failures.ts';
+import type { Today, TodayAnswer } from '../../domain/models.ts';
 import {
   InlineStatus,
   InsetPanel,
@@ -22,8 +21,8 @@ import { formatCount, formatDateKst, formatInstantKst, isWhitespaceOnly } from '
 import { PixelSheet } from '../../ui/PixelSheet.tsx';
 import { MemoryFragment, ObservationScene } from '../../ui/pixel.tsx';
 import { RootHeader, RootTabs } from '../RootTabs.tsx';
+import { useOfflineOnFailure } from '../shared/offline.ts';
 
-/** The scene is decorative; the question label and date remain readable text. */
 function QuestionLabel({ id, text, dateKst }: { id: string; text: string; dateKst: string }) {
   return (
     <div className="arca-question-source">
@@ -38,23 +37,10 @@ function QuestionLabel({ id, text, dateKst }: { id: string; text: string; dateKs
   );
 }
 
-/** F10 — today's SEMA (03 §5.1, 04 §6.5). Unanswered: question first; answered: own excerpt first. */
 export function TodayScreen() {
   const today = useToday();
   useTodayRefreshEvents({ onEntry: true });
-  const isOffline = useIsOffline();
-  const [offline, setOffline] = useState(false);
-
-  useEffect(() => {
-    if (!(today.error instanceof TransportFailure)) return;
-    let active = true;
-    void isOffline().then((value) => {
-      if (active) setOffline(value);
-    });
-    return () => {
-      active = false;
-    };
-  }, [today.error, isOffline]);
+  const offline = useOfflineOnFailure(today.error);
 
   const refetch = () => void today.refetch();
   const dailySemaId = today.data?.sema.dailySemaId ?? null;
@@ -63,7 +49,6 @@ export function TodayScreen() {
   const [notice, setNotice] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState<string | null>(null);
   const noticed = useRef(false);
-  // A save confirmed after leaving F11: one notice and synced data, no F12 or haptic (04 IX-036 #6).
   useEffect(() => {
     if (write.view.kind !== 'succeeded' || noticed.current) return;
     noticed.current = true;
@@ -123,7 +108,6 @@ export function TodayScreen() {
         />
       )}
       <PastDrafts currentDailySemaId={data.sema.dailySemaId} />
-      {/* The screen's single polite source (02 §12.4); visible statuses above are not live. */}
       <div className="arca-visually-hidden">
         <InlineStatus message={liveMessage} />
       </div>
@@ -147,8 +131,20 @@ function QuestionDate({ dateKst }: { dateKst: string }) {
   );
 }
 
+function questionOf(today: Today, role: QuestionRole) {
+  return role === 'PRIMARY' ? today.sema.primaryQuestion : today.sema.alternateQuestion;
+}
+
+function QuestionHero({ today, text }: { today: Today; text: string }) {
+  return (
+    <ScenePanel labelledBy="f10-question-label" hero>
+      <QuestionLabel id="f10-question-label" text={copy['CPY-F10-003']} dateKst={today.dateKst} />
+      <p className="arca-question arca-question--lead">{text}</p>
+    </ScenePanel>
+  );
+}
+
 function Count({ today }: { today: Today }) {
-  // An unknown count is omitted rather than shown as 0 (04 §5.10).
   if (today.activeAnswerCount.state !== 'AVAILABLE') return null;
   return (
     <MemoryCount text={fill(copy['CPY-COM-003'], { memoryCount: formatCount(today.activeAnswerCount.value.count) })} />
@@ -165,21 +161,14 @@ function Unanswered({
   onAnnounce: (message: string) => void;
 }) {
   const navigate = useArcaNavigate();
-  // Primary question first on every entry; only primary ↔ alternate (IX-006, IX-033).
   const [role, setRole] = useState<QuestionRole>('PRIMARY');
-  const question = role === 'PRIMARY' ? today.sema.primaryQuestion : today.sema.alternateQuestion;
 
   if (pendingQuestionId !== null) {
-    // An unresolved save for this daily SEMA outranks the plain write state (04 IX-036 #5).
     const pendingRole: QuestionRole =
       pendingQuestionId === today.sema.alternateQuestion.questionId ? 'ALTERNATE' : 'PRIMARY';
-    const pendingQuestion = pendingRole === 'PRIMARY' ? today.sema.primaryQuestion : today.sema.alternateQuestion;
     return (
       <>
-        <ScenePanel labelledBy="f10-question-label" hero>
-          <QuestionLabel id="f10-question-label" text={copy['CPY-F10-003']} dateKst={today.dateKst} />
-          <p className="arca-question arca-question--lead">{pendingQuestion.text}</p>
-        </ScenePanel>
+        <QuestionHero today={today} text={questionOf(today, pendingRole).text} />
         <InlineStatus message={copy['CPY-F10-038']} live={false} />
         <div className="arca-actions">
           <PixelButton variant="primary" onClick={() => navigate(paths.write, { questionRole: pendingRole })}>
@@ -193,22 +182,17 @@ function Unanswered({
 
   return (
     <>
-      <ScenePanel labelledBy="f10-question-label" hero>
-        <QuestionLabel id="f10-question-label" text={copy['CPY-F10-003']} dateKst={today.dateKst} />
-        <p className="arca-question arca-question--lead">{question.text}</p>
-      </ScenePanel>
+      <QuestionHero today={today} text={questionOf(today, role).text} />
       <div className="arca-actions">
         <PixelButton variant="primary" onClick={() => navigate(paths.write, { questionRole: role })}>
           {copy['CPY-F10-005']}
         </PixelButton>
-        {/* Focus stays here; the name switches to the next available action (IX-006 #4). */}
         <PixelButton
           variant="ghost"
           onClick={() => {
             const next: QuestionRole = role === 'PRIMARY' ? 'ALTERNATE' : 'PRIMARY';
-            const nextQuestion = next === 'PRIMARY' ? today.sema.primaryQuestion : today.sema.alternateQuestion;
             setRole(next);
-            onAnnounce(fill(copy['CPY-F10-035'], { questionText: nextQuestion.text }));
+            onAnnounce(fill(copy['CPY-F10-035'], { questionText: questionOf(today, next).text }));
           }}
         >
           {role === 'PRIMARY' ? copy['CPY-F10-006'] : copy['CPY-F10-007']}
@@ -238,7 +222,6 @@ function Answered({
 
   return (
     <>
-      {/* Saved-question preface above the excerpt (product decision 2026-09-28); the label is AT-only. */}
       <section className="arca-preface" aria-labelledby="f10-saved-question-label">
         <p className="arca-visually-hidden" id="f10-saved-question-label">
           {copy['CPY-F10-015']}
@@ -256,7 +239,6 @@ function Answered({
             <p className="arca-label" id="f10-excerpt-label">
               {excerpt.isTruncated ? copy['CPY-F10-013'] : copy['CPY-F10-012']}
             </p>
-            {/* Stored prefix verbatim; the ellipsis is UI-only and never part of the text (04 §5.10). */}
             <p className="arca-user-text arca-user-text--reading">
               {excerpt.text}
               {excerpt.isTruncated && <span aria-hidden="true">…</span>}
@@ -268,7 +250,6 @@ function Answered({
         ) : (
           <div className="arca-actions">
             <InlineStatus message={copy['CPY-F10-018']} live={false} />
-            {/* One retry for one query: the screen-level retry covers it when the refresh failed. */}
             {showRetry && (
               <PixelButton variant="ghost" loading={retrying} onClick={onRetry}>
                 {copy['CPY-F10-023']}
@@ -290,15 +271,9 @@ function Answered({
   );
 }
 
-/**
- * Past drafts (03 F10 지난 임시본 있음, 04 IX-015·034): shown only when an unexpired draft of another
- * day exists. Reading the list removes expired drafts (06 §7.4). Rows open F13; nothing is copied
- * into today's question.
- */
 function PastDrafts({ currentDailySemaId }: { currentDailySemaId: string }) {
   const navigate = useArcaNavigate();
   const [open, setOpen] = useState(false);
-  // Entry read decides whether the area shows; opening the Sheet reads the list fresh.
   const list = usePastDrafts(currentDailySemaId, true);
   const sheetList = usePastDrafts(currentDailySemaId, open);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
@@ -335,7 +310,6 @@ function PastDrafts({ currentDailySemaId }: { currentDailySemaId: string }) {
               <li key={row.ref}>
                 <MemoryRow
                   onSelect={() => {
-                    // Close first; the move happens once the Sheet no longer holds navigation.
                     setOpen(false);
                     setSelected(row.ref);
                   }}

@@ -42,21 +42,84 @@
               "options": {
                 "patterns": [
                   {
-                    "group": ["**/app/AppServices*"],
-                    "importNamePattern": "useAppServicesInternal",
-                    "message": "Screens use summaries and narrow actions only (06 §3.1–3.2)."
+                    "group": ["**/app/services*", "**/app/composition*"],
+                    "message": "화면은 app/hooks의 요약값과 좁은 행동만 사용합니다."
                   },
                   {
-                    "group": ["@apps-in-toss/*", "**/platform/appsInToss*"],
-                    "message": "Screens never touch the SDK (06 §3.2)."
+                    "group": ["@apps-in-toss/*", "**/platform/**", "**/domain/ports/**"],
+                    "message": "화면은 플랫폼 SDK·포트를 직접 다루지 않습니다."
                   },
                   {
-                    "group": ["**/data/api/generated/**", "**/data/api/transport*", "**/data/api/arcaApi*"],
-                    "message": "Screens never see wire DTOs or HTTP (06 §3.2)."
+                    "group": ["**/data/**"],
+                    "message": "화면은 wire DTO·HTTP·Storage를 직접 다루지 않습니다."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/domain/**", "!src/domain/**/*.test.ts"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["**/app/**", "**/screens/**", "**/ui/**", "**/data/**", "**/platform/**", "**/mocks/**"],
+                    "message": "domain은 바깥 계층을 모릅니다. 필요한 기능은 domain/ports에 인터페이스로 정의합니다."
                   },
                   {
-                    "group": ["**/data/storage/**"],
-                    "message": "Screens never touch Storage keys or the journal (06 §3.2)."
+                    "group": ["react", "react-dom", "@tanstack/*", "@apps-in-toss/*", "react-router"],
+                    "message": "domain은 UI·프레임워크·SDK에 의존하지 않습니다."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/data/**", "!src/data/**/*.test.ts"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["**/app/**", "**/screens/**", "**/ui/**", "**/platform/**", "**/mocks/**"],
+                    "message": "data는 domain 포트를 구현할 뿐 바깥 계층을 모릅니다."
+                  },
+                  {
+                    "group": ["react", "react-dom", "react-router", "@apps-in-toss/*"],
+                    "message": "data는 UI·SDK에 의존하지 않습니다."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/platform/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["**/app/**", "**/screens/**", "**/ui/**", "**/data/**", "**/mocks/**"],
+                    "message": "platform은 domain 포트를 구현할 뿐 다른 계층을 모릅니다."
                   }
                 ]
               }

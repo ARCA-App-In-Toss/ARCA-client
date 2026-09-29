@@ -47,7 +47,7 @@ describe('past drafts (06 §7.4, F10 Sheet)', () => {
     await repository.save(identityFor('day-1'), '만료 합성', at(), { dateKst: '2026-09-20', questionText: '질문' });
     advance(DRAFT_TTL_MS - 1);
     expect(await repository.listPast('today')).toHaveLength(1);
-    advance(-DRAFT_TTL_MS); // clock moved back: clamped to the last observed time
+    advance(-DRAFT_TTL_MS);
     expect(await repository.listPast('today')).toHaveLength(1);
     advance(DRAFT_TTL_MS + 1);
     await repository.purgeExpired();

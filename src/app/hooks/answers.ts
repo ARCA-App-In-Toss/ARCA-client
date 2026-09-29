@@ -1,10 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
-import type { PrepareAnswerUpdate } from '../data/api/models.ts';
-import type { KeptDraft, WriteView } from '../domain/commands/answerWriteCoordinator.ts';
-import { useAppServicesInternal } from './AppServices.tsx';
-
-// F21~F23 command handles (06 §3.2, §9.2). The answer family has one lock per answer: an edit and a
-// delete of the same answer never run side by side (06 §4.3).
+import type { KeptDraft, WriteView } from '../../domain/commands/answerWriteCoordinator.ts';
+import type { PrepareAnswerUpdate } from '../../domain/models.ts';
+import { useAppServices } from '../services.tsx';
 
 const IDLE: WriteView = { kind: 'idle' };
 
@@ -13,13 +10,12 @@ export interface AnswerCommandHandle {
   saveEdit(input: PrepareAnswerUpdate, flushKept: () => Promise<KeptDraft | null>): void;
   remove(expectedRevision: string): void;
   recheck(): void;
-  /** Explicit OP-015 close/cleanup (04 IX-041); never called by a timer or an exit. */
   close(): void;
   consume(): void;
 }
 
 export function useAnswerCommand(answerId: string | null): AnswerCommandHandle {
-  const { answers } = useAppServicesInternal();
+  const { answers } = useAppServices();
   const subscribe = useCallback(
     (listener: () => void) => (answerId ? answers.subscribe(answerId, listener) : () => undefined),
     [answers, answerId],
@@ -51,12 +47,8 @@ export function useAnswerCommand(answerId: string | null): AnswerCommandHandle {
 
 export type PendingAnswer = 'checking' | { mode: 'UPDATE' | 'DELETE' } | null;
 
-/**
- * Unresolved edit/delete of this answer. Entering F21/F22 checks it once through the same
- * single-flight command; the server's result comes before plain reading (04 IX-036 #5).
- */
 export function usePendingAnswer(answerId: string | null): PendingAnswer {
-  const { answers } = useAppServicesInternal();
+  const { answers } = useAppServices();
   const [pending, setPending] = useState<PendingAnswer>('checking');
   useEffect(() => {
     if (!answerId) return;
@@ -74,7 +66,6 @@ export function usePendingAnswer(answerId: string | null): PendingAnswer {
       );
     void read().then((found) => {
       if (!active || !found) return;
-      // One check; afterwards the kept tracker (or its absence) is read again.
       void answers
         .recheck(answerId, { quiet: found.kind === 'finishing' })
         .catch(() => undefined)

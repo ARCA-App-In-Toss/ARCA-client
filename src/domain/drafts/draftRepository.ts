@@ -1,10 +1,7 @@
 import { z } from 'zod';
-import { LocalPersistenceFailure } from '../../data/failures.ts';
-import type { ManifestScope, StorageJournal } from '../../data/storage/journal.ts';
-import type { ClockPort } from '../../platform/ports.ts';
-
-// Device drafts (06 §7.1, §7.4). Identity uses server ids only, never question or answer text.
-// A draft counts as kept only after the exact serialized value is read back from Storage.
+import { LocalPersistenceFailure } from '../failures.ts';
+import type { ClockPort } from '../ports/platform.ts';
+import type { JournalPort, ManifestScope } from '../ports/storage.ts';
 
 export const DRAFT_TTL_MS = 7 * 24 * 60 * 60 * 1_000;
 
@@ -17,7 +14,6 @@ export interface CreateDraftIdentity {
   questionVersion: string;
 }
 
-/** F22 edit draft: answer + the server revision the edit started from (06 §7.1). */
 export interface UpdateDraftIdentity {
   kind: 'update';
   answerId: string;
@@ -26,10 +22,6 @@ export interface UpdateDraftIdentity {
 
 export type DraftIdentity = CreateDraftIdentity | UpdateDraftIdentity;
 
-/**
- * What F13 shows after the day has passed and OP-005 no longer returns that SEMA: the server KST date
- * and the question as served then. Stored in the record value only, never in its key (06 §7.1).
- */
 export interface DraftContext {
   dateKst: string;
   questionText: string;
@@ -38,9 +30,7 @@ export interface DraftContext {
 export interface Draft {
   identity: DraftIdentity;
   text: string;
-  /** Null for records kept before the context was stored. */
   context: DraftContext | null;
-  /** Only user edits move this; opening or repair does not extend the 7-day window. */
   lastModifiedAt: number;
   expiresAt: number;
 }
@@ -68,7 +58,6 @@ const zDraftRecord = z.object({
   context: z.object({ dateKst: z.string().min(1), questionText: z.string() }).optional(),
 });
 
-/** A kept, unexpired draft of another day: listed without its text (F10 Sheet rows, 04 CPY-F10-029~030). */
 export interface PastDraftSummary {
   identity: CreateDraftIdentity;
   context: DraftContext | null;
@@ -89,18 +78,17 @@ function sameIdentity(a: DraftIdentity, b: DraftIdentity): boolean {
 }
 
 export class DraftRepository {
-  private readonly journal: StorageJournal;
+  private readonly journal: JournalPort;
   private readonly clock: ClockPort;
   private readonly area: () => ManifestScope | null;
   private lastObservedAt = 0;
 
-  constructor(deps: { journal: StorageJournal; clock: ClockPort; area: () => ManifestScope | null }) {
+  constructor(deps: { journal: JournalPort; clock: ClockPort; area: () => ManifestScope | null }) {
     this.journal = deps.journal;
     this.clock = deps.clock;
     this.area = deps.area;
   }
 
-  /** Device time clamped so a backwards clock never expires drafts early (06 §7.4). */
   now(): number {
     this.lastObservedAt = Math.max(this.lastObservedAt, this.clock.now());
     return this.lastObservedAt;
@@ -112,7 +100,6 @@ export class DraftRepository {
     return area;
   }
 
-  /** Loads a live draft; an expired one is removed and reported as absent. Corruption is an error. */
   async load(identity: DraftIdentity): Promise<Draft | null> {
     const area = this.requireArea();
     const raw = await this.journal.getRecord(area, draftName(identity));
@@ -130,10 +117,6 @@ export class DraftRepository {
     return { identity, text: parsed.data.text, context: parsed.data.context ?? null, lastModifiedAt, expiresAt };
   }
 
-  /**
-   * Unexpired drafts of other daily SEMAs, newest edit first. Reading them removes expired ones
-   * (06 §7.4); an unreadable record is skipped here and reported when opened.
-   */
   async listPast(currentDailySemaId: string | null): Promise<PastDraftSummary[]> {
     const area = this.requireArea();
     const manifest = await this.journal.readManifest(area);
@@ -156,16 +139,11 @@ export class DraftRepository {
     return found.sort((a, b) => b.lastModifiedAt - a.lastModifiedAt);
   }
 
-  /** Bootstrap sweep: every expired draft (new and edit) is removed; nothing else changes (06 §7.4). */
   async purgeExpired(): Promise<void> {
     await this.listPast(null);
     await this.listUpdateDrafts(null);
   }
 
-  /**
-   * Live edit drafts, of one answer or of all (null). Reading removes expired ones. A draft whose base
-   * revision is not the current one is stale: shown for copy/discard, never applied (06 §7.1).
-   */
   async listUpdateDrafts(answerId: string | null): Promise<Draft[]> {
     const area = this.requireArea();
     const manifest = await this.journal.readManifest(area);
@@ -181,7 +159,6 @@ export class DraftRepository {
     return found.sort((a, b) => b.lastModifiedAt - a.lastModifiedAt);
   }
 
-  /** Single-delete success removes every edit draft of that answer (06 §7.1). */
   async removeAllForAnswer(answerId: string): Promise<void> {
     const area = this.requireArea();
     const manifest = await this.journal.readManifest(area);
@@ -191,7 +168,6 @@ export class DraftRepository {
     }
   }
 
-  /** Writes and confirms by exact read-back (journal.putRecord); resolves only when kept. */
   async save(identity: DraftIdentity, text: string, lastModifiedAt: number, context?: DraftContext): Promise<void> {
     const area = this.requireArea();
     await this.journal.putRecord(area, draftName(identity), {
@@ -217,7 +193,6 @@ export class DraftRepository {
     await this.journal.removeRecord(this.requireArea(), draftName(identity));
   }
 
-  /** New-save success removes every create draft of that daily SEMA, old content included (06 §7.1). */
   async removeAllForDailySema(dailySemaId: string): Promise<void> {
     const area = this.requireArea();
     const manifest = await this.journal.readManifest(area);

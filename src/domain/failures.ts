@@ -1,6 +1,3 @@
-// The four failure branches screens can receive (06 §3.4). Messages are fixed local strings;
-// no server message, raw body, token, key or ID is ever attached.
-
 export class TransportFailure extends Error {
   override readonly name = 'TransportFailure';
   readonly reason: 'network' | 'timeout' | 'aborted' | 'not-configured';
@@ -25,7 +22,6 @@ export class DomainFailure extends Error {
   override readonly name = 'DomainFailure';
   readonly code: string;
   readonly category: DomainErrorCategory;
-  /** Server-issued random diagnostic id; display-only for support (06 §10.4). */
   readonly requestId: string;
   readonly recoveryAllowed: boolean;
   constructor(code: string, category: DomainErrorCategory, requestId: string, recoveryAllowed: boolean) {
@@ -39,7 +35,6 @@ export class DomainFailure extends Error {
 
 export class LocalPersistenceFailure extends Error {
   override readonly name = 'LocalPersistenceFailure';
-  /** `sealed`: a write to an area behind the full-deletion barrier (06 §8.2). */
   readonly reason: 'write' | 'read-back' | 'corrupt' | 'conflict' | 'unreadable' | 'sealed';
   constructor(reason: LocalPersistenceFailure['reason']) {
     super(`local:${reason}`);

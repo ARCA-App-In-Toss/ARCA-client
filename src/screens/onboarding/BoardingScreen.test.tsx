@@ -22,7 +22,6 @@ async function bootBoarding(options: Parameters<typeof bootApp>[1] = {}) {
 
 const terms = () => screen.getByRole('checkbox', { name: copy['CPY-F02-015'] });
 const privacy = () => screen.getByRole('checkbox', { name: copy['CPY-F02-016'] });
-/** The label text after the policy link ("에 동의해요") still toggles its checkbox. */
 const privacyLabel = () => screen.getAllByText(copy['CPY-F02-019'])[1] as HTMLElement;
 const boardButton = () => screen.getByRole('button', { name: copy['CPY-F02-010'] });
 
@@ -52,14 +51,12 @@ describe('F02 boarding (IX-031, MS-ONB-001/002)', () => {
     expect(screen.getByText('SYN-1001')).toBeInTheDocument();
     expect(opCount(world, 'OP-003')).toBe(1);
     expect(world.passengers.has(SYNTHETIC_KEYS.registered)).toBe(true);
-    // Handoff confirmed the generation area, so the PRE tracker is gone (06 §9.1 #5).
     expect([...platform.storage.data.keys()].filter((key) => key.includes(':pre:'))).toEqual([]);
 
     await userEvent.click(screen.getByRole('button', { name: copy['CPY-F03-013'] }));
     expect(await findTitle(copy['CPY-F10-001'])).toHaveFocus();
     expect(router.state.location.pathname).toBe(paths.today);
 
-    // F03 was a one-time continuation: going back to it lands on the confirmed root.
     await act(() => router.navigate(paths.joinComplete));
     await findTitle(copy['CPY-F10-001']);
   });
@@ -108,7 +105,6 @@ describe('F02 boarding (IX-031, MS-ONB-001/002)', () => {
 
     await userEvent.click(boardButton());
     await findTitle(copy['CPY-F03-001']);
-    // A new ID would have hit PASSENGER_ALREADY_EXISTS; the same ID replays the one creation.
     expect(world.creations).toHaveLength(1);
     expect(world.passengers.size).toBe(1);
   });
@@ -137,7 +133,6 @@ describe('F02 boarding (IX-031, MS-ONB-001/002)', () => {
     expect(privacy()).not.toBeChecked();
     expect(openTerms).toHaveFocus();
 
-    // The policy name itself is the underlined link inside the consent label.
     expect(openTerms).toHaveTextContent(copy['CPY-F02-017']);
     platform.setExternalFails(true);
     await userEvent.click(screen.getByRole('button', { name: copy['CPY-F02-008'] }));
@@ -155,7 +150,7 @@ describe('cold start after a lost creation response (06 §9.1 #4, step-4 carry-o
     await agreeBoth();
     await userEvent.click(boardButton());
     await screen.findByText(copy['CPY-F02-012']);
-    first.view.unmount(); // the app is closed with the creation applied but unconfirmed
+    first.view.unmount();
     return { storage, world };
   }
 

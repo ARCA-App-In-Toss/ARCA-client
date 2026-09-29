@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
-import { useAppSnapshot, useStartActions } from '../../app/AppServices.tsx';
 import type { StartErrorKind } from '../../app/bootstrap/bootstrap.ts';
+import { useAppSnapshot, useStartActions } from '../../app/hooks/start.ts';
 import { InlineStatus, PixelAppShell, PixelButton, ScreenTitle, StatePanel } from '../../ui/components.tsx';
 import { copy } from '../../ui/copy.ts';
 
@@ -12,7 +12,22 @@ const messageFor: Record<StartErrorKind, string> = {
 
 type LocalStatus = 'copied' | 'copy-failed' | 'support-failed' | null;
 
-/** F90 — start error (03 §7.3, 04 §6.15). Creates no data; reconnect repeats the F00 judgement. */
+const localMessage: Record<Exclude<LocalStatus, null>, string> = {
+  copied: copy['CPY-F90-012'],
+  'copy-failed': copy['CPY-F90-013'],
+  'support-failed': copy['CPY-F90-014'],
+};
+
+function startErrorStatus(
+  retry: 'idle' | 'running' | 'failed',
+  local: LocalStatus,
+): { message: string | null; danger: boolean } {
+  if (retry === 'running') return { message: copy['CPY-F90-009'], danger: false };
+  if (local !== null) return { message: localMessage[local], danger: false };
+  if (retry === 'failed') return { message: copy['CPY-F90-010'], danger: true };
+  return { message: null, danger: false };
+}
+
 export function StartErrorScreen() {
   const actions = useStartActions();
   const { bootstrap } = useAppSnapshot();
@@ -23,19 +38,7 @@ export function StartErrorScreen() {
   const { error, retry } = bootstrap;
   const retrying = retry === 'running';
 
-  // One live source for the region (02 §12.4): retry progress wins, then the latest local result.
-  const status =
-    retry === 'running'
-      ? copy['CPY-F90-009']
-      : local === 'copied'
-        ? copy['CPY-F90-012']
-        : local === 'copy-failed'
-          ? copy['CPY-F90-013']
-          : local === 'support-failed'
-            ? copy['CPY-F90-014']
-            : retry === 'failed'
-              ? copy['CPY-F90-010']
-              : null;
+  const status = startErrorStatus(retry, local);
 
   return (
     <PixelAppShell>
@@ -46,7 +49,6 @@ export function StartErrorScreen() {
           <div className="arca-code">
             <dl className="arca-code__pair">
               <dt className="arca-code__label">{copy['CPY-F90-005']}</dt>
-              {/* Directly selectable so copy failure still leaves a manual path (04 IX-040). */}
               <dd ref={codeRef} className="arca-code__value" tabIndex={-1}>
                 {error.safeErrorId}
               </dd>
@@ -87,10 +89,7 @@ export function StartErrorScreen() {
           {copy['CPY-F90-008']}
         </PixelButton>
       </div>
-      <InlineStatus
-        message={status}
-        tone={retry === 'failed' && status === copy['CPY-F90-010'] ? 'danger' : 'neutral'}
-      />
+      <InlineStatus message={status.message} tone={status.danger ? 'danger' : 'neutral'} />
     </PixelAppShell>
   );
 }

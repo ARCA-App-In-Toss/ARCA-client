@@ -2,8 +2,8 @@ import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event';
 import { setupServer } from 'msw/node';
 import { afterAll, afterEach, beforeAll, describe, expect, test } from 'vitest';
-import { msUntilKstBoundary } from '../../app/AppServices.tsx';
 import { paths } from '../../app/navigation.ts';
+import { msUntilKstBoundary } from '../../domain/time/kst.ts';
 import { createFakeStorage } from '../../mocks/platform.ts';
 import {
   createMockWorld,
@@ -32,7 +32,6 @@ async function openWrite(options: Parameters<typeof bootApp>[1] = {}) {
   return { ...booted, textarea };
 }
 
-/** Types and waits until the text is confirmed on the device. */
 async function typeKept(textarea: HTMLElement, text: string) {
   fireEvent.change(textarea, { target: { value: text } });
   await waitFor(() => expect(document.getElementById('f11-help')?.textContent).toContain(copy['CPY-F11-011']), {
@@ -59,12 +58,10 @@ describe('F11 → F13 when the server day changed (IX-034, DATE_CHANGED)', () =>
     const text = screen.getByRole('textbox', { name: copy['CPY-F13-007'] });
     expect(text).toHaveValue('  지난 날 합성 글\n원문 그대로  ');
     expect(text).toHaveAttribute('readonly');
-    // 7 days after the last edit, in KST (04 §5.10).
     expect(document.getElementById('f13-keep')?.textContent).toContain('2026년 10월 4일 오후 2:00 (KST)');
     expect(world.tickets.size).toBe(0);
     expect(world.answers.size).toBe(0);
 
-    // Date-change entry: copy is the Primary action, today is secondary.
     const [first, second] = within(screen.getByText(copy['CPY-F13-012']).closest('.arca-actions') as HTMLElement)
       .getAllByRole('button')
       .map((b) => b.textContent);
@@ -72,7 +69,6 @@ describe('F11 → F13 when the server day changed (IX-034, DATE_CHANGED)', () =>
     await userEvent.click(screen.getByRole('button', { name: copy['CPY-F13-012'] }));
     expect(platform.clipboardWrites).toEqual(['  지난 날 합성 글\n원문 그대로  ']);
     expect(status()).toContain(copy['CPY-F13-014']);
-    // No URL or history entry carries the text or ids.
     expect(JSON.stringify(router.state.location)).not.toContain('지난 날');
     expect(JSON.stringify(router.state.location)).not.toContain('synthetic-day');
   });
@@ -216,9 +212,7 @@ describe('foreground / KST boundary re-query (06 §6.2, IX-029)', () => {
   });
 
   test('the boundary hint fires just after the next KST midnight', () => {
-    // 2026-09-27 23:59:00 KST = 14:59:00Z → 60s + 2s slack.
     expect(msUntilKstBoundary(Date.parse('2026-09-27T14:59:00Z'))).toBe(62_000);
-    // Exactly at KST midnight the next boundary is a full day away.
     expect(msUntilKstBoundary(Date.parse('2026-09-27T15:00:00Z'))).toBe(DAY_MS + 2_000);
   });
 });
@@ -232,7 +226,6 @@ describe('MS-TIME-001 / MS-TIME-003 accepted before midnight, settled after', ()
     await userEvent.click(screen.getByRole('button', { name: copy['CPY-F11-018'] }));
     await waitFor(() => expect(status()).toContain(copy['CPY-F11-024']));
 
-    // Backgrounded mid-cycle; the server finishes and the day moves on meanwhile.
     act(() => platform.setVisible(false));
     world.completeExecuting();
     world.sema = SYNTHETIC_NEXT_DAY_SEMA;
@@ -256,7 +249,6 @@ describe('CMP-018 platform Back', () => {
     const booted = bootApp(server, { world, storage });
     await act(() => booted.started);
     await findTitle(copy['CPY-F10-001']);
-    // Give F10 a previous history entry so platform Back has somewhere to go.
     await act(() => booted.router.navigate(paths.archive));
     await act(() => booted.router.navigate(paths.today));
     await userEvent.click(await screen.findByRole('button', { name: copy['CPY-F10-026'] }));

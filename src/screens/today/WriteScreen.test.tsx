@@ -52,7 +52,6 @@ describe('F11 writing and device keeping (IX-001, IX-002, IX-005)', () => {
     fireEvent.change(textarea, { target: { value: text } });
     expect(help()).toContain(copy['CPY-F11-010']);
     await waitFor(() => expect(help()).toContain(copy['CPY-F11-011']), { timeout: 3_000 });
-    // 2 + 합성 답변(5) + 2 line breaks + 빈 줄 다음(6) + space + ZWJ family(1) + 2 = 19 EGC
     expect(help()).toContain('19/2,000자');
     expect(draftRecords(storage)).toHaveLength(1);
     expect(screen.getByRole('button', { name: copy['CPY-F11-018'] })).toBeEnabled();
@@ -234,12 +233,10 @@ describe('IX-036 unconfirmed result and safe exit', () => {
     await userEvent.click(screen.getByRole('button', { name: copy['CPY-F11-018'] }));
     await waitFor(() => expect(screen.getByRole('button', { name: copy['CPY-F11-028'] })).toBeInTheDocument());
 
-    // A later keeping failure: the draft is no longer confirmed, so leaving is not offered.
     storage.failNextWrite(() => true);
     platform.setClipboardFails(true);
     await userEvent.click(screen.getByRole('button', { name: copy['CPY-F11-029'] }));
     expect(textarea).toHaveFocus();
-    // Combined per IX-037: the unresolved save state first, then the copy result.
     const status = screen.getByRole('status');
     expect(status).toHaveTextContent(copy['CPY-F11-026']);
     expect(status).toHaveTextContent(copy['CPY-F13-015']);
@@ -255,7 +252,6 @@ describe('IX-041 closing a request this device can no longer execute', () => {
     await userEvent.click(screen.getByRole('button', { name: copy['CPY-F11-018'] }));
     await screen.findByRole('button', { name: copy['CPY-F11-028'] });
 
-    // The fixed payload is lost (e.g. expired); the server still holds the prepared request.
     vi.spyOn(AnswerWriteStore.prototype, 'getPayload').mockResolvedValue(null);
     await userEvent.click(screen.getByRole('button', { name: copy['CPY-F11-028'] }));
     const close = await screen.findByRole('button', { name: copy['CPY-COM-020'] });

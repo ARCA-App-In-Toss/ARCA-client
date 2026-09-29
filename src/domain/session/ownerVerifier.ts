@@ -1,6 +1,3 @@
-// Local owner verifier for the PRE tracker (06 §8.1): SHA-256(salt || anonymousKey), hex. It only
-// tells whether a later key is the same one; it never leaves the device and is never logged.
-
 export interface LocalOwnerVerifier {
   salt: string;
   value: string;
@@ -14,7 +11,6 @@ function subtle(): SubtleCrypto | null {
   return globalThis.crypto?.subtle ?? null;
 }
 
-/** Null without Web Crypto: the caller then must not auto-resend OP-003 (06 §8.1). */
 export async function digestOwner(salt: string, anonymousKey: string): Promise<string | null> {
   const crypto = subtle();
   if (!crypto) return null;

@@ -1,141 +1,24 @@
-import { type MouseEvent, useCallback, useEffect, useRef, useState } from 'react';
-import { useAllDeletedNotice } from '../../app/AppServices.tsx';
+import { type MouseEvent, useEffect, useState } from 'react';
+import { useAllDeletedNotice } from '../../app/hooks/onboarding.ts';
 import { paths, useArcaNavigate } from '../../app/navigation.ts';
 import { PixelAppShell, PixelButton, ScreenTitle } from '../../ui/components.tsx';
 import { copy, fill } from '../../ui/copy.ts';
 import { IntroScene, PixelArt } from '../../ui/pixel.tsx';
+import { prefersReducedMotion, scenes, totalScenes, useIntroPlayback } from './useIntroPlayback.ts';
 
-// F01 (03 §4.2, 04 §6.2, IX-030): bundled narrative only — no input, no server change. Finishing or
-// skipping the intro only opens F02; it never creates a passenger (ON-01).
-//
-// Full-screen scene with a bottom dialog box. Each scene's sentences replace one another in the box
-// and type out once (02 §7.1); a tap, Enter/Space or the next control first completes the sentence,
-// then moves to the next sentence or scene. Reduced Motion shows every sentence complete at once.
-// After the last sentence the box gives way to the boarding Primary alone.
-
-/** Scene copy: a blank line separates sentences (one box each); a single newline breaks a line (04 §7.2). */
-const scenes = [
-  copy['CPY-F01-013'],
-  copy['CPY-F01-014'],
-  copy['CPY-F01-015'],
-  copy['CPY-F01-016'],
-  copy['CPY-F01-017'],
-  copy['CPY-F01-018'],
-].map((text) => text.split('\n\n'));
-const totalScenes = String(scenes.length);
-
-/** 02 §7.1 `motion.duration.type`: one character per step. */
-const TYPE_STEP_MS = 35;
-/** 02 §7.1 `motion.duration.scene`: a new scene settles first, then its first sentence types. */
-const SCENE_SETTLE_MS = 320;
-/** 02 §7.1 `motion.duration.depart`: after the boarding Primary the intro sinks into the canvas, then F02. */
 const DEPART_MS = 900;
 
-/** Pixel ▼ shown once a sentence is complete; decorative, the control carries the name. */
 const nextMark: readonly string[] = ['#####', '.###.', '..#..'];
-
-function prefersReducedMotion(): boolean {
-  return typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-}
 
 export function IntroScreen() {
   const navigate = useArcaNavigate();
-  // After a full deletion F01 announces the success once after its title (IX-029, 04 §7.11).
   const deletedNotice = useAllDeletedNotice();
-  const [position, setPosition] = useState({ scene: 0, sentence: 0 });
-  /** True once the reader moves past the last sentence: only the boarding Primary remains. */
-  const [boarding, setBoarding] = useState(false);
-  /** True while the intro fades out after the boarding Primary; F02 opens when it ends. */
+  const { position, sceneSentences, sentenceText, characters, typed, done, announce, boarding, boardRef, advance } =
+    useIntroPlayback();
   const [departing, setDeparting] = useState(false);
-  const sceneSentences = scenes[position.scene] ?? [];
-  const sentenceText = sceneSentences[position.sentence] ?? '';
-  const characters = Array.from(sentenceText);
-  const [typed, setTyped] = useState(() => (prefersReducedMotion() ? characters.length : 0));
-  /** Set only by a user action so the first render does not announce. */
-  const [announce, setAnnounce] = useState<'scene' | 'sentence' | null>(null);
-  const done = typed >= characters.length;
-  const typedRef = useRef(typed);
-  typedRef.current = typed;
-  const boardRef = useRef<HTMLButtonElement>(null);
-  /** Set when the reader moves to a new scene; its first sentence waits for the scene to settle. */
-  const sceneEnteringRef = useRef(false);
-
-  // Type the current sentence once. The start value is set in the same update as the new position
-  // (see `moveTo`), so the next sentence never paints in full for a frame before typing begins. After a
-  // scene change typing waits for the scene image to settle, so only one thing moves at a time (02 §7.1).
-  useEffect(() => {
-    const length = Array.from(scenes[position.scene]?.[position.sentence] ?? '').length;
-    if (prefersReducedMotion()) return;
-    let timer: number | undefined;
-    const start = () => {
-      sceneEnteringRef.current = false;
-      timer = window.setInterval(() => {
-        setTyped((count) => {
-          if (count + 1 >= length) window.clearInterval(timer);
-          return Math.min(count + 1, length);
-        });
-      }, TYPE_STEP_MS);
-    };
-    const settle = sceneEnteringRef.current ? window.setTimeout(start, SCENE_SETTLE_MS) : undefined;
-    if (settle === undefined) start();
-    return () => {
-      window.clearTimeout(settle);
-      window.clearInterval(timer);
-    };
-  }, [position]);
-
-  // The next control leaves with the box, so focus moves to the boarding Primary that replaces it.
-  useEffect(() => {
-    if (boarding) boardRef.current?.focus();
-  }, [boarding]);
-
-  const lastSentence = position.sentence === sceneSentences.length - 1;
-
-  /** Moves to a sentence and resets its typing in one update (complete at once under Reduced Motion). */
-  const moveTo = useCallback((scene: number, sentence: number) => {
-    const length = Array.from(scenes[scene]?.[sentence] ?? '').length;
-    setTyped(prefersReducedMotion() ? length : 0);
-    setPosition({ scene, sentence });
-  }, []);
-
-  const advance = useCallback(() => {
-    if (boarding) return;
-    if (typedRef.current < characters.length) {
-      setTyped(characters.length);
-      return;
-    }
-    if (!lastSentence) {
-      setAnnounce('sentence');
-      moveTo(position.scene, position.sentence + 1);
-      return;
-    }
-    if (position.scene < scenes.length - 1) {
-      setAnnounce('scene');
-      sceneEnteringRef.current = true;
-      moveTo(position.scene + 1, 0);
-      return;
-    }
-    setAnnounce(null);
-    setBoarding(true);
-  }, [boarding, characters.length, lastSentence, moveTo, position.scene, position.sentence]);
-
-  // Enter/Space anywhere outside a control advances like a tap (the focused control handles its own).
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key !== 'Enter' && event.key !== ' ') return;
-      const target = event.target as HTMLElement | null;
-      if (target?.closest('button, a, input, textarea, select')) return;
-      event.preventDefault();
-      advance();
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [advance]);
 
   const toJoin = () => navigate(paths.join);
 
-  // Boarding fades the whole intro into the canvas before F02 (Reduced Motion opens F02 at once). The
-  // curtain also takes every tap meanwhile, so the Primary cannot fire twice.
   const board = () => {
     if (departing) return;
     if (prefersReducedMotion()) {
@@ -161,7 +44,6 @@ export function IntroScreen() {
 
   return (
     <PixelAppShell className="arca-page--intro">
-      {/* Bottom layer: the scene covers the whole viewport; the bar and the dialog float above it. */}
       <div className="arca-intro-backdrop" aria-hidden="true">
         <IntroScene index={position.scene} />
       </div>
@@ -181,11 +63,9 @@ export function IntroScreen() {
       <div className="arca-visually-hidden">
         <ScreenTitle>{copy['CPY-F01-001']}</ScreenTitle>
       </div>
-      {/* The whole stage is a tap target for touch; keyboard and assistive tech use the next control. */}
-      {/* biome-ignore lint/a11y/useKeyWithClickEvents: Enter/Space are handled at document level above. */}
-      {/* biome-ignore lint/a11y/noStaticElementInteractions: a convenience tap area duplicating the control. */}
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents: Enter/Space는 document 수준에서 처리한다. */}
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: 다음 버튼을 겹쳐 둔 편의용 탭 영역이다. */}
       <div className="arca-intro-stage" onClick={advance}>
-        {/* Open space over the scene: tapping here advances like the next control. */}
         <div className="arca-intro-view" />
         {boarding ? (
           <div className="arca-actions">
@@ -194,38 +74,15 @@ export function IntroScreen() {
             </PixelButton>
           </div>
         ) : (
-          <div className="arca-intro-dialog arca-px">
-            {/* Every sentence of the scene shares one grid cell, so the box keeps the tallest one's
-                height within a scene and a shorter sentence sits centred instead of leaving a gap. */}
-            <div className="arca-intro-lines" aria-hidden="true">
-              {sceneSentences.map((sentence, index) =>
-                index === position.sentence ? (
-                  <p key={sentence} className="arca-narrative arca-intro-line">
-                    {/* One span per character, fixed for the whole sentence: typing only flips visibility,
-                        so the balanced line breaks are computed once and never shift while typing. */}
-                    {characters.map((character, index) => (
-                      // biome-ignore lint/suspicious/noArrayIndexKey: characters of one fixed sentence.
-                      <span key={index} className={index < typed ? undefined : 'arca-intro-line__rest'}>
-                        {character}
-                      </span>
-                    ))}
-                  </p>
-                ) : (
-                  <p key={sentence} className="arca-narrative arca-intro-line arca-intro-line--ghost">
-                    {sentence}
-                  </p>
-                ),
-              )}
-            </div>
-            <p className="arca-visually-hidden">{sentenceText}</p>
-            <PixelButton variant="ghost" className="arca-intro-next" aria-label={copy['CPY-F01-004']} onClick={onNext}>
-              <PixelArt
-                rows={nextMark}
-                cell={2}
-                className={done ? 'arca-intro-next__mark' : 'arca-intro-next__mark is-waiting'}
-              />
-            </PixelButton>
-          </div>
+          <IntroDialog
+            sentences={sceneSentences}
+            current={position.sentence}
+            characters={characters}
+            typed={typed}
+            sentenceText={sentenceText}
+            done={done}
+            onNext={onNext}
+          />
         )}
       </div>
       {departing ? <div className="arca-intro-curtain" aria-hidden="true" /> : null}
@@ -233,5 +90,54 @@ export function IntroScreen() {
         {announcement || (deletedNotice ? copy['CPY-F31-019'] : '')}
       </div>
     </PixelAppShell>
+  );
+}
+
+function IntroDialog({
+  sentences,
+  current,
+  characters,
+  typed,
+  sentenceText,
+  done,
+  onNext,
+}: {
+  sentences: readonly string[];
+  current: number;
+  characters: readonly string[];
+  typed: number;
+  sentenceText: string;
+  done: boolean;
+  onNext: (event: MouseEvent) => void;
+}) {
+  return (
+    <div className="arca-intro-dialog arca-px">
+      <div className="arca-intro-lines" aria-hidden="true">
+        {sentences.map((sentence, index) =>
+          index === current ? (
+            <p key={sentence} className="arca-narrative arca-intro-line">
+              {characters.map((character, index) => (
+                // biome-ignore lint/suspicious/noArrayIndexKey: 고정된 한 문장의 글자들이다.
+                <span key={index} className={index < typed ? undefined : 'arca-intro-line__rest'}>
+                  {character}
+                </span>
+              ))}
+            </p>
+          ) : (
+            <p key={sentence} className="arca-narrative arca-intro-line arca-intro-line--ghost">
+              {sentence}
+            </p>
+          ),
+        )}
+      </div>
+      <p className="arca-visually-hidden">{sentenceText}</p>
+      <PixelButton variant="ghost" className="arca-intro-next" aria-label={copy['CPY-F01-004']} onClick={onNext}>
+        <PixelArt
+          rows={nextMark}
+          cell={2}
+          className={done ? 'arca-intro-next__mark' : 'arca-intro-next__mark is-waiting'}
+        />
+      </PixelButton>
+    </div>
   );
 }

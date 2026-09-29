@@ -1,18 +1,12 @@
-import type { AnonymousKeyResult, KeyValueStoragePort, PlatformPort } from '../platform/ports.ts';
+import type { AnonymousKeyResult, KeyValueStoragePort, PlatformPort } from '../domain/ports/platform.ts';
 
-/** Per-device string storage fake with optional failure injection (07 §7). */
 export interface FakeStorage extends KeyValueStoragePort {
   readonly data: Map<string, string>;
-  /** Next write to a matching key is rejected (once). */
   failNextWrite(match: (key: string) => boolean): void;
-  /** Next write to a matching key silently stores `mutate(value)` instead (read-back mismatch). */
   corruptNextWrite(match: (key: string) => boolean, mutate: (value: string) => string): void;
-  /** Every write waits for the returned release function (slow Storage). */
   holdWrites(): () => void;
   readonly writeCount: number;
-  /** Successful `clearItems` calls. */
   readonly clearCount: number;
-  /** The next `count` removals (removeItem or clearItems) are rejected. */
   failNextRemovals(count: number): void;
 }
 
@@ -98,14 +92,12 @@ export interface FakePlatformOptions {
 export interface FakePlatform extends PlatformPort {
   storage: FakeStorage;
   clipboardWrites: string[];
-  /** Policy documents opened externally, in order. */
   openedPolicies: string[];
   hapticCount: number;
   setAnonymousKey(result: AnonymousKeyResult): void;
   setOffline(offline: boolean): void;
   setClipboardFails(fails: boolean): void;
   setExternalFails(fails: boolean): void;
-  /** Simulates the app going to the background (false) or returning (true). */
   setVisible(visible: boolean): void;
 }
 

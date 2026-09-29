@@ -1,9 +1,6 @@
 import { z } from 'zod';
-import { LocalPersistenceFailure } from '../../data/failures.ts';
-import type { ManifestScope, StorageJournal } from '../../data/storage/journal.ts';
-
-// Durable tracker and fixed payload for one answer command target (06 §8.3–8.6). Every put resolves
-// only after exact read-back, so "kept" is never claimed early.
+import { LocalPersistenceFailure } from '../failures.ts';
+import type { JournalPort, ManifestScope } from '../ports/storage.ts';
 
 const zPrepareInput = z.union([
   z.object({
@@ -15,7 +12,6 @@ const zPrepareInput = z.union([
     questionVersion: z.string().min(1),
   }),
   z.object({ mode: z.literal('UPDATE'), answerId: z.string().min(1), expectedRevision: z.string().min(1) }),
-  /** Local discriminator for an OP-012 input; the wire body carries only answerId/expectedRevision. */
   z.object({ mode: z.literal('DELETE'), answerId: z.string().min(1), expectedRevision: z.string().min(1) }),
 ]);
 
@@ -25,10 +21,6 @@ const zTracker = z.object({
   operationId: z.string().min(1),
   prepareInput: zPrepareInput,
   executeIntent: z.boolean(),
-  /**
-   * Set only after the payload is read back (06 §8.3 #4). A tracker without a ticket that never reached
-   * this point was never sent. Older records predate the flag and may have been sent.
-   */
   networkAllowed: z.boolean().default(true),
   ticketId: z.string().min(1).nullable(),
   outcome: z
@@ -57,10 +49,6 @@ export type AnswerWritePayload = z.output<typeof zPayload>;
 
 export type AnswerPrepareInput = z.output<typeof zPrepareInput>;
 
-/**
- * Two record families, one lock each (06 §4.3): `create` is keyed by dailySemaId (new saves), `answer`
- * by answerId (edit and single delete share the same target).
- */
 export type CommandNamespace = 'create' | 'answer';
 
 const NAMES: Record<CommandNamespace, { tracker: string; payload: string }> = {
@@ -69,11 +57,11 @@ const NAMES: Record<CommandNamespace, { tracker: string; payload: string }> = {
 };
 
 export class AnswerWriteStore {
-  private readonly journal: StorageJournal;
+  private readonly journal: JournalPort;
   private readonly area: () => ManifestScope | null;
   private readonly names: { tracker: string; payload: string };
 
-  constructor(deps: { journal: StorageJournal; area: () => ManifestScope | null; namespace?: CommandNamespace }) {
+  constructor(deps: { journal: JournalPort; area: () => ManifestScope | null; namespace?: CommandNamespace }) {
     this.journal = deps.journal;
     this.area = deps.area;
     this.names = NAMES[deps.namespace ?? 'create'];
@@ -101,7 +89,6 @@ export class AnswerWriteStore {
     return this.journal.removeRecord(this.requireArea(), this.names.tracker + target);
   }
 
-  /** The exact payload for `operationId`, or null if it is missing or belongs to another operation. */
   async getPayload(target: string, operationId: string): Promise<AnswerWritePayload | null> {
     const raw = await this.journal.getRecord(this.requireArea(), this.names.payload + target);
     if (raw === null) return null;
@@ -114,7 +101,6 @@ export class AnswerWriteStore {
     return this.journal.putRecord(this.requireArea(), this.names.payload + target, payload);
   }
 
-  /** Targets (daily SEMA ids or answer ids) with a kept tracker, from the manifest (no Storage enumeration). */
   async listTargets(): Promise<string[]> {
     const manifest = await this.journal.readManifest(this.requireArea());
     const prefix = this.names.tracker;

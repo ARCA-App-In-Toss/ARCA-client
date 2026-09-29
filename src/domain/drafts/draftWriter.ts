@@ -1,10 +1,5 @@
 import type { DraftContext, DraftIdentity, DraftRepository } from './draftRepository.ts';
 
-// Keeping schedule for one open draft (06 §7.3, 04 IX-005). A write is requested at 500ms after the
-// last completed change or 2s after the first unkept change, whichever comes first; typing never
-// pushes the 2s mark back. Nothing is committed mid-composition. Writes are serial and only a
-// confirmed write of the latest editVersion is reported as kept.
-
 export const TRAILING_MS = 500;
 export const MAX_WAIT_MS = 2_000;
 
@@ -28,12 +23,10 @@ const realTimers: Timers = {
 export interface DraftWriterOptions {
   repository: DraftRepository;
   identity: DraftIdentity;
-  /** Text restored from Storage (already confirmed), or '' for a fresh draft. */
   initialText: string;
   initialLastModifiedAt: number | null;
   onStatus?: (status: KeepStatus) => void;
   timers?: Timers;
-  /** Date and question kept with the text so F13 can show them after the day passes. */
   context?: DraftContext;
 }
 
@@ -79,12 +72,10 @@ export class DraftWriter {
     return { kind: 'editing', editVersion: this.editVersion };
   }
 
-  /** True when the latest edit is confirmed in Storage (or nothing was edited). */
   get isKept(): boolean {
     return this.editVersion === this.confirmedVersion;
   }
 
-  /** A user edit. While composing, the value is tracked but no write is committed (06 §7.2). */
   change(text: string, composing: boolean): void {
     if (this.disposed) return;
     this.composing = composing;
@@ -100,14 +91,12 @@ export class DraftWriter {
     this.emit();
   }
 
-  /** Composition finished: the whole string is re-read, and an overdue write starts at once. */
   compositionEnd(text: string): void {
     this.change(text, false);
     this.composing = false;
     if (this.due) this.startWrite();
   }
 
-  /** Write the latest version now (question switch, leave, save) and report whether it is kept. */
   async flush(): Promise<boolean> {
     this.clearTimers();
     if (this.isKept) return true;
@@ -116,7 +105,6 @@ export class DraftWriter {
     return this.isKept;
   }
 
-  /** Like flush, but returns the exact text and last-edit time that Storage confirmed (06 §8.3 #1). */
   async flushKept(): Promise<{ text: string; lastModifiedAt: number } | null> {
     if (!(await this.flush())) return null;
     return { text: this.text, lastModifiedAt: this.lastModifiedAt ?? this.repository.now() };
@@ -144,7 +132,6 @@ export class DraftWriter {
     this.clearTimers();
     this.due = false;
     if (this.writing) {
-      // Merge into the next serial write with the latest completed input (06 §7.3).
       this.writeAgain = true;
       return;
     }

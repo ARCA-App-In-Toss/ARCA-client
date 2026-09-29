@@ -1,6 +1,3 @@
-// Synthetic/non-user mock server state (07 §2, §3). Only server state is shared between devices;
-// session tokens here are opaque synthetic strings.
-
 export const MOCK_API_BASE = 'https://arca.mock.invalid';
 
 export const SYNTHETIC_KEYS = {
@@ -24,15 +21,12 @@ export type MockOp =
   | 'OP-013'
   | 'OP-015';
 
-/** One scripted fault, consumed once per matching request (07 §6). */
 export type MockFault =
   | { kind: 'network' }
   | { kind: 'error'; status: number; body: unknown }
   | { kind: 'malformed' }
   | { kind: 'delay'; ms: number }
-  /** Hold the response until the test releases it, then optionally apply another fault. */
   | { kind: 'hold'; release: Promise<void>; after?: MockFault }
-  /** The server applies the request's effect, then the response is lost in transit (07 §6). */
   | { kind: 'lose-response' };
 
 export interface MockTicket {
@@ -49,13 +43,9 @@ export interface MockTicket {
   error: { code: string; category: string } | null;
   completedAt: string | null;
   acknowledged: boolean;
-  /** Result retention ended: only the sealed registry remains (05 §9 결과 수명). */
   resultExpired?: boolean;
-  /** UPDATE write (OP-006 mode UPDATE) or answer delete (OP-012); absent for a CREATE write. */
   answerTarget?: { kind: 'UPDATE' | 'DELETE'; answerId: string; expectedRevision: string };
-  /** Delete receipt effect once SUCCEEDED (05 §10.2). */
   deleteEffect?: 'DELETED' | 'ALREADY_ABSENT';
-  /** Answer revision this write produced; the proof never follows later edits (05 §5.5). */
   proofRevision?: string;
 }
 
@@ -74,7 +64,6 @@ export interface MockPolicy {
   required: boolean;
 }
 
-/** Synthetic required policies; the real IDs, versions and URLs are a legal/launch input (03 §4.3). */
 export const SYNTHETIC_POLICIES: readonly MockPolicy[] = [
   {
     policyId: 'terms-of-service',
@@ -92,14 +81,12 @@ export const SYNTHETIC_POLICIES: readonly MockPolicy[] = [
   },
 ];
 
-/** OP-003 idempotency record: same key + operation ID + fingerprint replays the same creation. */
 export interface MockCreation {
   anonymousKey: string;
   operationId: string;
   fingerprint: string;
 }
 
-/** OP-004 idempotency record; `expired` simulates the 7-day result retention end (05 §6.2). */
 export interface MockNicknameReceipt {
   anonymousKey: string;
   operationId: string;
@@ -111,11 +98,9 @@ export interface MockNicknameReceipt {
 interface SessionRecord {
   anonymousKey: string;
   revoked: boolean;
-  /** DELETION_RECOVERY token: only this deletion ticket's OP-007/008/009/015 (05 §6.1 #4). */
   deletionTicketId?: string;
 }
 
-/** OP-013 all-data-delete ticket (05 §6.6). The fence holds while PREPARED/EXECUTING. */
 export interface MockDeletion {
   owner: string;
   ticketId: string;
@@ -124,7 +109,6 @@ export interface MockDeletion {
   state: 'PREPARED' | 'EXECUTING' | 'SUCCEEDED' | 'NOT_APPLIED';
   error: { code: string; category: string } | null;
   acknowledged: boolean;
-  /** Result retention ended (05 §9.3). */
   resultExpired?: boolean;
 }
 
@@ -163,14 +147,12 @@ export interface MockAnswer {
 
 export type ExcerptProfile = 'COMPACT' | 'STANDARD' | 'EXPANDED';
 
-/** Server-side excerpt budgets (04 §5.10 current defaults); the FE reads `limits`, never these. */
 export const EXCERPT_LIMITS: Record<ExcerptProfile, { maxGraphemes: number; maxLogicalLines: number }> = {
   COMPACT: { maxGraphemes: 96, maxLogicalLines: 4 },
   STANDARD: { maxGraphemes: 120, maxLogicalLines: 4 },
   EXPANDED: { maxGraphemes: 160, maxLogicalLines: 6 },
 };
 
-/** Longest prefix within the EGC and logical-line budgets; no trim or normalization (04 §5.10). */
 export function excerptOf(content: string, profile: ExcerptProfile) {
   const limits = EXCERPT_LIMITS[profile];
   const segments = [...new Intl.Segmenter('ko', { granularity: 'grapheme' }).segment(content)].map((s) => s.segment);
@@ -188,8 +170,6 @@ export function excerptOf(content: string, profile: ExcerptProfile) {
   return { profile, limits, text, isTruncated: text.length < content.length };
 }
 
-/* Fixture text below is fictional demo content (07 §3.5 synthetic/non-user): realistic wording so
-   screens read naturally, never real user or production data. Identities and codes stay opaque. */
 export const SYNTHETIC_SEMA: MockSema = {
   dailySemaId: 'synthetic-day',
   semaId: 'synthetic-sema',
@@ -210,7 +190,6 @@ export const SYNTHETIC_SEMA: MockSema = {
   },
 };
 
-/** The next KST day's SEMA (MS-TIME: the server day moved on while a draft was open). */
 export const SYNTHETIC_NEXT_DAY_SEMA: MockSema = {
   ...SYNTHETIC_SEMA,
   dailySemaId: 'synthetic-day-2',
@@ -229,7 +208,6 @@ export const SYNTHETIC_NEXT_DAY_SEMA: MockSema = {
   },
 };
 
-/** Same daily slot, operator-replaced SEMA content (MS-SEMA: IX-012). */
 export const SYNTHETIC_REPLACED_SEMA: MockSema = {
   ...SYNTHETIC_SEMA,
   semaId: 'synthetic-sema-replaced',
@@ -243,7 +221,6 @@ export const SYNTHETIC_REPLACED_SEMA: MockSema = {
 
 export interface MockWorld {
   passengers: Map<string, Passenger>;
-  /** Current policy list; replace an entry to simulate a version change (MS-ONB-001). */
   policies: MockPolicy[];
   creations: MockCreation[];
   nicknameReceipts: MockNicknameReceipt[];
@@ -252,27 +229,19 @@ export interface MockWorld {
   answers: Map<string, MockAnswer>;
   tickets: Map<string, MockTicket>;
   deletions: Map<string, MockDeletion>;
-  /** MS-ALLDEL-001: the next deletion commit fails and rolls back (ALL_DATA_DELETE_FAILED). */
   deletionCommitFails: boolean;
-  /** The active deletion fence of this key, if any (05 §9.4). */
   deletionFence(anonymousKey: string): MockDeletion | undefined;
-  /** When true, OP-007 answers 202 EXECUTING and the effect waits for `completeExecuting`. */
   asyncExecution: boolean;
-  /** When true, SUCCEEDED results carry presentation UNAVAILABLE (retryable). */
   presentationUnavailable: boolean;
-  /** MS-TIME-002: the server day moves to the next SEMA just before the first OP-006 is judged. */
   advanceDayOnFirstPrepare: boolean;
-  /** Applies pending EXECUTING effects, as a server worker would. */
   completeExecuting(): void;
   faults: Map<MockOp, MockFault[]>;
   requests: { op: MockOp; bearer: string | null }[];
   issueToken(anonymousKey: string): string;
-  /** Revoke every token for the key, as a server-side session expiry would. */
   revokeSessions(anonymousKey: string): void;
   takeFault(op: MockOp): MockFault | undefined;
   addFault(op: MockOp, ...faults: MockFault[]): void;
   answersOf(owner: string): MockAnswer[];
-  /** Adds a stored answer directly (fixture setup, not an API path). */
   seedAnswer(owner: string, content: string, overrides?: Partial<MockAnswer>): MockAnswer;
 }
 
@@ -320,7 +289,6 @@ export function createMockWorld(base: ServerBase): MockWorld {
     presentationUnavailable: false,
     advanceDayOnFirstPrepare: false,
     completeExecuting() {
-      // One ACID commit per deletion: everything of that passenger goes, or nothing (05 §10.3).
       for (const deletion of deletions.values()) {
         if (deletion.state !== 'EXECUTING') continue;
         if (world.deletionCommitFails) {
@@ -340,7 +308,6 @@ export function createMockWorld(base: ServerBase): MockWorld {
         if (ticket.state !== 'EXECUTING') continue;
         const target = ticket.answerTarget;
         if (target) {
-          // UPDATE/DELETE apply only to the prepared revision (05 §10.1–10.2).
           const current = answers.get(target.answerId);
           ticket.completedAt = '2026-09-27T02:00:00Z';
           if (target.kind === 'DELETE' && !current) {

@@ -1,14 +1,12 @@
 import { setupServer } from 'msw/node';
 import { afterAll, afterEach, beforeAll, describe, expect, test, vi } from 'vitest';
-import { createArcaApi } from '../data/api/arcaApi.ts';
-import { createHttpTransport } from '../data/api/transport.ts';
-import { SessionController } from '../domain/session/sessionController.ts';
-import { createHandlers } from '../mocks/handlers.ts';
-import { createFakePlatform } from '../mocks/platform.ts';
-import { createMockWorld, MOCK_API_BASE, SYNTHETIC_KEYS } from '../mocks/world.ts';
-import { ArchiveChains } from './archive.ts';
-
-// Candidate lifetime and mutation patches of the F20 page chain (06 §6.3, MS-LIST-006).
+import { createArcaApi } from '../../data/api/arcaApi.ts';
+import { createHttpTransport } from '../../data/api/transport.ts';
+import { createHandlers } from '../../mocks/handlers.ts';
+import { createFakePlatform } from '../../mocks/platform.ts';
+import { createMockWorld, MOCK_API_BASE, SYNTHETIC_KEYS } from '../../mocks/world.ts';
+import { SessionController } from '../session/sessionController.ts';
+import { ArchiveChains } from './archiveChains.ts';
 
 const server = setupServer();
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
@@ -108,7 +106,6 @@ describe('ArchiveChains candidate and patches', () => {
     const { chains, world, seeded } = await setup();
     const reads = () => world.requests.filter((r) => r.op === 'OP-010').length;
     chains.saveAnchor({ answerId: seeded[0]?.answerId ?? '', viewportOffset: 40, routeEpoch: 1 });
-    // No mutation: coming back from F21 restores without a request.
     expect(chains.enter({ routeEpoch: 1, atTop: () => false })).not.toBeNull();
     expect(reads()).toBe(1);
 
@@ -117,7 +114,6 @@ describe('ArchiveChains candidate and patches', () => {
     chains.removeRow(seeded[2]?.answerId ?? '');
     expect(chains.enter({ routeEpoch: 1, atTop: () => false })).not.toBeNull();
     await vi.waitFor(() => expect(reads()).toBe(2));
-    // Same rows as the server: no candidate, and no further re-read on the next return.
     expect(chains.getView().candidateReady).toBe(false);
     chains.saveAnchor({ answerId: seeded[0]?.answerId ?? '', viewportOffset: 40, routeEpoch: 1 });
     chains.enter({ routeEpoch: 1, atTop: () => false });

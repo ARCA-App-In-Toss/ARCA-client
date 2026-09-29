@@ -229,7 +229,6 @@ describe('OP-003 createPassenger recovery (06 §9.1, §8.1)', () => {
     await expect(session.createPassenger('synthetic-op-1', consents, null)).rejects.toThrow();
     expect(world.requests.filter((r) => r.op === 'OP-003')).toHaveLength(1);
     expect(op001Count(world)).toBe(1);
-    // The created passenger is not claimed: no ACTIVE session was applied.
     expect(session.summary?.mode).toBe('PRE_PASSENGER');
     expect(events.some((e) => e.kind === 'established' && e.boarded)).toBe(false);
   });

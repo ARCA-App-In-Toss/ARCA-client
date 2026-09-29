@@ -1,17 +1,8 @@
-import type { ArcaApi, Bearer } from '../../data/api/arcaApi.ts';
-import type {
-  ConsentReceipt,
-  EstablishedSession,
-  PassengerProfile,
-  RecentDeletion,
-  SessionMode,
-} from '../../data/api/models.ts';
-import { DomainFailure, ProtocolFailure, TransportFailure } from '../../data/failures.ts';
-import type { ClockPort, IdentityPort } from '../../platform/ports.ts';
+import { DomainFailure, ProtocolFailure, TransportFailure } from '../failures.ts';
+import type { ConsentReceipt, EstablishedSession, PassengerProfile, RecentDeletion, SessionMode } from '../models.ts';
+import type { ArcaApi, Bearer } from '../ports/api.ts';
+import type { ClockPort, IdentityPort } from '../ports/platform.ts';
 import { digestOwner, type LocalOwnerVerifier, newSalt } from './ownerVerifier.ts';
-
-// Owns OP-001, the access token and the {ownerScope, epoch, generation} fence (06 §4.2, §5.4).
-// The token never leaves this module except as the bearer handed to a single ArcaApi call.
 
 export class IdentityUnavailableFailure extends Error {
   override readonly name = 'IdentityUnavailableFailure';
@@ -22,7 +13,6 @@ export class IdentityUnavailableFailure extends Error {
   }
 }
 
-/** Re-establishment changed owner, mode or generation; the old request must not be replayed. */
 export class SessionChangedFailure extends Error {
   override readonly name = 'SessionChangedFailure';
   constructor() {
@@ -30,17 +20,11 @@ export class SessionChangedFailure extends Error {
   }
 }
 
-/**
- * A response arrived for an older epoch/generation/owner and must not be applied to current state.
- * The original outcome is kept so command code can still record a terminal result or keep the
- * outcome unconfirmed instead of treating staleness as "not applied" (05 §8.3).
- */
 export class StaleResultFailure extends Error {
   override readonly name = 'StaleResultFailure';
   declare readonly outcome: { kind: 'result'; value: unknown } | { kind: 'error'; error: unknown };
   constructor(outcome: StaleResultFailure['outcome']) {
     super('session:stale');
-    // Non-enumerable: the outcome may hold private content and must never be serialized (06 §10.4).
     Object.defineProperty(this, 'outcome', { value: outcome, enumerable: false });
   }
 }
@@ -60,7 +44,6 @@ export interface RequestSnapshot {
 }
 
 export interface SessionSummary {
-  /** Random in-memory ref for the confirmed owner; contains no key, token or passenger code (06 §6.1). */
   readonly ownerScope: string;
   readonly mode: SessionMode;
   readonly epoch: number;
@@ -74,7 +57,6 @@ export type SessionEvent =
       kind: 'established';
       summary: SessionSummary;
       ownerChanged: boolean;
-      /** Set only when this session came from this visit's OP-003 response (06 §9.1 #3–4). */
       boarded?: PassengerProfile;
     }
   | { kind: 'discarded' };
@@ -84,15 +66,10 @@ interface Current {
   token: string;
   expiresAtMs: number;
   receivedAtMs: number;
-  /** In-memory owner comparison only; never exposed or persisted. */
   ownerIdentity: string;
   session: EstablishedSession;
 }
 
-/**
- * OP-003 outcome is unknown: no response, an unreadable one, or the session was rejected before the
- * server could answer for this attempt. None of these means "not created" (05 §8.3).
- */
 function creationOutcomeUnknown(error: unknown): boolean {
   if (error instanceof TransportFailure) return error.reason === 'network' || error.reason === 'timeout';
   if (error instanceof ProtocolFailure) return true;
@@ -105,10 +82,6 @@ function newOwnerScope(): string {
   return globalThis.crypto?.randomUUID?.() ?? `scope-${scopeSeq}-${Math.random().toString(36).slice(2)}`;
 }
 
-/**
- * ACTIVE and its own DELETION_RECOVERY share one owner (same passenger and generation): moving into
- * the restricted gate does not by itself discard memory or the device area (06 §9.3–9.4).
- */
 function ownerIdentityOf(session: EstablishedSession): string {
   const { context } = session;
   return context.mode === 'PRE_PASSENGER' ? 'PRE' : `G:${context.dataGeneration}`;
@@ -135,13 +108,11 @@ export class SessionController {
     return this.current?.summary ?? null;
   }
 
-  /** The deletion ticket a DELETION_RECOVERY session is limited to; null in any other mode. */
   get deletionTicketId(): string | null {
     const context = this.current?.session.context;
     return context?.mode === 'DELETION_RECOVERY' ? context.deletionTicketId : null;
   }
 
-  /** Policies from the latest OP-001, for onboarding only. */
   get consentPolicies() {
     return this.current?.session.consentPolicies ?? [];
   }
@@ -151,7 +122,6 @@ export class SessionController {
     return () => this.listeners.delete(listener);
   }
 
-  /** OP-001 single-flight: every caller shares the same Promise (06 §5.4). */
   establish(): Promise<SessionSummary> {
     this.inFlight ??= this.runEstablish().finally(() => {
       this.inFlight = null;
@@ -177,7 +147,6 @@ export class SessionController {
     );
   }
 
-  /** A fresh verifier for the current key, or null without Web Crypto (06 §8.1). */
   async localOwnerVerifier(): Promise<LocalOwnerVerifier | null> {
     const salt = newSalt();
     if (!salt) return null;
@@ -185,18 +154,10 @@ export class SessionController {
     return value ? { salt, value } : null;
   }
 
-  /** True only when the current platform key hashes to the stored verifier. */
   async matchesLocalOwner(verifier: LocalOwnerVerifier): Promise<boolean> {
     return (await digestOwner(verifier.salt, await this.requireKey())) === verifier.value;
   }
 
-  /**
-   * OP-003 with the stored operation ID and consents (06 §9.1). The ACTIVE session in the response
-   * replaces the PRE one. If the outcome is unknown, OP-001 is re-exchanged and the same ID/input is
-   * resent once, but only when the verifier proves the key is unchanged; without a verifier nothing is
-   * resent automatically. A plain ACTIVE exchange is never treated as this creation's success: only
-   * the OP-003 response for the same ID completes the handoff.
-   */
   async createPassenger(
     operationId: string,
     consents: readonly ConsentReceipt[],
@@ -222,8 +183,6 @@ export class SessionController {
       try {
         created = await this.deps.api.createPassenger({ bearer: fresh.accessToken }, operationId, consents);
       } catch (resendError) {
-        // A PRE refresh is the same owner. An ACTIVE session without this ID's receipt is applied only
-        // on a definite answer, so it goes through normal start instead of a creation success.
         if (fresh.context.mode === 'PRE_PASSENGER' || !creationOutcomeUnknown(resendError)) this.apply(fresh);
         throw resendError;
       }
@@ -231,11 +190,6 @@ export class SessionController {
     return { summary: this.apply(created.session, created.passenger), passenger: created.passenger };
   }
 
-  /**
-   * Cold start already ACTIVE with a kept creation tracker: resend the same OP-003 ID and input under
-   * the ACTIVE session (05 OP-003 same-owner re-request). Only that receipt continues onboarding; any
-   * other answer throws and the caller starts normally (06 §9.1 #4).
-   */
   async replayCreationAsActive(operationId: string, consents: readonly ConsentReceipt[]): Promise<PassengerProfile> {
     const current = this.current;
     if (current?.summary.mode !== 'ACTIVE') throw new SessionModeMismatchFailure();
@@ -245,19 +199,12 @@ export class SessionController {
     return created.passenger;
   }
 
-  /** Drop the token (reload, long background, full deletion success). */
   discard(): void {
     if (!this.current) return;
     this.current = null;
     this.emit({ kind: 'discarded' });
   }
 
-  /**
-   * Runs one authorized call in `mode`. A server-declared recoverable session error re-establishes once
-   * and replays once only when owner/mode/generation are unchanged (05 §6.1 #6, 06 §5.4). Any
-   * re-establishment that changes owner or generation (recovery or proactive refresh) aborts the call
-   * with SessionChangedFailure; the outcome is returned only if the fence still matches.
-   */
   async run<T>(mode: SessionMode, call: (auth: Bearer, snapshot: RequestSnapshot) => Promise<T>): Promise<T> {
     const origin = this.requireSnapshot(mode);
     await this.refreshIfNearExpiry();
@@ -272,7 +219,6 @@ export class SessionController {
       try {
         await this.establish();
       } catch (establishError) {
-        // Owner could not be confirmed: private screens close and memory is dropped (06 §5.4).
         this.discard();
         throw establishError;
       }
@@ -315,12 +261,10 @@ export class SessionController {
     return this.current.token;
   }
 
-  /** Foreground entry: the same proactive refresh as before a request (06 §5.4). */
   refreshOnForeground(): Promise<void> {
     return this.refreshIfNearExpiry();
   }
 
-  /** Proactive margin min(60s, 10% of observed TTL); device time is only a hint (06 §5.4). */
   private async refreshIfNearExpiry(): Promise<void> {
     const current = this.current;
     if (!current) return;
@@ -335,7 +279,6 @@ export class SessionController {
     return this.apply(await this.deps.api.establishSession(key));
   }
 
-  /** No OP-001, random id or local fallback when the platform key is unavailable (05 §6.1 #1). */
   private async requireKey(): Promise<string> {
     const key = await this.deps.identity.getAnonymousKey();
     if (key.kind !== 'ok') throw new IdentityUnavailableFailure(key.reason);

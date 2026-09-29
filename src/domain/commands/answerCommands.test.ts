@@ -11,8 +11,6 @@ import { SessionController } from '../session/sessionController.ts';
 import { AnswerWriteCoordinator, type SyncEvent } from './answerWriteCoordinator.ts';
 import { AnswerWriteStore } from './answerWriteStore.ts';
 
-// Edit (UPDATE) and single delete (OP-012) on the answer-target coordinator (06 §4.3, §8.5, §9.2).
-
 const server = setupServer();
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
 afterEach(() => {
@@ -51,7 +49,6 @@ async function setup() {
       synced.push(event);
     },
   });
-  // Fixed at setup: the world mutates its answer objects in place.
   const baseRevision = answer.revision;
   const editIdentity = { kind: 'update' as const, answerId: answer.answerId, baseRevision };
   const saveEdit = (content: string) =>
@@ -92,7 +89,6 @@ describe('MS-EDIT-001 edit command', () => {
     expect(stored?.isEdited).toBe(true);
     expect(stored?.question).toEqual(answer.question);
     expect(await drafts.load(editIdentity)).toBeNull();
-    // A draft on another base revision is never applied nor removed by this success (06 §7.1).
     expect((await drafts.load(other))?.text).toBe('낡은 기준 합성');
     expect(synced).toEqual([
       expect.objectContaining({ kind: 'updated', baseRevision: 'a-r1', revision: stored?.revision, content }),

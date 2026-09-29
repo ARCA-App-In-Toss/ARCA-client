@@ -1,9 +1,7 @@
 import type { ZodObject } from 'zod';
-import { DomainFailure, ProtocolFailure } from '../failures.ts';
+import { DomainFailure, ProtocolFailure } from '../../domain/failures.ts';
 import { zApiError } from './generated/zod.gen.ts';
 
-// 05 §7.6: take only the fields allowed for the known code, then validate. Extra fields are
-// dropped (never forwarded to UI/logs); a wrong code/category/recovery combination is a protocol error.
 const optionsByCode = new Map<string, ZodObject>();
 for (const option of zApiError.options as readonly ZodObject[]) {
   const code = (option.shape.code as { value?: unknown } | undefined)?.value;

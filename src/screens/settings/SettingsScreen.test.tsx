@@ -20,7 +20,6 @@ const passengerGroup = () => screen.getByRole('region', { name: copy['CPY-F30-00
 const displayName = () =>
   within(passengerGroup()).getByText(copy['CPY-F30-003']).parentElement?.querySelector('dd')?.textContent;
 
-/** Boots at F10 (or F20) and opens F30 through the root settings button. */
 async function openSettings(options: { nickname?: string | null; from?: 'today' | 'archive' } = {}) {
   const world = createMockWorld('server.activeUnanswered');
   const passenger = world.passengers.get(SYNTHETIC_KEYS.registered);
@@ -94,7 +93,6 @@ describe('F30 settings (03 §7.1, 04 §6.13)', () => {
     expect(screen.getByRole('button', { name: copy['CPY-F30-007'] })).toHaveFocus();
     expect(opCount(world, 'OP-004')).toBe(1);
     expect(world.passengers.get(SYNTHETIC_KEYS.registered)?.nickname).toBe('새 합성 이름');
-    // No nickname draft and no leftover tracker after a confirmed save (IX-004, 06 §9.1).
     expect([...storage.data.values()].some((v) => v.includes('새 합성 이름'))).toBe(false);
   });
 

@@ -1,10 +1,9 @@
 import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { useArchive, useIsOffline, useRefreshToday, useToday } from '../../app/AppServices.tsx';
-import type { ArchiveView } from '../../app/archive.ts';
+import { useArchive } from '../../app/hooks/archive.ts';
+import { useRefreshToday, useToday } from '../../app/hooks/today.ts';
 import { paths, useAnswerRefs, useArcaNavigate } from '../../app/navigation.ts';
-import type { ArchiveItem } from '../../data/api/models.ts';
-import { TransportFailure } from '../../data/failures.ts';
-import { prefixExcerpt } from '../../domain/text/graphemes.ts';
+import type { ArchiveView } from '../../domain/archive/archiveChains.ts';
+import type { ArchiveItem } from '../../domain/models.ts';
 import {
   InlineStatus,
   MemoryCount,
@@ -19,24 +18,17 @@ import { copy, fill } from '../../ui/copy.ts';
 import { formatCount, formatDateKst } from '../../ui/format.ts';
 import { EmptyArchiveArt } from '../../ui/pixel.tsx';
 import { RootHeader, RootTabs } from '../RootTabs.tsx';
-
-/** Question part for rows: 80 EGC / 2 logical lines, prefix only (04 §5.10 #6). */
-const QUESTION_PART = { maxGraphemes: 80, maxLogicalLines: 2 } as const;
+import { useOfflineOnFailure } from '../shared/offline.ts';
+import { questionPartOf } from './questionPart.ts';
 
 function monthOf(dateKst: string) {
   const [year, month] = dateKst.split('-').map((part) => Number.parseInt(part, 10));
   return { key: dateKst.slice(0, 7), label: fill(copy['CPY-F20-003'], { year: String(year), month: String(month) }) };
 }
 
-/** Scroll position treated as "at the top" for applying a held first page without moving focus. */
 const TOP_SLACK_PX = 8;
 const atTop = () => window.scrollY <= TOP_SLACK_PX;
 
-/**
- * F20 — voyage records (03 §6.1, 04 §6.9). One page chain per owner/generation: explicit
- * "기록 더 보기" (IX-023), a held newer first page applied only by the user or at the top (IX-042),
- * and the row anchor restored after F21. The count is OP-005's, never derived from rows (06 §6.3).
- */
 export function ArchiveScreen() {
   const archive = useArchive();
   const { view } = archive;
@@ -44,16 +36,13 @@ export function ArchiveScreen() {
   const refreshToday = useRefreshToday();
   const navigate = useArcaNavigate();
   const refs = useAnswerRefs();
-  const isOffline = useIsOffline();
-  const [offline, setOffline] = useState(false);
+  const offline = useOfflineOnFailure(view.phase === 'error' ? view.firstError : null);
   const containerRef = useRef<HTMLDivElement>(null);
   const rowRefs = useRef(new Map<string, HTMLLIElement>());
   const entered = useRef(false);
   const [deletedNotice, setDeletedNotice] = useState(false);
 
-  // Root entry: first page (or a background refresh), except right after F21 where the kept chain
-  // and anchor come back first (06 §6.2).
-  // biome-ignore lint/correctness/useExhaustiveDependencies: runs once per F20 visit
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 목록 방문마다 한 번만 실행한다
   useLayoutEffect(() => {
     if (entered.current) return;
     entered.current = true;
@@ -67,7 +56,6 @@ export function ArchiveScreen() {
     if (row) window.scrollTo(0, row.getBoundingClientRect().top + window.scrollY - anchor.viewportOffset);
   }, []);
 
-  // Coming back to the top on one's own applies a held first page without moving focus (IX-042).
   useEffect(() => {
     if (!view.candidateReady) return;
     const onScroll = () => {
@@ -77,7 +65,6 @@ export function ArchiveScreen() {
     return () => window.removeEventListener('scroll', onScroll);
   }, [view.candidateReady, archive]);
 
-  // The user chose "최신 기록 보기": top of the new chain, focus on its first record or the title.
   useEffect(() => {
     if (view.replacedSeq === 0) return;
     window.scrollTo(0, 0);
@@ -86,17 +73,6 @@ export function ArchiveScreen() {
       containerRef.current?.querySelector<HTMLElement>('h1');
     target?.focus({ preventScroll: true });
   }, [view.replacedSeq]);
-
-  useEffect(() => {
-    if (view.phase !== 'error' || !(view.firstError instanceof TransportFailure)) return;
-    let active = true;
-    void isOffline().then((value) => {
-      if (active) setOffline(value);
-    });
-    return () => {
-      active = false;
-    };
-  }, [view.phase, view.firstError, isOffline]);
 
   const tabs = <RootTabs current="archive" />;
   const count = today.data?.activeAnswerCount;
@@ -107,15 +83,7 @@ export function ArchiveScreen() {
     }
   }, [deletedNotice, view.more, view.candidateReady, view.refreshFailed, view.added]);
 
-  // One polite source for this screen; visible statuses below are not live (02 §12.4).
-  let announcement: string | null = null;
-  if (view.more === 'failed' || view.more === 'cursorInvalid') announcement = copy['CPY-F20-019'];
-  else if (view.more === 'loading') announcement = copy['CPY-F20-017'];
-  else if (view.candidateReady) announcement = copy['CPY-F20-023'];
-  else if (view.refreshFailed) announcement = copy['CPY-F20-022'];
-  else if (view.added) announcement = fill(copy['CPY-F20-018'], { loadedCount: formatCount(view.added.count) });
-  else if (deletedNotice) announcement = copy['CPY-F23-009'];
-  // Once any later status takes the live region, the deletion is not announced again.
+  const announcement = announcementOf(view, deletedNotice);
 
   let body: React.ReactNode;
   if (view.phase !== 'ready') {
@@ -137,7 +105,6 @@ export function ArchiveScreen() {
     body = (
       <StatePanel centered>
         <EmptyArchiveArt />
-        {/* The empty state ends with its title; the root tabs already lead back to today. */}
         <h2 className="arca-label">{copy['CPY-F20-011']}</h2>
       </StatePanel>
     );
@@ -172,7 +139,6 @@ export function ArchiveScreen() {
         {body}
       </div>
       {view.phase === 'ready' && view.candidateReady && (
-        // Floats above the tabs so the rows being read are not pushed (IX-042).
         <div className="arca-archive-candidate">
           <InlineStatus message={copy['CPY-F20-023']} live={false} />
           <PixelButton onClick={() => archive.applyCandidate({ focus: true })}>{copy['CPY-F20-024']}</PixelButton>
@@ -183,6 +149,16 @@ export function ArchiveScreen() {
       </div>
     </PixelAppShell>
   );
+}
+
+function announcementOf(view: ArchiveView, deletedNotice: boolean): string | null {
+  if (view.more === 'failed' || view.more === 'cursorInvalid') return copy['CPY-F20-019'];
+  if (view.more === 'loading') return copy['CPY-F20-017'];
+  if (view.candidateReady) return copy['CPY-F20-023'];
+  if (view.refreshFailed) return copy['CPY-F20-022'];
+  if (view.added) return fill(copy['CPY-F20-018'], { loadedCount: formatCount(view.added.count) });
+  if (deletedNotice) return copy['CPY-F23-009'];
+  return null;
 }
 
 function ListEnd({
@@ -201,7 +177,6 @@ function ListEnd({
   const moreFocused = useRef(false);
   const showMore = view.hasMore && (view.more === 'idle' || view.more === 'loading');
   const showEnd = !view.hasMore && view.loadedExtra && view.more === 'idle';
-  // The last page removes "기록 더 보기"; focus stays at the list end instead of falling to the page.
   useEffect(() => {
     if (!showMore && showEnd && moreFocused.current) endRef.current?.focus({ preventScroll: true });
     moreFocused.current = false;
@@ -216,7 +191,6 @@ function ListEnd({
         </>
       )}
       {view.more === 'cursorInvalid' && (
-        // The rejected cursor is not guessed again; a fresh first page is offered instead (06 §6.3).
         <>
           <InlineStatus message={copy['CPY-F20-019']} tone="danger" live={false} />
           <PixelButton onClick={onReloadFirst}>{copy['CPY-F20-024']}</PixelButton>
@@ -263,10 +237,9 @@ function ArchiveList({
     <ul className="arca-list">
       {items.map((item) => {
         const month = monthOf(item.createdDateKst);
-        // A month heading only where the real KST year-month changes (03 §6.1).
         const heading = month.key !== previousMonth ? month.label : null;
         previousMonth = month.key;
-        const question = prefixExcerpt(item.question.text, QUESTION_PART.maxGraphemes, QUESTION_PART.maxLogicalLines);
+        const question = questionPartOf(item.question.text);
         return (
           <Fragment key={item.answerId}>
             {heading && (

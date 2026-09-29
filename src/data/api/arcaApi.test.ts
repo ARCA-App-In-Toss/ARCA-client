@@ -1,8 +1,8 @@
 import { setupServer } from 'msw/node';
 import { afterAll, afterEach, beforeAll, describe, expect, test } from 'vitest';
+import { DomainFailure, ProtocolFailure, TransportFailure } from '../../domain/failures.ts';
 import { createHandlers, mockErrors } from '../../mocks/handlers.ts';
 import { createMockWorld, MOCK_API_BASE, type MockWorld, SYNTHETIC_KEYS } from '../../mocks/world.ts';
-import { DomainFailure, ProtocolFailure, TransportFailure } from '../failures.ts';
 import { createArcaApi } from './arcaApi.ts';
 import { createHttpTransport } from './transport.ts';
 

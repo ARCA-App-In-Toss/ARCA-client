@@ -1,5 +1,19 @@
 import { z } from 'zod';
-import { ProtocolFailure, TransportFailure } from '../failures.ts';
+import { ProtocolFailure, TransportFailure } from '../../domain/failures.ts';
+import type {
+  AllDataDeleteClosure,
+  AllDataDeleteResult,
+  AnswerDeleteClosure,
+  AnswerDeleteResult,
+  AnswerWriteClosure,
+  AnswerWriteResult,
+  Availability,
+  Excerpt,
+  Reconciliation,
+  SessionContext,
+  Today,
+} from '../../domain/models.ts';
+import type { ArcaApi } from '../../domain/ports/api.ts';
 import { toDomainFailure } from './errorEnvelope.ts';
 import {
   zAllDataDeleteClosedOutcomeUnavailableReconciled,
@@ -25,116 +39,12 @@ import {
   zNicknameReceipt,
   zTodayReadModel,
 } from './generated/zod.gen.ts';
-import type {
-  AllDataDeleteClosure,
-  AllDataDeleteResult,
-  AnswerDeleteClosure,
-  AnswerDeleteResult,
-  AnswerDetail,
-  AnswerPage,
-  AnswerWriteClosure,
-  AnswerWriteResult,
-  Availability,
-  ConsentReceipt,
-  CreatedPassenger,
-  EstablishedSession,
-  Excerpt,
-  ExcerptProfile,
-  NicknameReceipt,
-  PassengerProfile,
-  PrepareAnswerDelete,
-  PrepareAnswerWrite,
-  Reconciliation,
-  SessionContext,
-  Today,
-} from './models.ts';
 import type { HttpRequest, HttpTransport } from './transport.ts';
 
-/** Safe query transport budget and single connectivity retry (06 §6.2). */
 export const SAFE_QUERY_TIMEOUT_MS = 8_000;
 const SESSION_TIMEOUT_MS = 8_000;
-/** OP-003 transport budget. Timeout or loss says nothing about the creation outcome (05 §8.3). */
 export const CREATE_PASSENGER_TIMEOUT_MS = 10_000;
-/** OP-004 transport budget; a timeout is resolved by resending the same key (05 §6.2). */
 export const SET_NICKNAME_TIMEOUT_MS = 10_000;
-
-export interface Bearer {
-  readonly bearer: string;
-}
-
-export interface ArcaApi {
-  /** OP-001. Creates no passenger. */
-  establishSession(anonymousKey: string): Promise<EstablishedSession>;
-  /**
-   * OP-003. `operationId` travels only as the Idempotency-Key header. The response carries a new ACTIVE
-   * session; only SessionController may call this.
-   */
-  createPassenger(auth: Bearer, operationId: string, consents: readonly ConsentReceipt[]): Promise<CreatedPassenger>;
-  /** OP-002: the current profile, never proof that a particular nickname request applied. */
-  getPassenger(auth: Bearer, signal?: AbortSignal): Promise<PassengerProfile>;
-  /** OP-004. `nickname: null` clears; `operationId` travels only as the Idempotency-Key header. */
-  setNickname(
-    auth: Bearer,
-    operationId: string,
-    nickname: string | null,
-    expectedRevision: string,
-  ): Promise<NicknameReceipt>;
-  /** OP-005. */
-  getToday(auth: Bearer, excerptProfile: ExcerptProfile, signal?: AbortSignal): Promise<Today>;
-  /** OP-010. `cursor` is the opaque value from the previous page only. */
-  listAnswers(
-    auth: Bearer,
-    cursor: string | null,
-    excerptProfile: ExcerptProfile,
-    signal?: AbortSignal,
-  ): Promise<AnswerPage>;
-  /** OP-011. */
-  getAnswer(auth: Bearer, answerId: string, signal?: AbortSignal): Promise<AnswerDetail>;
-  /** OP-006. `operationId` travels only as the Idempotency-Key header (05 §7.2). */
-  prepareAnswerWrite(
-    auth: Bearer,
-    operationId: string,
-    input: PrepareAnswerWrite,
-    timeoutMs: number,
-  ): Promise<AnswerWriteResult>;
-  /** OP-007. Timeout or loss says nothing about the outcome; use OP-008 (05 §8.3). */
-  executeAnswerWrite(auth: Bearer, ticketId: string, content: string, timeoutMs: number): Promise<AnswerWriteResult>;
-  /** OP-008 (safe query). */
-  getAnswerWriteResult(
-    auth: Bearer,
-    ticketId: string,
-    excerptProfile: ExcerptProfile,
-    timeoutMs: number,
-  ): Promise<AnswerWriteResult>;
-  /** OP-009. */
-  acknowledgeCommand(auth: Bearer, ticketId: string): Promise<void>;
-  /**
-   * OP-015, only for the user's explicit close/cleanup action (05 §6.10). An EXECUTING reply keeps the
-   * command running; a failure or COMMAND_NOT_FOUND is never evidence that nothing was applied.
-   */
-  closeAnswerWrite(auth: Bearer, ticketId: string, timeoutMs: number): Promise<AnswerWriteClosure>;
-  /** OP-012. Reserves ownership and revision only; nothing is deleted until OP-007 (05 §6.5). */
-  prepareAnswerDelete(
-    auth: Bearer,
-    operationId: string,
-    input: PrepareAnswerDelete,
-    timeoutMs: number,
-  ): Promise<AnswerDeleteResult>;
-  /** OP-007 for an answer-delete ticket. Timeout or loss says nothing about the outcome. */
-  executeAnswerDelete(auth: Bearer, ticketId: string, timeoutMs: number): Promise<AnswerDeleteResult>;
-  /** OP-008 for an answer-delete ticket (safe query). */
-  getAnswerDeleteResult(auth: Bearer, ticketId: string, timeoutMs: number): Promise<AnswerDeleteResult>;
-  /** OP-015 for an answer-delete ticket; explicit user action only (05 §6.10). */
-  closeAnswerDelete(auth: Bearer, ticketId: string, timeoutMs: number): Promise<AnswerDeleteClosure>;
-  /** OP-013. Sets the server deletion fence only; nothing is deleted until OP-007 (05 §6.6). */
-  prepareAllDataDelete(auth: Bearer, operationId: string, timeoutMs: number): Promise<AllDataDeleteResult>;
-  /** OP-007 for the all-data-delete ticket. Acceptance ends the normal session on the server. */
-  executeAllDataDelete(auth: Bearer, ticketId: string, timeoutMs: number): Promise<AllDataDeleteResult>;
-  /** OP-008 for the all-data-delete ticket (ACTIVE, its DELETION_RECOVERY or recentDeletion session). */
-  getAllDataDeleteResult(auth: Bearer, ticketId: string, timeoutMs: number): Promise<AllDataDeleteResult>;
-  /** OP-015 for the all-data-delete ticket; explicit user action only (05 §6.10). */
-  closeAllDataDelete(auth: Bearer, ticketId: string, timeoutMs: number): Promise<AllDataDeleteClosure>;
-}
 
 async function send<S extends z.ZodType>(
   transport: HttpTransport,
@@ -530,7 +440,6 @@ export function createArcaApi(transport: HttpTransport): ArcaApi {
         body: {},
         timeoutMs,
       });
-      // 202 is only ever the unchanged EXECUTING state; 200 only a settled or sealed result (05 §7).
       if (response.status === 202) {
         const parsed = zAnswerWriteExecuting.safeParse(response.body);
         if (!parsed.success) throw new ProtocolFailure('schema');

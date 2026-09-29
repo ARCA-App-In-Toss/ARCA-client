@@ -1,12 +1,6 @@
 import type { MockQuestion, MockSema, MockWorld } from './world.ts';
 import { SYNTHETIC_KEYS } from './world.ts';
 
-/**
- * Dev-only demo content (scenario `demo`): fictional passenger, questions and answers written for
- * design review so every screen shows realistic text. Nothing here is user data or production
- * content (07 §3.5, synthetic/non-user); the module is imported only from the dev mock world.
- */
-
 const q = (id: string, role: MockQuestion['role'], text: string): MockQuestion => ({
   questionId: id,
   version: '1',
@@ -14,7 +8,6 @@ const q = (id: string, role: MockQuestion['role'], text: string): MockQuestion =
   text,
 });
 
-/** Today's SEMA: unanswered, so F10 opens on the question. */
 export const DEMO_SEMA: MockSema = {
   dailySemaId: 'demo-day-0928',
   semaId: 'demo-sema-0928',
@@ -33,7 +26,6 @@ interface DemoRecord {
   edited?: boolean;
 }
 
-/** Newest last; seeded in order so answer ids stay stable. Gaps between dates are intentional. */
 const records: DemoRecord[] = [
   {
     date: '2026-08-24',
@@ -130,7 +122,6 @@ const records: DemoRecord[] = [
   },
 ];
 
-/** Applies the demo passenger, today's SEMA and the record history to a fresh active world. */
 export function seedDemo(world: MockWorld): void {
   const passenger = world.passengers.get(SYNTHETIC_KEYS.registered);
   if (passenger) {

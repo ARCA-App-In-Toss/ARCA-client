@@ -1,7 +1,3 @@
-// Extended grapheme cluster counting (04 IX-001, 06 §7.2). One logical line break counts as one.
-// There is no code-point fallback: if Intl.Segmenter is missing the capability is reported so a
-// standards-compatible library can be pinned (06 §14) instead of silently miscounting.
-
 export const ANSWER_MAX_GRAPHEMES = 2_000;
 
 const segmenter =
@@ -20,9 +16,7 @@ export function countGraphemes(text: string): number {
 
 export interface AnswerLength {
   count: number;
-  /** 0 when within the limit. */
   overCount: number;
-  /** 1–2,000 EGC; whitespace-only text is valid (05 OP-007). */
   savable: boolean;
 }
 
@@ -32,10 +26,6 @@ export function measureAnswer(text: string): AnswerLength {
   return { count, overCount, savable: count >= 1 && overCount === 0 };
 }
 
-/**
- * Longest prefix within an EGC and logical-line budget (04 §5.10). No trim or normalization; the
- * caller adds the visual ellipsis only when `isTruncated`.
- */
 export function prefixExcerpt(text: string, maxGraphemes: number, maxLogicalLines: number) {
   if (!segmenter) throw new Error('grapheme segmentation unavailable');
   let out = '';

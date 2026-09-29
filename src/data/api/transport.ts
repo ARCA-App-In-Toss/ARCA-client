@@ -1,10 +1,9 @@
-import { ProtocolFailure, TransportFailure } from '../failures.ts';
+import { ProtocolFailure, TransportFailure } from '../../domain/failures.ts';
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT';
 
 export interface HttpRequest {
   method: HttpMethod;
-  /** Path below `/v1`, e.g. `/sessions`. Never carries tokens, keys or content (05 §7.1). */
   path: string;
   query?: Record<string, string>;
   bearer?: string;
@@ -16,14 +15,12 @@ export interface HttpRequest {
 
 export interface HttpResponse {
   status: number;
-  /** Parsed JSON body, or `undefined` for an empty body. */
   body: unknown;
 }
 
 export type HttpTransport = (request: HttpRequest) => Promise<HttpResponse>;
 
 export interface HttpTransportConfig {
-  /** `<ARCA_API_BASE>` from environment; absent until a real host exists (05 §13.2). */
   baseUrl: string | undefined;
   fetch?: typeof fetch;
 }
@@ -44,7 +41,6 @@ export function createHttpTransport({ baseUrl, fetch: fetchImpl = fetch }: HttpT
 
     const controller = new AbortController();
     let timedOut = false;
-    // One budget covers headers and body; a stalled body must also end as a transport failure.
     const timer = setTimeout(() => {
       timedOut = true;
       controller.abort();
@@ -68,7 +64,6 @@ export function createHttpTransport({ baseUrl, fetch: fetchImpl = fetch }: HttpT
       status = response.status;
       text = await response.text();
     } catch {
-      // Abort or connection loss says nothing about whether the server applied anything (05 §8.3).
       throw new TransportFailure(timedOut ? 'timeout' : request.signal?.aborted ? 'aborted' : 'network');
     } finally {
       clearTimeout(timer);

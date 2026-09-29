@@ -1,13 +1,9 @@
 import { z } from 'zod';
-import type { ConsentReceipt, PassengerProfile } from '../../data/api/models.ts';
-import { DomainFailure, LocalPersistenceFailure } from '../../data/failures.ts';
-import type { StorageJournal } from '../../data/storage/journal.ts';
+import { DomainFailure, LocalPersistenceFailure } from '../failures.ts';
+import type { ConsentReceipt, PassengerProfile } from '../models.ts';
+import type { JournalPort } from '../ports/storage.ts';
 import type { LocalOwnerVerifier } from '../session/ownerVerifier.ts';
 import type { SessionController } from '../session/sessionController.ts';
-
-// F02 passenger creation (06 §9.1). The operation ID, exact consents and local owner verifier are
-// stored and read back in the PRE area before OP-003 is sent; an unknown outcome keeps them so a retry
-// resends the same ID and input. Only a definite rejection frees the ID for a new attempt.
 
 const PRE_AREA = { kind: 'pre' } as const;
 const TRACKER = 'createPassenger';
@@ -19,12 +15,10 @@ const zTracker = z.object({
 });
 type Tracker = z.output<typeof zTracker>;
 
-/** Rejections after which the server created nothing for this ID (05 §8.2). */
 const DEFINITE_REJECTIONS = new Set(['CONSENT_REQUIRED', 'POLICY_VERSION_CHANGED', 'IDEMPOTENCY_KEY_REUSED']);
 
 function newOperationId(): string {
   const id = globalThis.crypto?.randomUUID?.();
-  // No predictable fallback: an operation ID must be random (05 §9.2).
   if (!id) throw new LocalPersistenceFailure('write');
   return id;
 }
@@ -36,7 +30,7 @@ function sameTracker(a: Tracker, b: unknown): boolean {
 
 export interface BoardingCoordinatorDeps {
   session: SessionController;
-  journal: StorageJournal;
+  journal: JournalPort;
 }
 
 export class BoardingCoordinator {
@@ -47,7 +41,6 @@ export class BoardingCoordinator {
     this.deps = deps;
   }
 
-  /** Single-flight: a second tap while OP-003 is pending joins the same attempt (IX-031). */
   submit(consents: readonly ConsentReceipt[]): Promise<PassengerProfile> {
     this.inFlight ??= this.run(consents).finally(() => {
       this.inFlight = null;
@@ -67,18 +60,12 @@ export class BoardingCoordinator {
     } catch (error) {
       if (error instanceof DomainFailure && DEFINITE_REJECTIONS.has(error.code)) {
         await this.deps.journal.removeRecord(PRE_AREA, TRACKER);
-        // Latest policies come from a fresh OP-001; the screen re-reads them (05 §8.2).
         if (error.code === 'POLICY_VERSION_CHANGED') await this.deps.session.establish().catch(() => undefined);
       }
       throw error;
     }
   }
 
-  /**
-   * Cold start as ACTIVE with this device's creation tracker (response lost, app closed): true only
-   * when the same ID's OP-003 receipt comes back, so F03 continues; a plain ACTIVE session never
-   * counts as this creation's success (06 §9.1 #4). Without a verifier nothing is resent.
-   */
   async resumeAsActive(): Promise<boolean> {
     const stored = zTracker.safeParse(await this.deps.journal.getRecord(PRE_AREA, TRACKER).catch(() => null));
     if (!stored.success || stored.data.verifier === null) return false;
@@ -91,12 +78,6 @@ export class BoardingCoordinator {
     }
   }
 
-  /**
-   * An existing tracker for the same local owner is resent unchanged, whatever is selected now: its
-   * outcome is still unknown. Without Web Crypto there is no verifier to prove the owner, so the
-   * tracker is still kept rather than overwritten by a new ID; the controller then never resends it
-   * automatically (06 §8.1). A tracker proven to belong to another key is replaced.
-   */
   private async trackerFor(consents: readonly ConsentReceipt[]): Promise<Tracker> {
     await this.deps.journal.initArea(PRE_AREA);
     const stored = zTracker.safeParse(await this.deps.journal.getRecord(PRE_AREA, TRACKER));

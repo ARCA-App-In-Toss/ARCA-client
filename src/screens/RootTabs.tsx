@@ -2,7 +2,6 @@ import { paths, useArcaNavigate } from '../app/navigation.ts';
 import { PixelIconButton, RootFloatingTabs, ScreenTitle } from '../ui/components.tsx';
 import { copy, rootTabLabels } from '../ui/copy.ts';
 
-/** F10/F20 root tabs (02 §9.8). */
 export function RootTabs({ current }: { current: 'today' | 'archive' }) {
   const navigate = useArcaNavigate();
   return (
@@ -16,7 +15,6 @@ export function RootTabs({ current }: { current: 'today' | 'archive' }) {
   );
 }
 
-/** F10/F20 title row with the settings entry (03 §3 #5); the icon button never hides the title. */
 export function RootHeader({ title }: { title: string }) {
   const navigate = useArcaNavigate();
   return (

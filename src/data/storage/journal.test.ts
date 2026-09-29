@@ -1,8 +1,9 @@
 import { describe, expect, test } from 'vitest';
+import { LocalPersistenceFailure } from '../../domain/failures.ts';
+import type { ManifestScope } from '../../domain/ports/storage.ts';
 import { createFakeStorage, type FakeStorage } from '../../mocks/platform.ts';
-import { LocalPersistenceFailure } from '../failures.ts';
 import { canonicalJson, checksumOf } from './codec.ts';
-import { type ManifestScope, StorageJournal, storageKeys } from './journal.ts';
+import { StorageJournal, storageKeys } from './journal.ts';
 
 const clock = { now: () => 1_000 };
 const area: ManifestScope = { kind: 'generation', ref: 'area-1' };
@@ -13,14 +14,12 @@ function journalOn(storage: FakeStorage) {
   return new StorageJournal(storage, clock);
 }
 
-/** Flip one character inside the stored JSON so the checksum no longer matches. */
 function damage(storage: FakeStorage, key: string) {
   const raw = storage.data.get(key);
   if (!raw) throw new Error(`missing ${key}`);
   storage.data.set(key, raw.replace(/"writtenAt":\d+/, '"writtenAt":999999'));
 }
 
-/** Recompute the checksum so an intentionally edited envelope is individually valid. */
 function resign(envelope: Record<string, unknown>): string {
   const { checksum: _unused, ...rest } = envelope;
   return JSON.stringify({ ...rest, checksum: checksumOf(canonicalJson(rest)) });
@@ -76,7 +75,6 @@ describe('root A/B copies', () => {
     await journal.updateRoot((r) => ({ ...(r as NonNullable<typeof r>), routeEpoch: 3 }));
     const a = JSON.parse(storage.data.get(storageKeys.root('a')) ?? '{}') as Record<string, unknown>;
     const b = JSON.parse(storage.data.get(storageKeys.root('b')) ?? '{}') as Record<string, unknown>;
-    // Re-sign copy b with copy a's sequence so both are individually valid.
     storage.data.set(storageKeys.root('b'), resign({ ...b, sequence: a.sequence }));
     await expect(journalOn(storage).readRoot()).rejects.toMatchObject({ reason: 'conflict' });
   });
@@ -204,7 +202,6 @@ describe('records: pending → record → ready', () => {
     await journal.initArea(other);
     await journal.putRecord(other, 'draft:y', { v: 2 });
 
-    // Re-sign other's latest manifest so it validly points at area-1's record.
     const key = latestSlotKey(storage, (slot) => storageKeys.manifest(other, slot));
     const envelope = JSON.parse(storage.data.get(key) ?? '{}') as Record<string, unknown>;
     storage.data.set(

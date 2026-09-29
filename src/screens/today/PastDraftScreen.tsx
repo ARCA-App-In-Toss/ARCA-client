@@ -1,8 +1,8 @@
 import { useRef, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router';
+import { useCopyText } from '../../app/hooks/device.ts';
+import { usePastDraft } from '../../app/hooks/pastDrafts.ts';
 import { paths, useArcaNavigate, useRouteState } from '../../app/navigation.ts';
-import { usePastDraft } from '../../app/pastDrafts.ts';
-import { useCopyText } from '../../app/writes.ts';
 import {
   InlineStatus,
   PixelAppShell,
@@ -16,13 +16,8 @@ import {
 } from '../../ui/components.tsx';
 import { copy, fill } from '../../ui/copy.ts';
 import { formatDateKst, formatInstantKst } from '../../ui/format.ts';
+import { type CopyResult, copyResultMessage } from '../shared/compose.ts';
 
-type CopyResult = 'copied' | 'failed' | null;
-
-/**
- * F13 — date change / past draft (03 §5.4, 04 §6.8). The kept text is read-only and can only be
- * copied; it is never moved into today's question and no past answer can be saved (04 IX-034).
- */
 export function PastDraftScreen() {
   const routeState = useRouteState();
   const navigate = useArcaNavigate();
@@ -44,7 +39,6 @@ export function PastDraftScreen() {
   );
 
   if (view.kind === 'expired') {
-    // The removed text and question are not shown again; only the way to today remains.
     return (
       <PixelAppShell>
         {header(copy['CPY-F13-017'])}
@@ -76,14 +70,12 @@ export function PastDraftScreen() {
   const onCopy = async () => {
     const result = await copyText(view.text);
     setCopyResult(result.kind);
-    // IX-040: focus the read-only text for direct selection; never select it all automatically.
     if (result.kind === 'failed') textareaRef.current?.focus();
   };
 
   const keepMessage =
     view.keep === 'kept' ? copy['CPY-F13-008'] : view.keep === 'failed' ? copy['CPY-F13-009'] : copy['CPY-COM-008'];
-  const copyMessage =
-    copyResult === 'copied' ? copy['CPY-F13-014'] : copyResult === 'failed' ? copy['CPY-F13-015'] : null;
+  const copyMessage = copyResultMessage(copyResult);
   const copyButton = (
     <PixelButton variant={dateChanged ? 'primary' : 'secondary'} onClick={() => void onCopy()}>
       {copyResult === 'failed' ? copy['CPY-F13-013'] : copy['CPY-F13-012']}
@@ -123,7 +115,6 @@ export function PastDraftScreen() {
         />
         <p className="arca-field-help" id="f13-keep">
           {keepMessage}
-          {/* The real expiry only when the exact text is confirmed on this device (04 IX-034). */}
           {view.keep === 'kept' && view.expiresAt !== null && (
             <> {fill(copy['CPY-F13-010'], { expiresAtKst: formatInstantKst(view.expiresAt) })}</>
           )}

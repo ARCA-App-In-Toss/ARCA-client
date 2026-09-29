@@ -1,29 +1,20 @@
 import { useState } from 'react';
-import { type BoardingPolicy, useBoarding } from '../../app/AppServices.tsx';
+import { type BoardingPolicy, useBoarding } from '../../app/hooks/onboarding.ts';
 import { InlineStatus, PixelAppShell, PixelButton, PixelCheckboxRow, ScreenTitle } from '../../ui/components.tsx';
 import { type CopyId, copy } from '../../ui/copy.ts';
 import { MemoryFragmentGlow } from '../../ui/pixel.tsx';
-
-// F02 (03 §4.3, 04 §6.3, IX-031). Two independent required consents, the recovery limit before
-// consent, then one OP-003 that creates consent records and passenger together. Success re-routes to
-// F03 via the app snapshot; failure keeps both selections, scroll and focus.
 
 const policyCopy: Record<string, { title: CopyId; open: CopyId; name: CopyId }> = {
   'terms-of-service': { title: 'CPY-F02-017', open: 'CPY-F02-007', name: 'CPY-F02-015' },
   'privacy-policy': { title: 'CPY-F02-018', open: 'CPY-F02-008', name: 'CPY-F02-016' },
 };
 
-/**
- * The policy name is the underlined link that opens its full text; the rest of the label toggles the
- * checkbox. Unknown policy IDs fall back to the server title; real IDs are a launch input (03 §4.3).
- */
 function textsFor(policy: BoardingPolicy) {
   const known = policyCopy[policy.policyId];
   if (known) return { title: copy[known.title], open: copy[known.open], name: copy[known.name] };
   return { title: policy.title, open: policy.title, name: `${copy['CPY-F02-006']}, ${policy.title}` };
 }
 
-/** Agreement is to an exact version: a changed version is not pre-checked (05 §6.2). */
 const agreementKey = (p: BoardingPolicy) => `${p.policyId}\u0000${p.version}`;
 
 type Status = { kind: 'idle' } | { kind: 'submitting' } | { kind: 'message'; id: CopyId };
@@ -64,11 +55,9 @@ export function BoardingScreen() {
     <PixelAppShell className="arca-page--cta">
       <ScreenTitle>{copy['CPY-F02-001']}</ScreenTitle>
       <p className="arca-narrative">{copy['CPY-F02-002']}</p>
-      {/* The memory fragment the passenger will keep, softly breathing; decorative, centred in the free space. */}
       <div className="arca-cta-hero">
         <MemoryFragmentGlow />
       </div>
-      {/* Consent, the recovery limit and the Primary sit together at the bottom (03 §4.3). */}
       <div className="arca-cta-bottom">
         <div className="arca-consent-group arca-plain-small">
           {policies.map((policy) => {
@@ -90,9 +79,7 @@ export function BoardingScreen() {
         </div>
         <InlineStatus message={message} tone={status.kind === 'message' ? 'danger' : 'neutral'} />
         <div className="arca-actions">
-          {/* The recovery limit sits right above the consent action so it is read before boarding (03 §4.3). */}
           <p className="arca-caption arca-text-secondary">{copy['CPY-F02-003']}</p>
-          {/* The disabled reason stays for assistive tech only; sighted users see the inactive button. */}
           {allAgreed ? null : (
             <p id="arca-boarding-reason" className="arca-visually-hidden">
               {copy['CPY-F02-009']}

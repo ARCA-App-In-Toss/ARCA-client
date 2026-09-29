@@ -6,10 +6,10 @@ import { createMemoryRouter } from 'react-router';
 import { afterAll, afterEach, beforeAll, describe, expect, test } from 'vitest';
 import { queryKeys } from '../../data/query/keys.ts';
 import { StorageJournal, storageKeys } from '../../data/storage/journal.ts';
+import type { AnonymousKeyResult } from '../../domain/ports/platform.ts';
 import { createHandlers, mockErrors } from '../../mocks/handlers.ts';
 import { createFakePlatform, createFakeStorage, type FakeStorage } from '../../mocks/platform.ts';
 import { createMockWorld, MOCK_API_BASE, type ServerBase, SYNTHETIC_KEYS } from '../../mocks/world.ts';
-import type { AnonymousKeyResult } from '../../platform/ports.ts';
 import { copy } from '../../ui/copy.ts';
 import { App } from '../App.tsx';
 import { createAppServices } from '../composition.ts';
@@ -173,7 +173,6 @@ describe('F90 start error (MS-SES-002, IX-032)', () => {
     await userEvent.click(reconnect);
     release();
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(copy['CPY-F90-010']));
-    // Initial start sent none (key unavailable); the blocked duplicate press sent none either.
     expect(ops(world, 'OP-001')).toBe(1);
     expect(world.passengers.size).toBe(1);
 

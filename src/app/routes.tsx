@@ -1,6 +1,6 @@
 import { type ReactNode, useLayoutEffect } from 'react';
 import { Navigate, Outlet, type RouteObject, useLocation, useNavigationType } from 'react-router';
-import type { SessionMode } from '../data/api/models.ts';
+import type { SessionMode } from '../domain/models.ts';
 import { AnswerDetailScreen } from '../screens/archive/AnswerDetailScreen.tsx';
 import { ArchiveScreen } from '../screens/archive/ArchiveScreen.tsx';
 import { EditScreen } from '../screens/archive/EditScreen.tsx';
@@ -14,11 +14,10 @@ import { PastDraftScreen } from '../screens/today/PastDraftScreen.tsx';
 import { SavedScreen } from '../screens/today/SavedScreen.tsx';
 import { TodayScreen } from '../screens/today/TodayScreen.tsx';
 import { WriteScreen } from '../screens/today/WriteScreen.tsx';
-import { useAppSnapshot } from './AppServices.tsx';
 import { StartScreen } from './bootstrap/StartScreen.tsx';
 import { paths } from './navigation.ts';
+import { useAppSnapshot } from './services.tsx';
 
-// Route table (06 §5.1). URLs and history state carry no IDs, tokens, nicknames or content.
 export { paths };
 
 const targetPath = {
@@ -28,26 +27,16 @@ const targetPath = {
   deletion: paths.deleteAll,
 } as const;
 
-/**
- * A forward move (push/replace) opens the next screen at its top, so the previous screen's scroll
- * never carries over. Back/forward (POP) keeps the browser position. Rendered before the route
- * outlet: its layout effect runs before the screen's own, so a screen that restores a position
- * (the F20 row anchor, 06 §5.6) still wins.
- */
 function ScrollReset() {
   const { pathname } = useLocation();
   const navigationType = useNavigationType();
-  // biome-ignore lint/correctness/useExhaustiveDependencies: runs once per route change only.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: route가 바뀔 때만 한 번 실행한다.
   useLayoutEffect(() => {
     if (navigationType !== 'POP') window.scrollTo(0, 0);
   }, [pathname]);
   return null;
 }
 
-/**
- * F00 is also the boundary in front of every route: a cold start on any URL shows F00 until
- * session, generation and local area are confirmed (06 §5.1, §5.3).
- */
 function BootstrapBoundary() {
   const { bootstrap } = useAppSnapshot();
   const { pathname } = useLocation();
@@ -59,7 +48,6 @@ function BootstrapBoundary() {
   if (pathname === paths.startError || pathname === paths.start) {
     return <Navigate to={targetPath[bootstrap.target]} replace />;
   }
-  // A kept deletion request or the recovery gate comes before any plain screen (06 §5.3 #4–5).
   if (bootstrap.target === 'deletion' && pathname !== paths.deleteAll) {
     return <Navigate to={paths.deleteAll} replace />;
   }
@@ -71,10 +59,6 @@ function BootstrapBoundary() {
   );
 }
 
-/**
- * Invalid route for the current mode goes back to the confirmed root with replace (06 §5.3 #8).
- * It never redirects to itself: an inconsistent snapshot shows F00 instead of looping.
- */
 function RequireMode({ mode, children }: { mode: SessionMode; children: ReactNode }) {
   const { bootstrap, session } = useAppSnapshot();
   const { pathname } = useLocation();
@@ -84,10 +68,6 @@ function RequireMode({ mode, children }: { mode: SessionMode; children: ReactNod
   return <Navigate to={fallback} replace />;
 }
 
-/**
- * F31 is the only screen of the DELETION_RECOVERY gate (06 §5.3 #4) and also an ACTIVE settings page.
- * Every other route in the gate falls back here through RequireMode.
- */
 function RequireDeletionAccess({ children }: { children: ReactNode }) {
   const { bootstrap, session } = useAppSnapshot();
   const { pathname } = useLocation();
@@ -97,7 +77,6 @@ function RequireDeletionAccess({ children }: { children: ReactNode }) {
   return <Navigate to={fallback} replace />;
 }
 
-/** F03 exists only for this visit's OP-003 handoff; any other entry goes to the confirmed root (06 §5.1). */
 function RequireBoarding({ children }: { children: ReactNode }) {
   const { bootstrap, session } = useAppSnapshot();
   if (session?.mode === 'ACTIVE' && bootstrap.phase === 'ready' && bootstrap.target === 'boarded') {
@@ -182,7 +161,6 @@ export const routes: RouteObject[] = [
             <AnswerDetailScreen />
           </RequireMode>
         ),
-        // F23 shares F21's element, so the detail, scroll and focus stay while the dialog is open.
         children: [{ path: 'delete', element: null }],
       },
       {

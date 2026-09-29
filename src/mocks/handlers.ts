@@ -44,7 +44,6 @@ async function respondWith(fault: MockFault, op: MockOp): Promise<Response | und
   }
 }
 
-/** ExcerptAnswer wire shape (answer core + excerpt of the stored content). */
 export function excerptAnswer(answer: MockAnswer, profile: ExcerptProfile) {
   const { owner: _owner, content, ...core } = answer;
   const excerpt = excerptOf(content, profile);
@@ -60,7 +59,6 @@ const TICKET_TIMES = {
   resultExpiresAt: '2026-10-04T02:00:00Z',
 };
 
-/** CommandResult wire shape for the ticket's current state (05 §5.5): answer write or answer delete. */
 function ticketDto(world: MockWorld, ticket: MockTicket, profile: ExcerptProfile) {
   const target = ticket.answerTarget;
   const isDelete = target?.kind === 'DELETE';
@@ -163,7 +161,6 @@ function bearerOf(request: Request): string | null {
   return header?.startsWith('Bearer ') ? header.slice('Bearer '.length) : null;
 }
 
-/** Owner key for a valid ACTIVE bearer, or the error response to return. */
 function activeOwner(world: MockWorld, bearer: string | null): string | Response {
   const session = bearer ? world.sessions.get(bearer) : undefined;
   if (!session) return HttpResponse.json(errorBody('SESSION_INVALID', 'AUTH'), { status: 401, headers: noStore });
@@ -181,14 +178,12 @@ function activeOwner(world: MockWorld, bearer: string | null): string | Response
   return session.anonymousKey;
 }
 
-/** 409 while the key's deletion fence holds: no new nickname/prepare/PREPARED execution (05 §9.4). */
 function fenceResponse(world: MockWorld, owner: string): Response | undefined {
   const fence = world.deletionFence(owner);
   if (!fence) return undefined;
   return pendingResponse(fence.ticketId);
 }
 
-/** 409 COMMAND_ALREADY_PENDING with the contract's QUERY_COMMAND recovery (05 §8.2). */
 function pendingResponse(ticketId: string): Response {
   return HttpResponse.json(
     errorBody('COMMAND_ALREADY_PENDING', 'CONFLICT', { recovery: { kind: 'QUERY_COMMAND', ticketId } }),
@@ -196,10 +191,6 @@ function pendingResponse(ticketId: string): Response {
   );
 }
 
-/**
- * Owner for a deletion-ticket call: a normal session of the owner (until execution revokes it), the
- * ticket's DELETION_RECOVERY session, or a later session of the same key (recentDeletion receipt).
- */
 function deletionOwner(world: MockWorld, bearer: string | null, deletion: MockDeletion): string | Response {
   const session = bearer ? world.sessions.get(bearer) : undefined;
   if (!session) return HttpResponse.json(errorBody('SESSION_INVALID', 'AUTH'), { status: 401, headers: noStore });
@@ -220,7 +211,6 @@ function deletionOwner(world: MockWorld, bearer: string | null, deletion: MockDe
   return session.anonymousKey;
 }
 
-/** CommandResult wire shape of an all-data-delete ticket (05 §5.5, §6.6). */
 function deletionDto(world: MockWorld, deletion: MockDeletion) {
   const base = {
     ticketId: deletion.ticketId,
@@ -246,7 +236,6 @@ const DELETION_PROOF = {
   backupsExpireBy: '2026-10-27T02:00:00Z',
 };
 
-/** The deletion that decides this key's OP-001 answer: running, or succeeded but not yet acked. */
 function recoveringDeletion(world: MockWorld, key: string): MockDeletion | undefined {
   return [...world.deletions.values()].find(
     (d) =>
@@ -332,7 +321,6 @@ export function createHandlers(world: MockWorld, baseUrl = MOCK_API_BASE) {
       return HttpResponse.json({ passengerCode, nickname, revision }, { headers: noStore });
     }),
 
-    // OP-004 (05 §6.2): fingerprint before revision; receipts are replayed until they expire.
     http.put(`${baseUrl}/v1/passenger/nickname`, async ({ request }) => {
       const bearer = bearerOf(request);
       world.requests.push({ op: 'OP-004', bearer });
@@ -384,7 +372,6 @@ export function createHandlers(world: MockWorld, baseUrl = MOCK_API_BASE) {
       return fault?.kind === 'lose-response' ? HttpResponse.error() : response;
     }),
 
-    // OP-003 (05 §6.2): consents and passenger are created together; the PRE token is revoked.
     http.post(`${baseUrl}/v1/passenger`, async ({ request }) => {
       const bearer = bearerOf(request);
       world.requests.push({ op: 'OP-003', bearer });
@@ -410,7 +397,6 @@ export function createHandlers(world: MockWorld, baseUrl = MOCK_API_BASE) {
         [...body.consents].sort((a, b) => a.policyId.localeCompare(b.policyId)).map((c) => [c.policyId, c.version]),
       );
 
-      // Fingerprint check comes before current-policy validation (05 §6.2).
       const replay = world.creations.find((c) => c.anonymousKey === key && c.operationId === operationId);
       let status = 200;
       if (replay) {
@@ -533,7 +519,6 @@ export function createHandlers(world: MockWorld, baseUrl = MOCK_API_BASE) {
             ? HttpResponse.json(ticketDto(world, existing, 'COMPACT'), { status: 200, headers: noStore })
             : HttpResponse.json(errorBody('IDEMPOTENCY_KEY_REUSED', 'CONFLICT'), { status: 409, headers: noStore });
       } else if (body.mode === 'UPDATE') {
-        // UPDATE fixes ownership and the expected revision; the question snapshot never changes (05 §6.4).
         const answer = world.answers.get(String(body.answerId));
         if (!answer || answer.owner !== owner) {
           response = HttpResponse.json(errorBody('ANSWER_NOT_FOUND', 'VALIDATION'), { status: 404, headers: noStore });
@@ -544,7 +529,6 @@ export function createHandlers(world: MockWorld, baseUrl = MOCK_API_BASE) {
           response = HttpResponse.json(ticketDto(world, ticket, 'COMPACT'), { status: 201, headers: noStore });
         }
       } else if (body.dailySemaId !== world.sema.dailySemaId) {
-        // The server KST day moved on: a past day's new answer is refused (05 §8.2, F13).
         response = HttpResponse.json(errorBody('DATE_CHANGED', 'VALIDATION', { recovery: { kind: 'REFRESH_TODAY' } }), {
           status: 422,
           headers: noStore,
@@ -585,7 +569,6 @@ export function createHandlers(world: MockWorld, baseUrl = MOCK_API_BASE) {
       return fault?.kind === 'lose-response' ? HttpResponse.error() : response;
     }),
 
-    // OP-013 (05 §6.6): the fence starts here; an EXECUTING change refuses the prepare.
     http.post(`${baseUrl}/v1/data-deletion-commands`, async ({ request }) => {
       const bearer = bearerOf(request);
       world.requests.push({ op: 'OP-013', bearer });
@@ -646,7 +629,6 @@ export function createHandlers(world: MockWorld, baseUrl = MOCK_API_BASE) {
             ? HttpResponse.json(ticketDto(world, existing, 'COMPACT'), { status: 200, headers: noStore })
             : HttpResponse.json(errorBody('IDEMPOTENCY_KEY_REUSED', 'CONFLICT'), { status: 409, headers: noStore });
       } else if (!answer || answer.owner !== owner) {
-        // Missing, deleted and not-owned are one result (05 OP-012).
         response = HttpResponse.json(errorBody('ANSWER_NOT_FOUND', 'VALIDATION'), { status: 404, headers: noStore });
       } else if (answer.revision !== body.expectedRevision) {
         response = HttpResponse.json(errorBody('REVISION_CONFLICT', 'CONFLICT'), { status: 409, headers: noStore });
@@ -674,7 +656,6 @@ export function createHandlers(world: MockWorld, baseUrl = MOCK_API_BASE) {
           return HttpResponse.json(errorBody('INVALID_REQUEST', 'VALIDATION'), { status: 400, headers: noStore });
         }
         if (deletion.state === 'PREPARED') {
-          // Acceptance ends every normal session of the key; OP-001 then answers DELETION_RECOVERY.
           deletion.state = 'EXECUTING';
           for (const record of world.sessions.values()) {
             if (record.anonymousKey === deletion.owner && !record.deletionTicketId) record.revoked = true;
@@ -815,7 +796,6 @@ export function createHandlers(world: MockWorld, baseUrl = MOCK_API_BASE) {
       if (!ticket || ticket.owner !== owner) {
         return HttpResponse.json(errorBody('COMMAND_NOT_FOUND', 'VALIDATION'), { status: 404, headers: noStore });
       }
-      // Past result gone: verify the seal and report the current state from one snapshot (05 §6.10).
       if (ticket.resultExpired) {
         const current = ticket.answerTarget
           ? world.answers.get(ticket.answerTarget.answerId)
@@ -841,7 +821,6 @@ export function createHandlers(world: MockWorld, baseUrl = MOCK_API_BASE) {
         );
         return fault?.kind === 'lose-response' ? HttpResponse.error() : response;
       }
-      // Seals PREPARED atomically against execution; EXECUTING is never force-cancelled (05 §6.10).
       if (ticket.state === 'PREPARED') {
         ticket.state = 'NOT_APPLIED';
         ticket.error = { code: 'COMMAND_CLOSED', category: 'CONFLICT' };
@@ -862,8 +841,6 @@ export function createHandlers(world: MockWorld, baseUrl = MOCK_API_BASE) {
       const url = new URL(request.url);
       const profile = (url.searchParams.get('excerptProfile') ?? 'STANDARD') as ExcerptProfile;
       const cursor = url.searchParams.get('cursor');
-      // Mock-only opaque keyset cursor: newest first by createdAt, then answerId (05 OP-010). A new
-      // answer never enters a running chain and a deleted one is simply absent from later pages.
       let after: { createdAt: string; answerId: string } | null = null;
       if (cursor) {
         let decoded = '';
@@ -901,7 +878,6 @@ export function createHandlers(world: MockWorld, baseUrl = MOCK_API_BASE) {
         return HttpResponse.json(errorBody('SESSION_INVALID', 'AUTH'), { status: 401, headers: noStore });
       }
       const answer = world.answers.get(String(params.answerId));
-      // Missing, deleted and not-owned are one result (05 OP-011).
       if (!answer || answer.owner !== session.anonymousKey) {
         return HttpResponse.json(errorBody('ANSWER_NOT_FOUND', 'VALIDATION'), { status: 404, headers: noStore });
       }
@@ -922,7 +898,6 @@ export const mockErrors = {
       recovery: { kind: 'REESTABLISH_SESSION', recoveryAllowed: true },
     }),
   },
-  /** Error envelope carrying an extra field the FE must drop (05 §7.6). */
   internalWithExtra: {
     kind: 'error',
     status: 500,

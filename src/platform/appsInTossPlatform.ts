@@ -6,9 +6,8 @@ import {
   setClipboardText,
   User,
 } from '@apps-in-toss/web-framework';
-import type { AnonymousKeyResult, ClipboardResult, PlatformPort } from './ports.ts';
+import type { AnonymousKeyResult, ClipboardResult, PlatformPort } from '../domain/ports/platform.ts';
 
-// Outside the Toss WebView the bridge may never settle; bound the wait so F00 can reach F90.
 const IDENTITY_TIMEOUT_MS = 5_000;
 
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | typeof TIMEOUT> {
@@ -45,7 +44,6 @@ async function writeClipboard(text: string): Promise<ClipboardResult> {
     await setClipboardText(text);
     return { kind: 'copied' };
   } catch {
-    // Standard API fallback, still inside the originating gesture (06 §2.3).
     try {
       await navigator.clipboard.writeText(text);
       return { kind: 'copied' };
@@ -65,8 +63,6 @@ export function createAppsInTossPlatform(): PlatformPort {
       clearItems: () => Storage.clearItems(),
     },
     clock: { now: () => Date.now() },
-    // The SDK's visibility event is for transparent service webs only; the WebView's standard
-    // visibilitychange is the fallback until real-device evidence says otherwise (06 §2.3).
     lifecycle: {
       onVisibilityChange(listener) {
         if (typeof document === 'undefined') return () => undefined;
@@ -85,7 +81,6 @@ export function createAppsInTossPlatform(): PlatformPort {
       },
     },
     clipboard: { writeText: writeClipboard },
-    // The customer-center capability and URL are not confirmed yet (06 §14); report unavailability honestly.
     external: {
       openSupport: async () => ({ kind: 'unavailable' }),
       async openPolicy(url) {
@@ -101,9 +96,7 @@ export function createAppsInTossPlatform(): PlatformPort {
       async memorySaved() {
         try {
           await generateHapticFeedback({ type: 'softMedium' });
-        } catch {
-          // Unsupported or failed haptics never block the result.
-        }
+        } catch {}
       },
     },
   };

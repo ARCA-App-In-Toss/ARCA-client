@@ -1,13 +1,13 @@
 import { setupServer } from 'msw/node';
 import { afterAll, afterEach, beforeAll, describe, expect, test, vi } from 'vitest';
 import { createArcaApi } from '../../data/api/arcaApi.ts';
-import type { PrepareAnswerCreate } from '../../data/api/models.ts';
 import { createHttpTransport } from '../../data/api/transport.ts';
 import { StorageJournal } from '../../data/storage/journal.ts';
 import { createHandlers } from '../../mocks/handlers.ts';
 import { createFakePlatform, createFakeStorage } from '../../mocks/platform.ts';
 import { createMockWorld, MOCK_API_BASE, SYNTHETIC_KEYS } from '../../mocks/world.ts';
 import { DraftRepository } from '../drafts/draftRepository.ts';
+import type { PrepareAnswerCreate } from '../models.ts';
 import { SessionController } from '../session/sessionController.ts';
 import { AnswerWriteCoordinator, type AnswerWriteCoordinator as Coordinator } from './answerWriteCoordinator.ts';
 import { AnswerWriteStore } from './answerWriteStore.ts';
@@ -22,7 +22,6 @@ afterEach(() => {
 afterAll(() => server.close());
 
 const area = { kind: 'generation', ref: 'area-cmd' } as const;
-/** Test hook: override the fence (undefined = use the setup's owner). */
 const fenceOverride: { value?: { ownerScope: string; generation: string | null } | null | undefined } = {};
 
 async function setup(options: { deletionFenced?: () => boolean } = {}) {
@@ -118,7 +117,6 @@ describe('MS-CORE-004 pre-keeping failure sends nothing', () => {
   test('payload read-back failure → no OP-006, partial tracker removed', async () => {
     const { coordinator, storage, store, save, ops } = await setup();
     let manifestWrites = 0;
-    // tracker: pending+ready manifests (2), payload: pending manifest (3rd) fails.
     storage.failNextWrite((key) => key.includes(':manifest:') && ++manifestWrites === 3);
     await save('합성');
     expect(view(coordinator).kind).toBe('localFailure');
@@ -148,7 +146,7 @@ describe('MS-CORE-005 prepare response lost', () => {
     const { world, coordinator, save } = await setup();
     world.addFault('OP-006', { kind: 'lose-response' });
     await save('합성 A');
-    await save('합성 B — ignored');
+    await save('합성 B - ignored');
     expect(world.tickets.size).toBe(1);
     expect(world.answersOf(SYNTHETIC_KEYS.registered)[0]?.content).toBe('합성 A');
     expect(view(coordinator).kind).toBe('succeeded');
@@ -251,7 +249,6 @@ describe('finishing stages are ordered, confirmed and resumable (06 §8.7)', () 
       completedAt: '2026-09-27T02:00:00Z',
       acknowledged: false,
     });
-    // Device state as if the app died right after keeping the proof.
     await store.putTracker(input.dailySemaId, {
       recordType: 'command',
       kind: 'ANSWER_WRITE',
@@ -312,7 +309,6 @@ describe('finishing stages are ordered, confirmed and resumable (06 §8.7)', () 
 
     spy.mockRestore();
     coordinator.acknowledgeView(input.dailySemaId);
-    // Re-entry without the proof is a non-quiet check, yet the success already shown is not repeated.
     await coordinator.recheck(input.dailySemaId);
     expect(view(coordinator).kind).toBe('idle');
     expect(ops('OP-009')).toBe(1);
@@ -346,7 +342,6 @@ describe('owner fence (06 §4.2)', () => {
     const second = save('세대 바뀐 뒤 합성');
     release();
     await Promise.all([first, second]);
-    // The second save ran on its own: it sent its own OP-006 and ended in a view of its own.
     expect(ops('OP-006')).toBe(2);
     expect(view(coordinator).kind).not.toBe('idle');
   });
@@ -370,7 +365,6 @@ describe('abandoned run never leaves a lock behind', () => {
     });
     expect(view(coordinator).kind).toBe('working');
     await vi.waitFor(() => expect(typeof releaseFlush).toBe('function'));
-    // A same-owner reconcile clears the confirmed area, so the fence reads null for a moment.
     fenceOverride.value = null;
     releaseFlush({ text: '재확인 중 합성', lastModifiedAt: Date.now() });
     await saving;
@@ -406,7 +400,6 @@ describe('abandoned run never leaves a lock behind', () => {
     await saving;
     expect(calls).toBe(4);
     expect(view(coordinator).kind).toBe('idle');
-    // Unknown outcome: never treated as not applied; the kept tracker is resumed on re-entry.
     expect(await store.getTracker(input.dailySemaId)).not.toBeNull();
   });
 });
@@ -414,7 +407,6 @@ describe('abandoned run never leaves a lock behind', () => {
 describe('IX-041 explicit close of a prepared request (MS-CMD-004)', () => {
   const OPERATION = '66d9e9af-2026-4000-8000-000000000008';
 
-  /** Server holds a ticket; the device kept the tracker but not the payload (lost or expired). */
   async function preparedWithoutPayload(state: 'PREPARED' | 'EXECUTING' | 'SUCCEEDED' = 'PREPARED') {
     const ctx = await setup();
     const { world, store, input } = ctx;
@@ -454,7 +446,6 @@ describe('IX-041 explicit close of a prepared request (MS-CMD-004)', () => {
     expect(view(coordinator)).toEqual({ kind: 'unconfirmed', trackerKept: true, recovery: 'closePrepared' });
     expect(ops('OP-007')).toBe(0);
     expect(ops('OP-008')).toBe(1);
-    // OP-015 only ever follows the user's action (05 §6.10).
     expect(ops('OP-015')).toBe(0);
     expect(await store.getTracker(input.dailySemaId)).not.toBeNull();
   });
@@ -513,7 +504,6 @@ describe('IX-041 explicit close of a prepared request (MS-CMD-004)', () => {
     await coordinator.close(input.dailySemaId);
     expect(view(coordinator)).toEqual({ kind: 'unconfirmed', trackerKept: true });
     expect(await store.getTracker(input.dailySemaId)).not.toBeNull();
-    // The next explicit check reads the server state: closed, or still prepared and closable.
     await coordinator.recheck(input.dailySemaId);
     expect(view(coordinator)).toEqual(later);
   });
@@ -832,7 +822,7 @@ describe('expiry sweep never removes a newer payload (architecture round 1)', ()
     let saving: Promise<void> | null = null;
     vi.spyOn(store, 'getPayload').mockImplementationOnce(async (...args) => {
       const found = await original(...args);
-      saving = save('새 요청 합성'); // the user saves while the sweep is reading
+      saving = save('새 요청 합성');
       return found;
     });
     await coordinator.expirePayloads();

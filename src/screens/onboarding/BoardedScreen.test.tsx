@@ -31,7 +31,7 @@ const type = (value: string) => fireEvent.change(field(), { target: { value } })
 const nickname = (world: ReturnType<typeof bootApp>['world']) =>
   world.passengers.get(SYNTHETIC_KEYS.registered)?.nickname ?? null;
 
-describe('F03 nickname (IX-003·IX-035, MS-NICK-001/002)', () => {
+describe('F03 nickname (IX-003, IX-035, MS-NICK-001/002)', () => {
   test('nickname count updates during IME without premature validation or submission', async () => {
     const { world } = await bootBoarded();
     const input = field();
@@ -149,7 +149,6 @@ describe('F03 nickname (IX-003·IX-035, MS-NICK-001/002)', () => {
     world.faults.set('OP-004', [{ kind: 'lose-response' }, { kind: 'lose-response' }]);
     type('항해자');
     await userEvent.click(primary());
-    // Not a failure: the adopted "not confirmed" string, no failure copy, no skip (IX-035, 04 §7.0).
     expect(await screen.findByText(copy['CPY-F11-044'])).toBeInTheDocument();
     expect(screen.queryByText(copy['CPY-F03-015'])).toBeNull();
     expect(skip()).toBeNull();
@@ -157,7 +156,6 @@ describe('F03 nickname (IX-003·IX-035, MS-NICK-001/002)', () => {
 
     await userEvent.click(primary());
     await findTitle(copy['CPY-F10-001']);
-    // The retry replayed the applied request instead of creating a second one.
     expect(world.nicknameReceipts).toHaveLength(1);
     expect(opCount(world, 'OP-004')).toBe(3);
   });
@@ -217,7 +215,6 @@ describe('F03 nickname (IX-003·IX-035, MS-NICK-001/002)', () => {
     type('항해자');
     await userEvent.click(primary());
     await vi.waitFor(() => expect(opCount(world, 'OP-004')).toBe(1));
-    // /archive is open to this ACTIVE owner, so only the lock can keep F03 here.
     await act(() => router.navigate(paths.archive));
     expect(router.state.location.pathname).toBe(paths.joinComplete);
     expect(field()).toHaveAttribute('readonly');

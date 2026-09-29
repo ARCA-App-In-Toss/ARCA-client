@@ -40,7 +40,6 @@ function seedTwo(world: MockWorld): [MockAnswer, MockAnswer] {
   return [older, newer];
 }
 
-/** Opens the question for the fixture answer, then checks its content in F21. */
 async function openDetail(world: MockWorld, text: string, storage = createFakeStorage()) {
   const booted = bootApp(server, { world, storage });
   await act(() => booted.started);
@@ -137,7 +136,6 @@ describe('F22 edit (03 §6.3, 04 §6.11)', () => {
     expect(await screen.findByText(copy['CPY-F22-013'])).toBeInTheDocument();
     expect(screen.getByRole('button', { name: copy['CPY-F22-014'] })).toBeDisabled();
     await waitFor(() => expect(updateDrafts(storage)).toHaveLength(0), { timeout: 3_000 });
-    // The reason stays after the equal draft is gone.
     expect(screen.getByText(copy['CPY-F22-013'])).toBeInTheDocument();
     expect(screen.getByRole('button', { name: copy['CPY-F22-014'] })).toBeDisabled();
   });
@@ -161,7 +159,6 @@ describe('F22 edit (03 §6.3, 04 §6.11)', () => {
     await userEvent.click(discardTrigger);
     let dialog = await screen.findByRole('alertdialog', { name: copy['CPY-F22-025'] });
     expect(within(dialog).getByRole('button', { name: copy['CPY-F22-027'] })).toHaveFocus();
-    // Cancel returns focus to the control that opened it (IX-015/016).
     await userEvent.click(within(dialog).getByRole('button', { name: copy['CPY-F22-027'] }));
     await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
     expect(discardTrigger).toHaveFocus();
@@ -181,7 +178,6 @@ describe('F22 edit (03 §6.3, 04 §6.11)', () => {
     const { storage } = await openDetail(world, '9월 합성 답변');
     const textarea = await openEdit();
     fireEvent.change(textarea, { target: { value: '기기 B 합성' } });
-    // Device A commits between B's prepare and execute.
     let release!: () => void;
     world.addFault('OP-007', { kind: 'hold', release: new Promise<void>((r) => (release = r)) });
     await userEvent.click(screen.getByRole('button', { name: copy['CPY-F22-014'] }));
@@ -197,11 +193,9 @@ describe('F22 edit (03 §6.3, 04 §6.11)', () => {
       '기기 B 합성',
     );
     expect(world.answers.get(newer.answerId)?.content).toBe('기기 A 합성');
-    // No futile retry on the old base; copying stays available.
     expect(screen.queryByRole('button', { name: copy['CPY-F22-017'] })).toBeNull();
     expect(screen.getByRole('button', { name: copy['CPY-F11-029'] })).toBeInTheDocument();
 
-    // Explicit re-edit: the latest detail is the new base; B's input stays apart as the old-base draft.
     const reads = opCount(world, 'OP-011');
     await userEvent.click(screen.getByRole('button', { name: copy['CPY-F22-035'] }));
     await waitFor(() =>
@@ -214,7 +208,6 @@ describe('F22 edit (03 §6.3, 04 §6.11)', () => {
     expect(within(stale).getByText('기기 B 합성')).toBeInTheDocument();
     expect(screen.queryByText(copy['CPY-F22-034'])).toBeNull();
 
-    // Discarding the old input needs a confirmation and leaves the current input alone.
     await userEvent.click(within(stale).getByRole('button', { name: copy['CPY-F22-038'] }));
     const dialog = await screen.findByRole('alertdialog', { name: copy['CPY-F22-025'] });
     await userEvent.click(within(dialog).getByRole('button', { name: copy['CPY-F22-038'] }));
@@ -285,7 +278,6 @@ describe('F23 single delete (03 §6.4, 04 §6.12, 06 §9.2)', () => {
     const dialog = await screen.findByRole('alertdialog', { name: copy['CPY-F23-001'] });
     await userEvent.click(within(dialog).getByRole('button', { name: copy['CPY-F23-007'] }));
     await waitFor(() => expect(opCount(world, 'OP-007')).toBe(1));
-    // Running: dismiss and cancel locked, the detail is still there.
     expect(within(dialog).getByRole('button', { name: copy['CPY-F23-006'] })).toBeDisabled();
     fireEvent.keyDown(dialog, { key: 'Escape' });
     expect(screen.getByRole('alertdialog')).toBeInTheDocument();
@@ -354,7 +346,6 @@ describe('F23 single delete (03 §6.4, 04 §6.12, 06 §9.2)', () => {
     const dialog = await screen.findByRole('alertdialog', { name: copy['CPY-F23-001'] });
     await userEvent.click(within(dialog).getByRole('button', { name: copy['CPY-F23-007'] }));
 
-    // Neither success nor failure is claimed; closing is allowed and the request stays tracked.
     await within(dialog).findByText(copy['CPY-F23-011'], undefined, { timeout: 10_000 });
     expect(within(dialog).getByRole('button', { name: copy['CPY-COM-007'] })).toBeInTheDocument();
     await userEvent.click(within(dialog).getByRole('button', { name: copy['CPY-F23-012'] }));

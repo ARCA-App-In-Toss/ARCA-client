@@ -64,11 +64,9 @@ describe('F12 completion hierarchy (IX-039)', () => {
       expect(screen.getByRole('group', { name: copy['CPY-F12-019'] })).toHaveTextContent('기억 조각 1개'),
     );
     expect(document.querySelector('.arca-user-text')?.textContent).toBe('정보 늦은 합성');
-    // A late count of 1 does not reorder, rename or re-emphasise the buttons in this visit.
     const after = actionButtons();
     expect(after[0]).toHaveTextContent(copy['CPY-F12-014']);
     expect(after[0]).toHaveClass('arca-button--primary');
-    // Focus stays where the user put it; arriving info never moves it (IX-039).
     expect(requery).toHaveFocus();
     expect(opCount(world, 'OP-006')).toBe(opsBefore.prepare);
     expect(opCount(world, 'OP-007')).toBe(opsBefore.execute);

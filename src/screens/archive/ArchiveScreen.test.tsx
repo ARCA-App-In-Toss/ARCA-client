@@ -97,7 +97,6 @@ describe('F20 first page (03 §6.1, 04 §6.9)', () => {
   });
 });
 
-/** Seeds `n` answers one day apart, newest first from `newest` (KST dates cross months/years). */
 function seedMany(world: MockWorld, n: number, newest = '2026-09-27') {
   const start = Date.parse(`${newest}T01:00:00Z`);
   const seeded = [];
@@ -123,7 +122,7 @@ const rowTexts = () =>
 const liveText = () => document.querySelector('.arca-visually-hidden[role="status"]')?.textContent ?? '';
 const setScrollY = (value: number) => Object.defineProperty(window, 'scrollY', { value, configurable: true });
 
-describe('F20 page chain (06 §6.3, IX-023·IX-042)', () => {
+describe('F20 page chain (06 §6.3, IX-023, IX-042)', () => {
   beforeEach(() => {
     window.scrollTo = vi.fn() as unknown as typeof window.scrollTo;
     setScrollY(0);
@@ -143,7 +142,6 @@ describe('F20 page chain (06 §6.3, IX-023·IX-042)', () => {
 
   test('MS-LIST-003/004: 21 rows = 20 + 1 on request, one heading per KST year-month across the page edge', async () => {
     const world = createMockWorld('server.activeUnanswered');
-    // 21 days back from 2027-01-10 crosses the year boundary; the page edge falls inside December.
     seedMany(world, 21, '2027-01-10');
     await openArchive(world);
     await vi.waitFor(() => expect(rowTexts()).toHaveLength(20));
@@ -158,7 +156,6 @@ describe('F20 page chain (06 §6.3, IX-023·IX-042)', () => {
     expect(headings).toEqual(['2027년 1월', '2026년 12월']);
     expect(screen.getByText(copy['CPY-F20-021'])).toBeInTheDocument();
     expect(liveText()).toBe(fill(copy['CPY-F20-018'], { loadedCount: '1' }));
-    // The "more" action is gone; focus stays at the list end instead of falling to the page.
     expect(document.activeElement).toBe(screen.getByText(copy['CPY-F20-021']));
     expect(opCount(world, 'OP-010')).toBe(2);
   });
@@ -182,7 +179,6 @@ describe('F20 page chain (06 §6.3, IX-023·IX-042)', () => {
     const seeded = seedMany(world, 22);
     await openArchive(world);
     await vi.waitFor(() => expect(rowTexts()).toHaveLength(20));
-    // Another device: a new answer (newest) and a deletion on the second page.
     world.seedAnswer(SYNTHETIC_KEYS.registered, '다른 기기 새 합성', {
       question: { ...world.sema.primaryQuestion, text: '다른 기기 새 질문' },
       dailySemaId: 'd-new',
@@ -232,7 +228,6 @@ describe('F20 page chain (06 §6.3, IX-023·IX-042)', () => {
     await userEvent.click(screen.getByRole('button', { name: rootTabLabels.today }));
     await findTitle(copy['CPY-F10-001']);
 
-    // Same first page on re-entry: no notice.
     await userEvent.click(screen.getByRole('button', { name: rootTabLabels.archive }));
     await findTitle(copy['CPY-F20-001']);
     await vi.waitFor(() => expect(opCount(world, 'OP-010')).toBe(2));
@@ -281,7 +276,6 @@ describe('F20 page chain (06 §6.3, IX-023·IX-042)', () => {
     await vi.waitFor(() => expect(rowTexts()[0]).toBe('후보 질문'));
     expect(document.activeElement).toBe(focused);
 
-    // Refresh failure: rows stay, no candidate notice, the refresh failure is stated.
     setScrollY(600);
     await userEvent.click(screen.getByRole('button', { name: rootTabLabels.today }));
     await findTitle(copy['CPY-F10-001']);
@@ -306,13 +300,11 @@ describe('F20 page chain (06 §6.3, IX-023·IX-042)', () => {
       createdAt: '2026-09-28T01:00:00Z',
       createdDateKst: '2026-09-28',
     });
-    // Count re-read fails while the list succeeds: 4 rows, the count stays the last server value.
     world.addFault('OP-005', { kind: 'network' }, { kind: 'network' });
     await userEvent.click(screen.getByRole('button', { name: rootTabLabels.archive }));
     await vi.waitFor(() => expect(rowTexts()).toHaveLength(4));
     expect(screen.queryByText('기억 조각 4개')).toBeNull();
 
-    // List refresh fails while the count succeeds: rows kept, count updated from OP-005.
     await userEvent.click(screen.getByRole('button', { name: rootTabLabels.today }));
     await findTitle(copy['CPY-F10-001']);
     world.addFault('OP-010', { kind: 'network' }, { kind: 'network' });

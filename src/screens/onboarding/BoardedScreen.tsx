@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useBlocker } from 'react-router';
-import { useBoardedPassenger, useFinishBoarding, useNicknameSave } from '../../app/AppServices.tsx';
+import { useFinishBoarding } from '../../app/hooks/onboarding.ts';
+import { useBoardedPassenger, useNicknameSave } from '../../app/hooks/passenger.ts';
 import { paths, useArcaNavigate } from '../../app/navigation.ts';
-import { countGraphemes } from '../../domain/text/graphemes.ts';
 import { checkNickname, type NicknameError } from '../../domain/text/nickname.ts';
 import {
   InlineStatus,
@@ -13,10 +13,7 @@ import {
   ScreenTitle,
 } from '../../ui/components.tsx';
 import { type CopyId, copy, fill } from '../../ui/copy.ts';
-
-// F03 (03 §4.4, 04 §6.4, IX-001~003·035). Boarding is already complete and never undone here. One
-// Primary: an empty nickname proceeds with no request, a valid one proceeds after OP-004 succeeds.
-// Only a definite failure or an unsent offline attempt adds the explicit "continue without" action.
+import { type NicknameProblem, nicknameProblem, useNicknameInput } from '../shared/nickname.ts';
 
 const errorCopy: Record<NicknameError, CopyId> = {
   'too-short': 'CPY-F03-010',
@@ -24,52 +21,36 @@ const errorCopy: Record<NicknameError, CopyId> = {
   forbidden: 'CPY-F03-012',
 };
 
-type Problem = { id: CopyId; skippable: boolean; tone: 'danger' | 'neutral' };
-
 export function BoardedScreen() {
   const passenger = useBoardedPassenger();
   const save = useNicknameSave();
   const navigate = useArcaNavigate();
   const finishBoarding = useFinishBoarding();
 
-  const [value, setValue] = useState('');
-  /** Value as of the last non-composing change; IME intermediate text is never judged (IX-001). */
-  const [committed, setCommitted] = useState('');
-  const composing = useRef(false);
-  const [shortRevealed, setShortRevealed] = useState(false);
-  const [saving, setSaving] = useState(false);
-  /** Read synchronously by the blocker so the post-save move is never blocked by a stale render. */
-  const savingRef = useRef(false);
-  const [problem, setProblem] = useState<Problem | null>(null);
   const [announcement, setAnnouncement] = useState<string | null>(null);
+  const input = useNicknameInput(() => setAnnouncement(null));
+  const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
+  const [problem, setProblem] = useState<NicknameProblem | null>(null);
 
-  // 04 §6.4: Back and other route changes are locked while OP-004 is in flight.
   const blocker = useBlocker(() => savingRef.current);
   useEffect(() => {
     if (blocker.state === 'blocked') blocker.reset();
   }, [blocker]);
 
-  const check = checkNickname(committed);
-  const currentCount = countGraphemes(value.trim());
-  // Forbidden/over-limit show right after composition; one character waits for blur or an attempt (04 §4.2).
-  const visibleError = check.error === 'too-short' && !shortRevealed ? null : check.error;
+  const { visibleError } = input;
 
   const toToday = () => {
     navigate(paths.today, {}, { replace: true });
     finishBoarding();
   };
 
-  const commit = (next: string) => {
-    setCommitted(next);
-    setAnnouncement(null);
-  };
-
   const proceed = async () => {
-    if (saving || composing.current) return;
-    const current = checkNickname(value);
+    if (saving || input.composingRef.current) return;
+    const current = checkNickname(input.value);
     if (current.empty) return toToday();
     if (current.error) {
-      setShortRevealed(true);
+      input.setShortRevealed(true);
       setAnnouncement(copy[errorCopy[current.error]]);
       return;
     }
@@ -80,18 +61,8 @@ export function BoardedScreen() {
     savingRef.current = false;
     setSaving(false);
     if (result.kind === 'saved') return toToday();
-    if (result.kind === 'unsent') setProblem({ id: 'CPY-F03-017', skippable: true, tone: 'danger' });
-    else if (result.kind === 'rejected') setProblem({ id: 'CPY-F03-015', skippable: true, tone: 'danger' });
-    else if (result.kind === 'expired') {
-      // The old key is sealed: show the current profile and let the next save be a new action (IX-035).
-      const current = result.currentNickname ?? '';
-      setValue(current);
-      setCommitted(current);
-      setProblem({ id: 'CPY-F11-044', skippable: false, tone: 'neutral' });
-    }
-    // Unconfirmed is not a failure (IX-035, 04 §7.0): the adopted "save not confirmed" string, no failure
-    // tone and no skip; the Primary retries the same input with the same key.
-    else setProblem({ id: 'CPY-F11-044', skippable: false, tone: 'neutral' });
+    if (result.kind === 'expired') input.replace(result.currentNickname ?? '');
+    setProblem(nicknameProblem(result, { unsent: 'CPY-F03-017', rejected: 'CPY-F03-015' }));
   };
 
   const status = saving ? copy['CPY-F03-014'] : problem ? copy[problem.id] : announcement;
@@ -111,7 +82,6 @@ export function BoardedScreen() {
           </div>
         </dl>
       </InsetPanel>
-      {/* Field, help/count and error read as one unit, so they sit closer than the page rhythm. */}
       <div className="arca-field-group">
         <PixelTextField
           id="f03-nickname"
@@ -124,33 +94,15 @@ export function BoardedScreen() {
           placeholder={copy['CPY-F03-007']}
           describedBy={describedBy}
           invalid={visibleError !== null}
-          value={value}
+          value={input.value}
           readOnly={saving}
           enterKeyHint="go"
           autoComplete="off"
-          onChange={(event) => {
-            setValue(event.target.value);
-            if (!composing.current) commit(event.target.value);
-          }}
-          onCompositionStart={() => {
-            composing.current = true;
-          }}
-          onCompositionEnd={(event) => {
-            composing.current = false;
-            commit(event.currentTarget.value);
-          }}
-          onBlur={() => {
-            if (checkNickname(value).error === 'too-short') setShortRevealed(true);
-          }}
-          onKeyDown={(event) => {
-            if (event.key !== 'Enter' || event.nativeEvent.isComposing || composing.current) return;
-            event.preventDefault();
-            void proceed();
-          }}
+          {...input.fieldHandlers(() => void proceed())}
         />
         <div className="arca-field-help">
           <span id="f03-help">{copy['CPY-F03-008']}</span>
-          <span id="f03-count">{fill(copy['CPY-F03-009'], { currentCount: String(currentCount) })}</span>
+          <span id="f03-count">{fill(copy['CPY-F03-009'], { currentCount: String(input.currentCount) })}</span>
         </div>
         {visibleError ? (
           <p className="arca-field-error" id="f03-error">
@@ -158,7 +110,6 @@ export function BoardedScreen() {
           </p>
         ) : null}
       </div>
-      {/* The Primary shares the bottom position with F01 and F02 (03 §4.4). */}
       <div className="arca-cta-bottom">
         <InlineStatus message={status} tone={problem?.tone ?? 'neutral'} />
         <div className="arca-actions">
@@ -170,7 +121,7 @@ export function BoardedScreen() {
           >
             {copy['CPY-F03-013']}
           </PixelButton>
-          {problem?.skippable ? (
+          {problem?.failed ? (
             <PixelButton loading={saving} onClick={toToday}>
               {copy['CPY-F03-019']}
             </PixelButton>

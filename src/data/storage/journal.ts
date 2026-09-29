@@ -1,47 +1,19 @@
 import { z } from 'zod';
-import type { ClockPort, KeyValueStoragePort } from '../../platform/ports.ts';
-import { LocalPersistenceFailure } from '../failures.ts';
+import { LocalPersistenceFailure } from '../../domain/failures.ts';
+import type { ClockPort, KeyValueStoragePort } from '../../domain/ports/platform.ts';
+import type {
+  DeletionReceipt,
+  JournalPort,
+  ManifestData,
+  ManifestScope,
+  RootData,
+} from '../../domain/ports/storage.ts';
 import { canonicalJson, checksumOf } from './codec.ts';
-
-// StorageJournal (06 §8.1–8.2). SDK Storage gives no enumeration, transaction or atomic replace, so
-// root and every manifest use fixed A/B keys, a monotonic sequence and a checksum, and every
-// metadata read-modify-write runs through one queue.
 
 const SCHEMA_VERSION = 1;
 const PREFIX = 'arca:local:v1';
 type Slot = 'a' | 'b';
 const SLOTS: readonly Slot[] = ['a', 'b'];
-
-export type ManifestScope = { kind: 'pre' } | { kind: 'generation'; ref: string };
-
-export interface RootData {
-  /** Server dataGeneration currently owning the device area, or null (PRE / none). */
-  currentGeneration: string | null;
-  /** Local history fence, bumped on generation change (06 §5.5). */
-  routeEpoch: number;
-  /** Known generation areas and their local key refs; kept until cleanup is confirmed. */
-  generations: { generation: string; ref: string }[];
-  /**
-   * Minimal full-deletion receipt (06 §8.1, §9.4): no content, profile or token. It is the tombstone
-   * that keeps a deleted generation from being restored; absent in roots written before step 7.
-   */
-  deletion?: DeletionReceipt | null | undefined;
-}
-
-export interface DeletionReceipt {
-  ticketId: string;
-  deletedGeneration: string;
-  resultExpiresAt: string;
-}
-
-export interface ManifestEntry {
-  ready: string | null;
-  pending: string | null;
-}
-
-export interface ManifestData {
-  entries: Record<string, ManifestEntry>;
-}
 
 const zRootData = z.object({
   currentGeneration: z.string().min(1).nullable(),
@@ -113,11 +85,10 @@ interface MetaRead<T> {
   slots: Record<Slot, SlotRead<T>>;
 }
 
-export class StorageJournal {
+export class StorageJournal implements JournalPort {
   private readonly storage: KeyValueStoragePort;
   private readonly clock: ClockPort;
   private queue: Promise<unknown> = Promise.resolve();
-  /** Areas behind the full-deletion barrier: queued or later writes to them fail (06 §8.2). */
   private readonly sealed = new Set<string>();
 
   constructor(storage: KeyValueStoragePort, clock: ClockPort) {
@@ -125,16 +96,12 @@ export class StorageJournal {
     this.clock = clock;
   }
 
-  /** Serialize metadata work (06 §8.2). A failed task does not poison later ones. */
   private enqueue<T>(task: () => Promise<T>): Promise<T> {
     const run = this.queue.then(task, task);
     this.queue = run.catch(() => undefined);
     return run;
   }
 
-  // ---- root ----------------------------------------------------------------------------------
-
-  /** Null when both copies are absent (no restorable local list). Throws on corruption/conflict. */
   readRoot(): Promise<RootData | null> {
     return this.enqueue(async () => (await this.readMeta('root', zRootData)).latest?.envelope?.data ?? null);
   }
@@ -143,21 +110,16 @@ export class StorageJournal {
     return this.enqueue(() => this.writeMeta('root', zRootData, mutate));
   }
 
-  // ---- manifests and records -----------------------------------------------------------------
-
-  /** Null only when both copies are absent. A known area must have been created with `initArea`. */
   readManifest(scope: ManifestScope): Promise<ManifestData | null> {
     return this.enqueue(async () => (await this.readMeta(scope, zManifestData)).latest?.envelope?.data ?? null);
   }
 
-  /** Creates two valid empty copies for a new area; no-op if the area already has a valid copy. */
   initArea(scope: ManifestScope): Promise<void> {
     return this.enqueue(async () => {
       await this.writeMeta(scope, zManifestData, (current) => current ?? { entries: {} });
     });
   }
 
-  /** Reads the ready record for `name`, validating owner and schema. */
   getRecord(scope: ManifestScope, name: string): Promise<unknown | null> {
     return this.enqueue(async () => {
       const manifest = (await this.readMeta(scope, zManifestData)).latest?.envelope?.data;
@@ -169,10 +131,6 @@ export class StorageJournal {
     });
   }
 
-  /**
-   * pending manifest → record → ready manifest, each confirmed by exact read-back (06 §8.2 1–3).
-   * Resolves only after the ready pointer is confirmed; any failure leaves the previous ready intact.
-   */
   putRecord(scope: ManifestScope, name: string, data: unknown): Promise<void> {
     return this.enqueue(async () => {
       const recordRef = newRef();
@@ -196,14 +154,12 @@ export class StorageJournal {
       await this.writeMeta(scope, zManifestData, (current) => {
         const entries = { ...(current?.entries ?? {}) };
         const entry = entries[name];
-        // Promote only our own pending; a newer pending from a later task wins.
         if (entry?.pending === recordRef) entries[name] = { ready: recordRef, pending: null };
         return { entries };
       });
     });
   }
 
-  /** Excludes `name` from both valid copies, then removes its records (06 §8.2 deletion). */
   removeRecord(scope: ManifestScope, name: string): Promise<void> {
     return this.enqueue(async () => {
       const exclude = (current: ManifestData | null): ManifestData => {
@@ -216,7 +172,6 @@ export class StorageJournal {
     });
   }
 
-  /** Startup repair: promote valid pending records, drop missing/corrupt pending (06 §8.2). */
   repair(scope: ManifestScope): Promise<void> {
     return this.enqueue(async () => {
       const manifest = (await this.readMeta(scope, zManifestData)).latest?.envelope?.data;
@@ -240,10 +195,6 @@ export class StorageJournal {
     });
   }
 
-  /**
-   * Removes a whole generation area: its referenced records and both manifest copies. Orphans
-   * that no copy references cannot be enumerated and are not claimed (06 §8.2).
-   */
   clearArea(scope: ManifestScope): Promise<void> {
     return this.enqueue(() => this.clearAreaNow(scope));
   }
@@ -263,22 +214,10 @@ export class StorageJournal {
     }
   }
 
-  // ---- full deletion ---------------------------------------------------------------------------
-
-  /**
-   * Queue barrier for a deleted generation (06 §8.2, §9.4): takes effect at once, so metadata or
-   * record writes already queued for that area fail instead of recreating it after the purge.
-   */
   seal(scope: ManifestScope): void {
     this.sealed.add(ownerOf(scope));
   }
 
-  /**
-   * Removes a deleted generation's device data after a confirmed SUCCEEDED (06 §9.4). With no other
-   * known generation (or a root that cannot prove one) the whole app storage is wiped, which also
-   * reaches orphans; otherwise only that area and its root entry go, and newer areas are untouched.
-   * Resolves only when the removal is done; the caller keeps the recovery state on failure.
-   */
   purgeGeneration(
     scope: ManifestScope & { kind: 'generation' },
     deletedGeneration: string,
@@ -289,7 +228,6 @@ export class StorageJournal {
       try {
         root = (await this.readMeta('root', zRootData)).latest?.envelope?.data ?? null;
       } catch {
-        // A root that cannot prove a newer area: the targeted cleanup cannot be proven either.
         await this.clearAll();
         return { routeEpoch: 0 };
       }
@@ -299,11 +237,7 @@ export class StorageJournal {
         await this.clearAll();
         return { routeEpoch: (root?.routeEpoch ?? 0) + 1 };
       }
-      // Records first, then the root exclusion: the reverse order could leave unreferenced records
-      // that can never be enumerated again (06 §8.2 orphans). A stop in between leaves a root entry
-      // without a manifest, which the next stale cleanup or recovery gate removes again.
       await this.clearAreaNow(scope);
-      // Tombstone in both copies: a lower copy can never bring the deleted area back (06 §8.2).
       const drop = (data: RootData | null): RootData => ({
         ...(data ?? { currentGeneration: null, routeEpoch: 0, generations: [] }),
         currentGeneration: data?.currentGeneration === deletedGeneration ? null : (data?.currentGeneration ?? null),
@@ -315,7 +249,6 @@ export class StorageJournal {
     });
   }
 
-  /** Writes the minimal deletion receipt into both root copies; failure never undoes the deletion. */
   recordDeletion(receipt: DeletionReceipt, routeEpoch: number): Promise<void> {
     return this.enqueue(async () => {
       const put = (data: RootData | null): RootData => ({
@@ -326,7 +259,6 @@ export class StorageJournal {
       });
       const first = await this.readMeta('root', zRootData);
       await this.writeMeta('root', zRootData, put);
-      // A fresh root is initialized with two copies; an existing one needs the second write.
       if (first.latest) await this.writeMeta('root', zRootData, put);
     });
   }
@@ -338,8 +270,6 @@ export class StorageJournal {
       throw new LocalPersistenceFailure('write');
     }
   }
-
-  // ---- internals -------------------------------------------------------------------------------
 
   private assertOpen(scope: ManifestScope): void {
     if (this.sealed.has(ownerOf(scope))) throw new LocalPersistenceFailure('sealed');
@@ -378,7 +308,6 @@ export class StorageJournal {
     const slots = { a, b };
     const valid = [a, b].filter((s) => s.state === 'valid');
     if (valid.length === 0) {
-      // Both copies corrupt, or one corrupt and one missing: never pretend an empty list (06 §8.1).
       if (a.state === 'invalid' || b.state === 'invalid') throw new LocalPersistenceFailure('corrupt');
       return { latest: null, slots };
     }
@@ -399,7 +328,6 @@ export class StorageJournal {
     const current = read.latest?.envelope ?? null;
     const data = schema.parse(mutate(current?.data ?? null));
     const sequence = (current?.sequence ?? 0) + 1;
-    // Always write the slot that does not hold the latest valid copy.
     const target: Slot = read.latest?.slot === 'a' ? 'b' : 'a';
     const overwritten = read.slots[target].envelope?.data;
 
@@ -416,12 +344,10 @@ export class StorageJournal {
     await this.writeExact(this.keyFor(scope, target), JSON.stringify(envelope));
 
     if (!current) {
-      // Initialization secures two valid copies (06 §8.2 3).
       const second = { ...body, writeId: newRef(), sequence: sequence + 1 };
       const secondEnvelope = { ...second, checksum: checksumOf(canonicalJson(second)) };
       await this.writeExact(this.keyFor(scope, target === 'a' ? 'b' : 'a'), JSON.stringify(secondEnvelope));
     } else if (scope !== 'root' && overwritten) {
-      // Only manifests reach here; root has no record refs.
       await this.collectUnreferenced(overwritten as unknown as ManifestData, [
         current.data as unknown as ManifestData,
         data as unknown as ManifestData,
@@ -430,7 +356,6 @@ export class StorageJournal {
     return data;
   }
 
-  /** Remove records referenced only by the overwritten copy (06 §8.2 4). */
   private async collectUnreferenced(previous: ManifestData, live: ManifestData[]) {
     const liveRefs = new Set<string>();
     for (const manifest of live) {

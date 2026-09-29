@@ -1,9 +1,6 @@
 import { useCallback, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router';
-import { useAppServicesInternal, useAppSnapshot } from './AppServices.tsx';
-
-// history.state carries only an opaque ref and the local routeEpoch (06 §5.1, §5.5). No content,
-// nickname, token, ticket or server id ever goes into the URL.
+import { useAppServices, useAppSnapshot } from './services.tsx';
 
 export const paths = {
   start: '/',
@@ -16,11 +13,9 @@ export const paths = {
   pastDraft: '/today/past-draft',
   archive: '/archive',
   detail: '/archive/detail',
-  /** F23: a logical modal over F21; the same F21 element stays mounted underneath (06 §5.1). */
   deleteAnswer: '/archive/detail/delete',
   edit: '/archive/edit',
   settings: '/settings',
-  /** F31: the first-step explanation page; the second step is its AlertDialog (03 §7.2). */
   deleteAll: '/settings/delete',
   startError: '/error/start',
 } as const;
@@ -31,7 +26,6 @@ export interface RouteState {
   routeEpoch: number;
   questionRole?: QuestionRole;
   answerRef?: string;
-  /** F13: opaque local draft ref and how it was entered (03 F13 진입). */
   draftRef?: string;
   pastDraftEntry?: 'dateChanged' | 'review';
 }
@@ -40,7 +34,6 @@ function isRouteState(value: unknown): value is RouteState {
   return typeof value === 'object' && value !== null && typeof (value as RouteState).routeEpoch === 'number';
 }
 
-/** The current entry's state, or null if it is missing or from an older route epoch (06 §5.5). */
 export function useRouteState(): RouteState | null {
   const { state } = useLocation();
   const { bootstrap } = useAppSnapshot();
@@ -50,13 +43,8 @@ export function useRouteState(): RouteState | null {
 
 let refSeq = 0;
 
-/**
- * Opaque answer refs for history.state: a random local ref maps to the answer id in memory only, so
- * history never stores a server id (06 §5.1). A reload or owner change drops the map, and the screen
- * then returns to its parent.
- */
 export function useAnswerRefs() {
-  const { answerRefs } = useAppServicesInternal();
+  const { answerRefs } = useAppServices();
   return useMemo(
     () => ({
       refFor: (answerId: string) => {

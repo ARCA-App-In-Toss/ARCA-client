@@ -1,34 +1,24 @@
-import type { ArcaApi } from '../data/api/arcaApi.ts';
-import type { AnswerPage, ArchiveItem, Excerpt } from '../data/api/models.ts';
-import { DomainFailure } from '../data/failures.ts';
-import type { SessionController } from '../domain/session/sessionController.ts';
-
-// F20 page chain (06 §6.3, 04 IX-023·IX-042). One chain per owner/generation, memory only. Month
-// sections are derived from the rows at render time; nothing here is persisted or put in history.
+import { DomainFailure } from '../failures.ts';
+import type { AnswerPage, ArchiveItem, Excerpt } from '../models.ts';
+import type { ArcaApi } from '../ports/api.ts';
+import type { SessionController } from '../session/sessionController.ts';
 
 export type ChainPhase = 'loading' | 'error' | 'ready';
 export type MoreState = 'idle' | 'loading' | 'failed' | 'cursorInvalid';
 
 export interface ArchiveView {
   phase: ChainPhase;
-  /** The last first-page error, for offline/general wording only. */
   firstError: unknown;
   items: readonly ArchiveItem[];
   hasMore: boolean;
   more: MoreState;
-  /** An extra page was loaded at least once: only then the end of the list is announced. */
   loadedExtra: boolean;
-  /** A newer first page is held and waits for the user (IX-042). */
   candidateReady: boolean;
-  /** Background first-page refresh failed while rows stay shown (CPY-F20-022). */
   refreshFailed: boolean;
-  /** Rows added by the last successful "기록 더 보기", with a sequence for a single announcement. */
   added: { count: number; seq: number } | null;
-  /** Bumped when the chain was replaced by a user-applied candidate, for focus. */
   replacedSeq: number;
 }
 
-/** Scroll anchor of the row that opened F21; memory only (06 §5.6, §6.3). */
 export interface ArchiveAnchor {
   answerId: string;
   viewportOffset: number;
@@ -47,17 +37,14 @@ interface Chain {
   added: { count: number; seq: number } | null;
   replacedSeq: number;
   anchor: ArchiveAnchor | null;
-  /** Any structural change bumps it; late page responses for an older token are dropped. */
   token: number;
   refreshing: boolean;
-  /** A mutation settled: the next entry re-reads the first page even when restoring the anchor. */
   refreshDue: boolean;
 }
 
 export interface ArchiveChainsDeps {
   session: SessionController;
   api: ArcaApi;
-  /** The confirmed owner/generation, or null when no ACTIVE area is ready. */
   scope: () => { ownerScope: string; generation: string } | null;
 }
 
@@ -78,7 +65,6 @@ function dedupe(items: readonly ArchiveItem[]): ArchiveItem[] {
   const seen = new Set<string>();
   const out: ArchiveItem[] = [];
   for (const item of items) {
-    // Defensive only: server order is never rewritten (06 §6.3).
     if (seen.has(item.answerId)) continue;
     seen.add(item.answerId);
     out.push(item);
@@ -86,7 +72,6 @@ function dedupe(items: readonly ArchiveItem[]): ArchiveItem[] {
   return out;
 }
 
-/** Same identity, revision and order as the rows already shown for that page (D-TECH-048). */
 function samePage(page: AnswerPage, items: readonly ArchiveItem[]): boolean {
   if (page.items.length > items.length) return false;
   return page.items.every((item, i) => items[i]?.answerId === item.answerId && items[i]?.revision === item.revision);
@@ -112,7 +97,6 @@ export class ArchiveChains {
 
   getView = (): ArchiveView => this.view;
 
-  /** Owner/generation change or discard: the chain, candidate and anchor go (06 §5.6, §6.3). */
   reset(): void {
     this.chain = null;
     this.chainKey = null;
@@ -120,11 +104,6 @@ export class ArchiveChains {
     this.publish();
   }
 
-  /**
-   * F20 root entry. The first entry loads the first page. A later entry refreshes the first page in
-   * the background, except right after F21 when the kept chain and anchor are restored instead.
-   * Returns the anchor to restore, if any.
-   */
   enter(options: { routeEpoch: number; atTop: () => boolean }): ArchiveAnchor | null {
     const chain = this.current(true);
     if (!chain) return null;
@@ -136,7 +115,6 @@ export class ArchiveChains {
     }
     if (chain.phase === 'loading') return null;
     if (anchor && anchor.routeEpoch === options.routeEpoch) {
-      // Anchor first; a due re-read after an edit/delete then follows and, when deep, is only held (06 §6.3–6.4).
       if (chain.refreshDue) void this.refresh(options.atTop);
       return anchor;
     }
@@ -144,13 +122,11 @@ export class ArchiveChains {
     return null;
   }
 
-  /** F20 initial-error retry (CPY-F20-020 on the StatePanel). */
   retryFirst(): void {
     const chain = this.current(true);
     if (chain && chain.phase !== 'ready') void this.loadFirst(chain);
   }
 
-  /** Background first-page refresh; a changed page is applied only at the top, otherwise held. */
   async refresh(atTop: () => boolean): Promise<void> {
     const chain = this.current(false);
     if (chain?.phase !== 'ready' || chain.refreshing) return;
@@ -162,7 +138,6 @@ export class ArchiveChains {
     } catch {
       chain.refreshing = false;
       if (!this.alive(chain, token)) return;
-      // Candidate absent: hide the notice; the rows stay and nothing about new records is guessed.
       chain.candidate = null;
       chain.refreshFailed = true;
       this.publish();
@@ -177,13 +152,11 @@ export class ArchiveChains {
     } else if (atTop()) {
       this.replace(chain, page, false);
     } else {
-      // A newer candidate replaces the older one; the reading position is kept (IX-042).
       chain.candidate = page;
     }
     this.publish();
   }
 
-  /** IX-042 `최신 기록 보기`, or the user came back to the top on their own (focus stays). */
   applyCandidate(options: { focus: boolean }): boolean {
     const chain = this.current(false);
     if (!chain?.candidate) return false;
@@ -192,7 +165,6 @@ export class ArchiveChains {
     return true;
   }
 
-  /** Cursor rejected: the kept chain stays and a fresh first page replaces it on request. */
   async reloadFirst(): Promise<void> {
     const chain = this.current(false);
     if (!chain) return;
@@ -211,7 +183,6 @@ export class ArchiveChains {
     this.publish();
   }
 
-  /** IX-023 `기록 더 보기`: appended after the kept rows; focus and rows stay. */
   async loadMore(): Promise<void> {
     const chain = this.current(false);
     if (chain?.phase !== 'ready' || !chain.nextCursor || chain.more === 'loading') return;
@@ -231,7 +202,6 @@ export class ArchiveChains {
       chain.added = { count: chain.items.length - before, seq: this.seq };
     } catch (error) {
       if (!this.alive(chain, token)) return;
-      // A rejected cursor is never replaced by a guessed one; a held candidate is stale too (06 §6.3).
       const invalid = error instanceof DomainFailure && error.code === 'CURSOR_INVALID';
       chain.more = invalid ? 'cursorInvalid' : 'failed';
       if (invalid) chain.candidate = null;
@@ -239,7 +209,6 @@ export class ArchiveChains {
     this.publish();
   }
 
-  /** F23 success: F20 announces the deletion once on its next entry (CPY-F23-009). */
   noteDeleted(): void {
     this.deletedNotice = true;
   }
@@ -255,10 +224,6 @@ export class ArchiveChains {
     if (chain) chain.anchor = anchor;
   }
 
-  /**
-   * Edit success: only a loaded row whose revision is still the base revision is patched; the
-   * held candidate is dropped and the first page is re-read later (06 §6.3, §6.4).
-   */
   patchRow(answerId: string, baseRevision: string, next: { revision: string; excerpt: Excerpt | null }): void {
     const chain = this.current(false);
     if (!chain) return;
@@ -278,7 +243,6 @@ export class ArchiveChains {
     this.publish();
   }
 
-  /** Delete success: the row goes (empty month headings follow at render); the anchor moves to a neighbour. */
   removeRow(answerId: string): void {
     const chain = this.current(false);
     if (!chain) return;
@@ -294,7 +258,6 @@ export class ArchiveChains {
     this.publish();
   }
 
-  /** A mutation made any held candidate stale (06 §6.3). */
   invalidate(): void {
     const chain = this.current(false);
     if (!chain) return;

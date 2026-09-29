@@ -19,7 +19,6 @@ beforeEach(() => {
 const generationKeys = (storage: FakeStorage) => [...storage.data.keys()].filter((k) => k.includes(':g:'));
 const hasText = (storage: FakeStorage, text: string) => [...storage.data.values()].some((v) => v.includes(text));
 
-/** Boots at F10, keeps a draft in the generation area, and opens F31 through F30. */
 async function openDeleteAll(world = createMockWorld('server.activeUnanswered'), storage = createFakeStorage()) {
   world.seedAnswer(SYNTHETIC_KEYS.registered, '지워질 합성 답변', {
     dailySemaId: 'd-old',
@@ -49,7 +48,7 @@ async function confirmDelete() {
   return dialog;
 }
 
-describe('F31 all-data delete (03 §7.2, 04 §6.14, 06 §9.3–9.4)', () => {
+describe('F31 all-data delete (03 §7.2, 04 §6.14, 06 §9.3-9.4)', () => {
   test('first step lists scope, retained evidence and backups; cancel returns to F30 without any request', async () => {
     const { world } = await openDeleteAll();
     for (const id of ['CPY-F31-020', 'CPY-F31-021', 'CPY-F31-022', 'CPY-F31-024', 'CPY-F31-025'] as const) {
@@ -72,7 +71,6 @@ describe('F31 all-data delete (03 §7.2, 04 §6.14, 06 §9.3–9.4)', () => {
     world.addFault('OP-007', { kind: 'hold', release: new Promise<void>((r) => (release = r)) });
     const dialog = await confirmDelete();
     await waitFor(() => expect(opCount(world, 'OP-007')).toBe(1));
-    // Running: locked, and the device data is all still there (commit 전 로컬 유지).
     expect(within(dialog).getByRole('button', { name: copy['CPY-F31-013'] })).toBeDisabled();
     fireEvent.keyDown(dialog, { key: 'Escape' });
     expect(screen.getByRole('alertdialog')).toBeInTheDocument();
@@ -91,7 +89,6 @@ describe('F31 all-data delete (03 §7.2, 04 §6.14, 06 §9.3–9.4)', () => {
     await waitFor(() =>
       expect(screen.getAllByRole('status').some((s) => s.textContent === copy['CPY-F31-019'])).toBe(true),
     );
-    // Old entries cannot bring deleted screens back.
     await act(() => router.navigate(-1));
     await waitFor(() => expect(router.state.location.pathname).toBe(paths.intro));
     expect(screen.queryByText('지워질 합성 답변')).toBeNull();
@@ -130,7 +127,6 @@ describe('F31 all-data delete (03 §7.2, 04 §6.14, 06 §9.3–9.4)', () => {
     expect(hasText(storage, '기기에 남은 합성 임시본')).toBe(true);
     expect(storage.clearCount).toBe(0);
     expect(world.deletionFence(SYNTHETIC_KEYS.registered)).toBeUndefined();
-    // The normal session is back: leaving to F30 and using the app works again.
     expect(screen.getByRole('button', { name: copy['CPY-F31-018'] })).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: copy['CPY-F31-009'] }));
     await findTitle(copy['CPY-F30-001']);
@@ -189,7 +185,6 @@ describe('F31 all-data delete (03 §7.2, 04 §6.14, 06 §9.3–9.4)', () => {
     await userEvent.click(screen.getByRole('button', { name: copy['CPY-F31-029'] }));
     const again = await screen.findByRole('alertdialog', { name: copy['CPY-F31-011'] });
     await userEvent.click(within(again).getByRole('button', { name: copy['CPY-COM-007'] }));
-    // Same key → the same reserved ticket; nothing runs without the user.
     await screen.findByRole('button', { name: copy['CPY-COM-026'] });
     expect(world.deletions.size).toBe(1);
     expect(opCount(world, 'OP-007')).toBe(0);
@@ -211,7 +206,6 @@ describe('F31 all-data delete (03 §7.2, 04 §6.14, 06 §9.3–9.4)', () => {
   test('MS-ALLDEL-005: a kept unknown save blocks the prepare; a server-side pending command refuses it', async () => {
     const { world, storage } = await openDeleteAll();
     const tracker = [...storage.data.keys()].length;
-    // Server says another command is executing: no deletion is prepared (05 OP-013).
     world.asyncExecution = true;
     world.tickets.set('synthetic-running', {
       owner: SYNTHETIC_KEYS.registered,
@@ -240,14 +234,12 @@ describe('restart with a reserved deletion (MS-ALLDEL-005, IX-041)', () => {
     const world = createMockWorld('server.activeUnanswered');
     const storage = createFakeStorage();
     const first = await openDeleteAll(world, storage);
-    // Execution never reached the server: the ticket stays PREPARED behind the fence.
     world.addFault('OP-007', { kind: 'network' });
     await confirmDelete();
     await screen.findByRole('button', { name: copy['CPY-COM-026'] });
     first.view.unmount();
 
     const executes = opCount(world, 'OP-007');
-    // Opened on a plain route: the kept request still comes first (06 §5.3 #5).
     const second = bootApp(server, { world, storage, initialPath: paths.today });
     await act(() => second.started);
     await findTitle(copy['CPY-F31-001']);
@@ -304,7 +296,6 @@ describe('recentDeletion and a new boarding (MS-ALLDEL-004)', () => {
     await waitFor(() => expect(hasText(storage, '새 탑승 합성 임시본')).toBe(true), { timeout: 3_000 });
     second.view.unmount();
 
-    // The same old receipt arrives again: the new generation's draft stays.
     const third = bootApp(server, { world, storage });
     await act(() => third.started);
     await findTitle(copy['CPY-F10-001']);

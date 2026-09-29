@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import { checkNickname } from './nickname.ts';
 
-describe('checkNickname (IX-001·IX-002, MS-NICK-001)', () => {
+describe('checkNickname (IX-001, IX-002, MS-NICK-001)', () => {
   test.each([
     ['', null, 0],
     ['   ', null, 0],
