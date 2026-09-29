@@ -305,7 +305,7 @@ F01 6장면 대화창, F02·F03 하단 Primary 정렬·약관 링크·기억 조
 |---|---|---|
 | F01 문장 표시 | 문장 교체·즉시 완성·Reduced Motion·Enter/장면 탭·마지막 뒤 Primary 단독; 새 문장 첫 frame에 이전 길이의 일부가 보이지 않음 | `IntroScreen.test.tsx` |
 | F01 줄바꿈 고정 | 마지막 문장을 320·360·390px에서 표시하는 동안 글자별 줄 이동 0회(이전 두 덩어리 표시 방식은 Chromium 320px에서 125회) | `tests/browser-onboarding/onboarding.spec.ts` `typing never moves…` |
-| 하단 Primary 정렬 | F01 `탑승 준비하기`·F02 `동의하고 탑승하기`·F03 `첫 질문 만나기` 하단 좌표 일치(360×740·390×844). 320×568의 F02는 내용이 길어 Primary가 흐름을 따라감 | 같은 파일 `share one bottom position` |
+| 하단 Primary 정렬 | F01 `탑승하기`·F02 `동의 후 탑승하기`·F03 `첫 질문 만나기` 하단 좌표 일치(360×740·390×844). 320×568의 F02는 내용이 길어 Primary가 흐름을 따라감 | 같은 파일 `share one bottom position` |
 | 이동 scroll | 긴 F20에서 F21로 이동하면 scrollY 0, 앱 뒤로 버튼으로 F20 행 위치 복원. 초기화 제거 시 실패 확인 | `tests/browser-archive/archive.spec.ts` `scroll: a forward move…` |
 | tap highlight | F01~F03·F10·F20·F21·F30의 button·a·label·input 전부 투명. 전역 규칙 제거 시 실패 확인 | 두 browser spec의 `no native tap highlight…` |
 | F02 약관 | 밑줄 약관 이름은 전문만 열고 선택 불변, 뒷부분 Label은 선택 전환. 상자↔`필수` 12px·`필수`↔약관 8px·세 요소 세로 중심 일치(Chromium·WebKit) | `BoardingScreen.test.tsx`, 로컬 측정 |

@@ -1,6 +1,6 @@
 # ARCA 프런트엔드 구현 명세
 
-- 문서 버전: v1.9
+- 문서 버전: v1.10
 - 최근 수정일: 2026년 9월 29일
 - 상태: 확정
 - 승인 주체: 제품 책임자
@@ -380,8 +380,9 @@ F20 목록은 generation별 하나의 infinite page chain입니다. OP-010의 cu
 - 수정 성공은 현재 load된 같은 row만 revision이 일치할 때 patch합니다. 삭제 성공은 row와 비게 된 월 제목을 제거하고 anchor를 인접 row로 옮깁니다.
 - 새 답변은 기존 cursor chain 중간에 삽입하지 않습니다. F20 재진입·명시적 root refresh 때 첫 page부터 새 chain을 구성합니다.
 - 첫 page refresh 중에는 기존 chain을 표시하고 새 first page와 기존 tail cursor를 섞지 않습니다. 깊은 scroll의 읽던 위치를 바꾸는 후보는 최신 first page 하나만 메모리에 보류합니다.
-- 보류 후보가 있으면 04 IX-042의 작은 갱신 안내와 `최신 기록 보기`를 제공합니다. 선택하면 상단으로 이동하며 새 chain으로 교체하고 첫 기록/목록 제목에 포커스를 둡니다. 선택 전에는 행·scroll·focus를 유지합니다. 직접 상단으로 돌아왔을 때도 적용할 수 있으나 focus를 강제 이동하지 않습니다.
-- 새 후보는 이전 후보를 대체합니다. mutation·주체/generation 변경·cursor 무효화로 낡은 후보는 폐기하고 재조회합니다. 후보 부재/실패에는 안내를 숨기고 새 기록의 수나 존재를 추정하지 않습니다. 확인된 첫 page의 identity·revision·순서가 같으면 반복 갱신 안내를 만들지 않으며 새 cursor를 기존 tail에 섞지 않습니다(D-TECH-048).
+- 보류 후보는 안내·행동 없이 두고 행·scroll·focus를 유지합니다. 사용자가 직접 스크롤하거나 `맨 위로`(CMP-026)로 상단에 도달하면 새 chain으로 교체하되 focus를 다시 옮기지 않습니다(04 IX-042, D-UI-105).
+- 다음 page는 목록 끝 sentinel이 viewport 아래 480px 안으로 들어오면 IntersectionObserver로 요청합니다. 요청 중·실패 뒤에는 관찰을 멈추고, page가 붙으면 다시 관찰해 끝이 여전히 가까우면 이어서 요청합니다. 실패는 자동 재요청 없이 사용자의 재시도만 받습니다(04 IX-023).
+- 새 후보는 이전 후보를 대체합니다. mutation·주체/generation 변경·cursor 무효화로 낡은 후보는 폐기하고 재조회합니다. 새 기록의 수나 존재를 추정하지 않습니다. 확인된 첫 page의 identity·revision·순서가 같으면 후보를 만들지 않으며 새 cursor를 기존 tail에 섞지 않습니다(D-TECH-048).
 - `CMP-016 MemoryCount`는 OP-010에서 추정하거나 row 수로 계산하지 않습니다. F20은 OP-005의 `activeAnswerCount`를 독립 조회하고 목록은 count 실패와 무관하게 표시합니다.
 
 F20은 OP-010의 `question`·`createdDateKst`로 질문·날짜만 그립니다. 기존 STANDARD 발췌 DTO·요청·캐시·revision 동기화는 호환을 위해 유지하며 목록 DOM/접근성 이름에 본문을 넣지 않습니다. 상세를 선택했을 때 기존 OP-011 경로로 응답 전문을 읽습니다.
@@ -673,7 +674,7 @@ local storage 오류, protocol 오류, transport 오류, domain 오류는 합치
 | F11 | OP-006~009, 명시적 OP-015 | 선택 질문, exact input·IME·cursor, create draft, command 표시 | 질문 전환/Back/save 전 flush. terminal success 현재 화면이면 F12, NOT_APPLIED면 입력 유지, unknown은 안전 이탈 | SE-01·05~09, AN-01~05·09, IX-005~012·019·036~041, API-V-006~010·020·024·026, Acc #12~18·36~40·43 |
 | F12 | OP-008·009, 필요 시 OP-005 | completion model, 연출 1회, 첫 조작 시 action hierarchy snapshot | core success 즉시 표시. count 독립 갱신(발췌는 표시하지 않음, D-UI-102); 늦은 조회로 버튼 위계 변경 금지. Back/행동 F10·F20 | AN-06·08, IX-020~021·039, API-V-010·025, Acc #35 |
 | F13 | 필수 OP 없음 | 선택 draft exact text, 실제 만료, copy 상태 | F10 Sheet·날짜 변경에서 진입. 만료면 원문 복원 금지; copy adapter 실패 시 직접 선택, 오늘 이동 F10 | SE-05, AN-02·05·09, IX-022·027~028·034·040~041, Acc #15·18·40 |
-| F20 | OP-010 + 누적 수 OP-005, OP-014 측정 | page chain view·보류 후보, 월 구획, 더 보기/갱신 행동, scroll anchor | entry 첫 page refresh·IX-042 명시적 적용. count 실패와 목록 독립; row F21, empty는 루트 탭으로 F10. 수정/삭제는 load row만 반영 | AR-01·02·09, IX-023·027~029, API-V-010·012·016, Acc #21·33·38·41 |
+| F20 | OP-010 + 누적 수 OP-005, OP-014 측정 | page chain view·보류 후보, 월 구획, 끝 근접 자동 추가·맨 위로, scroll anchor | entry 첫 page refresh·IX-042 상단 도달 적용. count 실패와 목록 독립; row F21, empty는 루트 탭으로 F10. 수정/삭제는 load row만 반영 | AR-01·02·09, IX-023·027~029, API-V-010·012·016, Acc #21·33·38·41 |
 | F21 | OP-011, 미결 answer tracker면 OP-008·009 우선 | 읽기 scroll, action focus | row/수정 복귀에서 진입. 다른 기기 변경은 최신 detail; 수정 F22, 삭제 F23, missing F20 | SE-09, AN-07·09, AR-03·09, IX-024·029·036·041, API-V-011·013·025, Acc #19·22~23·33·39 |
 | F22 | OP-011·006~009, 명시적 OP-015 | exact input·IME·cursor, answer/baseRevision draft | detail 뒤 draft load. save 전 flush/선보관; 성공 F21, conflict 최신 상세, unknown 안전 이탈. F12 없음 | AN-01~04·07·09, AR-03·09, IX-005·007~009·016·019·024·036~041, API-V-006·009·011·020·026, Acc #19·36~40·43 |
 | F23 | OP-011·012·007~009, 명시적 OP-015 | AlertDialog open/focus, delete command 상태 | F21 배경 modal. terminal 전 dismiss·선삭제 금지; 성공 F20, 실패 F21 유지, revision conflict 최신 상세 | AR-04·09, IX-025·029·041, API-V-008·013·020, Acc #22·39·43 |

@@ -1,6 +1,6 @@
 # ARCA Mock 시나리오 명세
 
-- v1.4 · 2026-09-28 · 제품 책임자 승인 설계; 로컬 Mock 구현·회귀 실행 증거는 08 §14.1, 실서버·실기기는 별도 미검증.
+- v1.5 · 2026-09-29 · 제품 책임자 승인 설계; 로컬 Mock 구현·회귀 실행 증거는 08 §14.1, 실서버·실기기는 별도 미검증.
 - 소유 범위: 합성 시작 상태·장애·사건 순서·기대 결과. 실행 방법과 완료 판정은 [.claude/spec/08_QA_AND_INTEGRATION.md §3 · 약 L50–76](08_QA_AND_INTEGRATION.md#3-07-시나리오-실행-전략).
 
 ## 1. 범위와 권위
@@ -163,7 +163,7 @@ fault는 OP·의미 단계·필요한 재시도/기기에 연결하고 소비 �
 
 - 변화 없는 query는 고정 page, mutation case는 전후 fixture/응답 순서로 제공합니다. today·count의 snapshot 관계를 지키되 count 실패는 독립입니다.
 - 목록은 0/1/2/20/21개·월/연도 경계를 둡니다. 첫 page 상한 뒤 신규 삽입 금지, 수정 최신 revision, 삭제 생략, 중복/누락 방지를 확인합니다. cursor 값 자체를 해석하지 않습니다.
-- 깊은 scroll에서는 준비된 first-page 후보만 안내하고 기존 rows/anchor/focus를 유지합니다. 명시적 적용 전 tail과 섞지 않으며 mutation·cursor 무효화·refresh 실패에는 후보를 폐기합니다.
+- 깊은 scroll에서는 준비된 first-page 후보를 안내 없이 보류하고 기존 rows/anchor/focus를 유지합니다. 상단 도달 적용 전 tail과 섞지 않으며 mutation·cursor 무효화·refresh 실패에는 후보를 폐기합니다.
 - NavigationContext는 같은 방문의 선택·위치만 보관합니다. 원문/token/ticket을 복사하지 않고 identity/revision/owner/epoch가 달라지거나 reload·삭제되면 폐기합니다.
 - 상세: [.claude/spec/06_FRONTEND_SPEC.md §6.3 · 약 L356–370](06_FRONTEND_SPEC.md#63-f20-page-chain과-누적-수), [.claude/spec/06_FRONTEND_SPEC.md §5.6 · 약 L323–329](06_FRONTEND_SPEC.md#56-navigationcontext의-수명과-복원).
 
@@ -271,10 +271,10 @@ P0-core는 질문→작성→저장→다시 읽기와 입력/응답 유실, P0-
 |---|---|---|---|
 | `MS-LIST-001` | 각각 0·1·2개 answer world | Empty/단일/복수 상태와 count 독립 표시. 행에는 질문·날짜만 표시하며 응답은 상세에서 읽음. 저장되지 않은 draft·미확인 command를 row로 만들지 않음 | OP-005·010; [API-V-010 · API-V-012, L843 · 약 L778–780](05_API_SPEC.md#15-계약-검증-추적); [Acc #21 · #33 · #41, L109, L123 · 약 L87–123](../../docs/ARCA_MVP_ACCEPTANCE.md#기록과-삭제) |
 | `MS-LIST-002` | 정확히 20개, nextCursor 없음 | row 20개·중복 없음. 추가 page 행동과 `모두 불러옴` 조건을 혼동하지 않음 | OP-010; [API-V-012 · 약 L780–780](05_API_SPEC.md#15-계약-검증-추적); [Acc #21 · #41, L123 · 약 L87–123](../../docs/ARCA_MVP_ACCEPTANCE.md#기록과-삭제) |
-| `MS-LIST-003` | 21개, 첫 page 뒤 second page 요청 | 20+1, 원래 최신순·중복/누락 없음, 첫 page 상한 유지 | OP-010; [API-V-012 · 약 L780–780](05_API_SPEC.md#15-계약-검증-추적); [Acc #21 · #38, L115 · 약 L87–115](../../docs/ARCA_MVP_ACCEPTANCE.md#기록과-삭제) |
+| `MS-LIST-003` | 21개, 목록 끝이 가까워져 second page 자동 요청 | 20+1, 원래 최신순·중복/누락 없음, 첫 page 상한 유지. 불러오는 동안 로더, 포커스 불변 | OP-010; [API-V-012 · 약 L780–780](05_API_SPEC.md#15-계약-검증-추적); [Acc #21 · #38, L115 · 약 L87–115](../../docs/ARCA_MVP_ACCEPTANCE.md#기록과-삭제) |
 | `MS-LIST-004` | 월 경계가 page 사이에 이어지고 연도 경계 포함 | 같은 월 heading 중복 없음, 연도 구분·행 날짜·최신순 유지, 미작성 기간 빈칸 없음 | OP-010; [API-V-012 · 약 L780–780](05_API_SPEC.md#15-계약-검증-추적); [Acc #38 · 약 L115–115](../../docs/ARCA_MVP_ACCEPTANCE.md#항해-기록-탐색과-원문-보호) |
 | `MS-LIST-005` | 첫 page 후 다른 기기 생성·수정·삭제, 이후 next page | 신규는 기존 chain에 끼지 않음. 수정 최신 revision, 삭제 생략, 중복 row 없음. cursor invalid면 tail 유지·첫 page refresh 제공 | OP-010~011; [API-V-012 · API-V-013 · API-V-025, L856 · 약 L780–793](05_API_SPEC.md#15-계약-검증-추적); [Acc #33 · #38 · #46 · #48, L115, L131, L138 · 약 L109–138](../../docs/ARCA_MVP_ACCEPTANCE.md#항해-기록-탐색과-원문-보호) |
-| `MS-LIST-006` | 깊은 scroll anchor에서 새 first-page 후보 준비·실패·교체·사용자 적용 | 준비 전 안내 없음. 준비 뒤 기존 rows/scroll/focus 유지. 선택 시 유효 후보만 상단 적용, 기존 tail과 혼합 없음 | OP-010; [API-V-012 · 약 L780–780](05_API_SPEC.md#15-계약-검증-추적); [Acc #48 · 약 L138–138](../../docs/ARCA_MVP_ACCEPTANCE.md#프런트엔드-리뷰의-사용자-결과) |
+| `MS-LIST-006` | 깊은 scroll anchor에서 새 first-page 후보 준비·실패·교체·사용자 적용 | 준비 전후 모두 안내·행동 없음. 기존 rows/scroll/focus 유지. `맨 위로`·직접 스크롤로 상단 도달 시 유효 후보만 적용, 기존 tail과 혼합 없음 | OP-010; [API-V-012 · 약 L780–780](05_API_SPEC.md#15-계약-검증-추적); [Acc #48 · 약 L138–138](../../docs/ARCA_MVP_ACCEPTANCE.md#프런트엔드-리뷰의-사용자-결과) |
 | `MS-LIST-007` | OP-010 성공+OP-005 count 실패, 이어서 OP-010 실패+OP-005 count 성공 | 성공한 영역은 유지하고 실패한 영역만 재조회. row 수로 count를 추정하거나 count 성공으로 목록을 완성 상태로 가장하지 않음 | OP-005·010; [API-V-010 · API-V-012, L843 · 약 L778–780](05_API_SPEC.md#15-계약-검증-추적); [Acc #21 · #35 · #38, L112, L115 · 약 L87–115](../../docs/ARCA_MVP_ACCEPTANCE.md#기록과-삭제) |
 | `MS-NAV-001` | F10/F11·F20/F21 왕복, 같은 revision과 변경된 revision, reload·삭제·generation 변경 | 유효 identity/version만 selection·anchor 복원. 값 변경·reload·삭제·재탑승에는 낡은 snapshot 폐기, 본문은 DraftRepository만 복원 | local/OP-005·010·011; [API-V-011 · API-V-012 · API-V-013 · 약 L779–781](05_API_SPEC.md#15-계약-검증-추적); [Acc #48 · #50, L140 · 약 L138–140](../../docs/ARCA_MVP_ACCEPTANCE.md#프런트엔드-리뷰의-사용자-결과) |
 
