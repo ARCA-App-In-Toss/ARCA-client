@@ -7,6 +7,7 @@ import {
   useEffect,
   useLayoutEffect,
   useRef,
+  useState,
 } from 'react';
 import { type IconName, MemoryFragment, PixelIcon } from './pixel.tsx';
 
@@ -336,6 +337,8 @@ export type RootTabId = 'today' | 'archive' | 'settings';
 
 const tabIcons: Record<RootTabId, IconName> = { today: 'today', archive: 'archive', settings: 'settings' };
 
+let mountedRootTabs = 0;
+
 export function RootFloatingTabs({
   current,
   tabs,
@@ -343,8 +346,15 @@ export function RootFloatingTabs({
   current: RootTabId;
   tabs: { id: RootTabId; label: string; onSelect: () => void }[];
 }) {
+  const [entering] = useState(() => mountedRootTabs === 0);
+  useEffect(() => {
+    mountedRootTabs += 1;
+    return () => {
+      mountedRootTabs -= 1;
+    };
+  }, []);
   return (
-    <nav className="arca-root-tabs arca-px">
+    <nav className={entering ? 'arca-root-tabs arca-root-tabs--entering arca-px' : 'arca-root-tabs arca-px'}>
       {tabs.map((tab) => (
         <button
           key={tab.id}

@@ -18,6 +18,7 @@
 .arca-capsule-backdrop--ready {
   visibility: visible;
   background: var(--color-bg-scene);
+  animation: arca-screen-enter var(--motion-duration-base) var(--motion-easing-settle);
 }
 
 .arca-capsule-scene {

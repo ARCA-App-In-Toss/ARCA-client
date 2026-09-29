@@ -16,6 +16,10 @@
   padding: var(--space-100);
 }
 
+.arca-root-tabs--entering {
+  animation: arca-screen-enter var(--motion-duration-base) var(--motion-easing-settle);
+}
+
 .arca-root-tab {
   --px-fill: transparent;
   --px-line: transparent;
