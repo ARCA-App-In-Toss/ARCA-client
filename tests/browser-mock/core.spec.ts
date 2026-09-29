@@ -56,7 +56,9 @@ test('MS-CORE-009 fonts and images blocked: question, writing, result and moves 
 }) => {
   const blocked: string[] = [];
   await page.route(/\.(woff2?|ttf|otf|png|jpe?g|webp|gif|svg)(\?.*)?$/, (route) => {
-    blocked.push(route.request().resourceType());
+    const type = route.request().resourceType();
+    if (type !== 'image' && type !== 'font') return route.continue();
+    blocked.push(type);
     return route.abort();
   });
   await writeAndSave(page);
