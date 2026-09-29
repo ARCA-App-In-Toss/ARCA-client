@@ -13,11 +13,10 @@ import {
   PixelAppShell,
   PixelButton,
   PixelPlaceholder,
-  RecordPanel,
   StatePanel,
 } from '../../ui/components.tsx';
 import { copy, fill } from '../../ui/copy.ts';
-import { formatDateKst, formatInstantKst, isWhitespaceOnly } from '../../ui/format.ts';
+import { formatDateKst, formatInstantKst } from '../../ui/format.ts';
 import { PixelSheet } from '../../ui/PixelSheet.tsx';
 import { CapsuleBackdrop, MemoryFragment } from '../../ui/pixel.tsx';
 import { RootHeader, RootTabs } from '../RootTabs.tsx';
@@ -86,12 +85,10 @@ export function TodayScreen() {
       ? pending.questionId
       : null;
   const pendingShown = pendingQuestionId !== null && data.answer.state === 'UNANSWERED';
-  const answeredExcerptMissing = data.answer.state === 'ANSWERED' && data.answer.value.excerpt.state !== 'AVAILABLE';
   const liveMessage =
     notice ??
     (pendingShown ? copy['CPY-F10-038'] : null) ??
     (refreshFailed ? copy['CPY-F10-022'] : null) ??
-    (answeredExcerptMissing ? copy['CPY-F10-018'] : null) ??
     announcement;
   return (
     <PixelAppShell className="arca-page--capsule" backdrop={backdrop} tabs={<RootTabs current="today" />}>
@@ -99,13 +96,7 @@ export function TodayScreen() {
       {data.answer.state === 'UNANSWERED' ? (
         <Unanswered today={data} onAnnounce={setAnnouncement} pendingQuestionId={pendingQuestionId} />
       ) : (
-        <Answered
-          today={data}
-          answer={data.answer.value}
-          onRetry={refetch}
-          retrying={today.isFetching}
-          showRetry={!refreshFailed}
-        />
+        <Answered today={data} answer={data.answer.value} />
       )}
       <PastDrafts currentDailySemaId={data.sema.dailySemaId} />
       <div className="arca-visually-hidden">
@@ -193,22 +184,9 @@ function Unanswered({
   );
 }
 
-function Answered({
-  today,
-  answer,
-  onRetry,
-  retrying,
-  showRetry,
-}: {
-  today: Today;
-  answer: TodayAnswer;
-  onRetry: () => void;
-  retrying: boolean;
-  showRetry: boolean;
-}) {
+function Answered({ today, answer }: { today: Today; answer: TodayAnswer }) {
   const navigate = useArcaNavigate();
   const refs = useAnswerRefs();
-  const excerpt = answer.excerpt.state === 'AVAILABLE' ? answer.excerpt.value : null;
 
   return (
     <CapsuleDisplay>
@@ -219,35 +197,10 @@ function Answered({
         <QuestionDate dateKst={today.dateKst} />
         <p className="arca-question arca-question--quiet">{answer.question.text}</p>
       </section>
-      <RecordPanel labelledBy={excerpt ? 'f10-excerpt-label' : undefined} hero>
-        <p className="arca-sender arca-sender--compact">
-          <MemoryFragment cell={2} />
-          <span className="arca-label arca-label--signal">{copy['CPY-F10-011']}</span>
-        </p>
-        {excerpt ? (
-          <>
-            <p className="arca-label" id="f10-excerpt-label">
-              {excerpt.isTruncated ? copy['CPY-F10-013'] : copy['CPY-F10-012']}
-            </p>
-            <p className="arca-user-text arca-user-text--reading">
-              {excerpt.text}
-              {excerpt.isTruncated && <span aria-hidden="true">…</span>}
-            </p>
-            {isWhitespaceOnly(excerpt.text) && !excerpt.isTruncated && (
-              <p className="arca-text-secondary">{copy['CPY-COM-004']}</p>
-            )}
-          </>
-        ) : (
-          <div className="arca-actions">
-            <InlineStatus message={copy['CPY-F10-018']} live={false} />
-            {showRetry && (
-              <PixelButton variant="ghost" loading={retrying} onClick={onRetry}>
-                {copy['CPY-F10-023']}
-              </PixelButton>
-            )}
-          </div>
-        )}
-      </RecordPanel>
+      <p className="arca-sender arca-sender--compact">
+        <MemoryFragment cell={2} />
+        <span className="arca-label arca-label--signal">{copy['CPY-F10-011']}</span>
+      </p>
       <div className="arca-actions">
         <PixelButton
           variant="primary"
