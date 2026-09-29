@@ -1,7 +1,5 @@
 import { expect, test } from '@playwright/test';
 
-// Production bundle in a plain browser: no Toss bridge (no anonymous key) and no API host.
-// Start must end on F90 without inventing an identity, calling any API or writing local data.
 test('production start without platform identity lands on F90 and sends no API request', async ({ page }) => {
   const errors: string[] = [];
   const apiRequests: string[] = [];

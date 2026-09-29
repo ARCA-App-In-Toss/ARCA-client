@@ -1,7 +1,5 @@
 import { expect, type Page, test } from '@playwright/test';
 
-// MS-TIME-002 on the dev mock: the server day moves on before the first save (07, 08 §3.2 TIME row).
-// Synthetic text only; no ids, content or tokens may reach the URL.
 const TEXT = '자정 넘긴 브라우저 합성\n둘째 줄  ';
 
 async function saveAcrossMidnight(page: Page) {
@@ -32,7 +30,6 @@ test('date change → F13 (copy first) → today → past-draft Sheet → F13 re
   await trigger.click();
   const sheet = page.getByRole('dialog', { name: '지난 임시본' });
   await expect(sheet).toBeVisible();
-  // Modal: focus stays inside; an outside tap does not close it; Escape does and focus returns.
   await page.mouse.click(5, 5);
   await expect(sheet).toBeVisible();
   await page.keyboard.press('Escape');

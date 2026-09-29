@@ -1,8 +1,5 @@
 import { expect, type Page, test } from '@playwright/test';
 
-// F30/F31 on the dev mock (08 §3.2 SETTINGS/ALLDEL rows). Synthetic values only; no nickname, id or
-// token may reach the URL.
-
 async function openSettings(page: Page) {
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1, name: '오늘의 항해' })).toBeVisible({ timeout: 15_000 });

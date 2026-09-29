@@ -1,8 +1,5 @@
 import { expect, type Page, test } from '@playwright/test';
 
-// MS-LIST-003/004 and F21~F23 on the dev mock (08 §3.2 LIST/EDIT/DELETE rows). Synthetic text only;
-// no ids, content or tokens may reach the URL.
-
 async function openArchive(page: Page) {
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1, name: '오늘의 항해' })).toBeVisible({ timeout: 15_000 });
@@ -11,7 +8,6 @@ async function openArchive(page: Page) {
   await expect(page.locator('.arca-memory-row')).toHaveCount(20);
 }
 
-/** Every tappable element must suppress the native tap overlay (no grey flash on touch). */
 async function expectNoTapHighlight(page: Page) {
   const offenders = await page.evaluate(() =>
     Array.from(document.querySelectorAll<HTMLElement>('button, a, label, input, [role="button"], .arca-intro-stage'))
@@ -83,7 +79,6 @@ test('delete: Escape cancels with focus back; confirm removes the row and return
   await trigger.click();
   await page.getByRole('alertdialog').getByRole('button', { name: '기억 조각 삭제' }).click();
   await expect(page.getByRole('heading', { level: 1, name: '항해 기록' })).toBeVisible();
-  // The row goes at once; at the top the re-read first page then replaces the chain (06 §6.3–6.4).
   await expect(page.getByText(deletedDate, { exact: true })).toHaveCount(0);
   await expect(page.locator('.arca-memory-row')).toHaveCount(20);
   await expect(page.getByText('기억 조각 20개')).toBeVisible();
@@ -115,7 +110,6 @@ test('320px with 200% text: F21 actions and the F23 dialog stay reachable, no ho
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   expect(overflow).toBeLessThanOrEqual(0);
 
-  // F22 layout: question context, field and save stay in the document flow and reachable.
   await page.keyboard.press('Escape');
   await page.getByRole('button', { name: '수정하기' }).click();
   await page.getByRole('textbox', { name: '내 답변' }).fill('좁은 화면 합성');
@@ -132,7 +126,6 @@ test('scroll: a forward move opens the next screen at its top; the in-app back r
   page,
 }) => {
   await openArchive(page);
-  // Make every screen taller than the viewport so a leftover scroll position could survive.
   await page.addStyleTag({ content: '.arca-shell { min-height: 400vh; }' });
   const row = page.locator('.arca-memory-row').nth(15);
   await row.scrollIntoViewIfNeeded();

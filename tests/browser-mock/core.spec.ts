@@ -1,6 +1,5 @@
 import { expect, type Page, test } from '@playwright/test';
 
-// Browser smoke of MS-CORE-001 on the dev mock (08 §3.2 CORE row). Synthetic text only.
 const TEXT = '  브라우저 합성 답변\n\n빈 줄 뒤 👩‍👩‍👧  ';
 
 async function writeAndSave(page: Page) {
@@ -28,7 +27,6 @@ test('question → write → save → read again in the browser', async ({ page 
   await expect(page.getByRole('region', { name: '내 답변' }).locator('.arca-user-text')).toHaveText(TEXT, {
     useInnerText: false,
   });
-  // No ids, content or tokens in the URL.
   expect(page.url()).not.toMatch(/synthetic|token|answer-/);
   expect(errors).toEqual([]);
 });

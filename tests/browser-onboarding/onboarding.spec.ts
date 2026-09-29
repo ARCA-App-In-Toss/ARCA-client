@@ -1,8 +1,5 @@
 import { expect, type Page, test } from '@playwright/test';
 
-// Browser smoke of F01 → F02 → F03 → F10 on the dev mock with an unregistered synthetic key
-// (MS-SES-001-pre, MS-ONB-001/003, MS-NICK-001). Synthetic values only.
-
 async function toBoarding(page: Page) {
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1, name: 'ARCA 이야기' })).toBeVisible({ timeout: 15_000 });
@@ -10,7 +7,6 @@ async function toBoarding(page: Page) {
   await expect(page.getByRole('heading', { level: 1, name: '탑승 준비' })).toBeFocused();
 }
 
-/** Every tappable element must suppress the native tap overlay (no grey flash on touch). */
 async function expectNoTapHighlight(page: Page) {
   const offenders = await page.evaluate(() =>
     Array.from(document.querySelectorAll<HTMLElement>('button, a, label, input, [role="button"], .arca-intro-stage'))
@@ -44,7 +40,6 @@ test('intro → consent → passenger → nickname → first question', async ({
 
   await expect(page.getByRole('heading', { level: 1, name: '오늘의 항해' })).toBeFocused();
   await expect(page).toHaveURL(/\/today$/);
-  // No key, token, code or nickname in the URL.
   expect(page.url()).not.toMatch(/synthetic|token|SYN-|%ED%95%A9/);
   expect(errors).toEqual([]);
 });
@@ -56,7 +51,6 @@ test('320px with 200% text: every intro scene and consent screen reflow without 
   await page.goto('/');
   await page.addStyleTag({ content: 'html { font-size: 200%; }' });
   await expect(page.getByRole('heading', { level: 1, name: 'ARCA 이야기' })).toBeVisible({ timeout: 15_000 });
-  // Each press completes the typing or moves to the next sentence/scene; 12 sentences reach boarding.
   const board = page.getByRole('button', { name: '탑승 준비하기' });
   for (let press = 0; press < 30 && !(await board.isVisible()); press += 1) {
     await noHorizontalScroll(page);
@@ -85,7 +79,6 @@ test('typing never moves a character to another line (balanced wrapping stays fi
       await page.getByRole('button', { name: '다음' }).click();
     }
     await expect(sentence).toHaveText(target);
-    // Sample the line (rect top) of every character in the current line until it is fully typed.
     const moved = await page.evaluate(
       () =>
         new Promise<number>((resolve) => {
@@ -123,7 +116,6 @@ test('typing never moves a character to another line (balanced wrapping stays fi
 });
 
 test('the F01, F02 and F03 Primaries share one bottom position', async ({ page }) => {
-  // Sizes where every page fits one screen; on a shorter screen the Primary follows the content.
   for (const [width, height] of [
     [360, 740],
     [390, 844],
