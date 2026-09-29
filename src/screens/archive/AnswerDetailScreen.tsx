@@ -146,7 +146,7 @@ export function AnswerDetailScreen() {
     );
   }
 
-  const { question, content, createdDateKst, isEdited, revision } = detail.data;
+  const { question, content, createdDateKst, revision } = detail.data;
   const editUnresolved = !deleteRunning && (pendingMode === 'UPDATE' || unresolved);
 
   const status = detailStatus({ editUnresolved, deleteUnresolved, notice });
@@ -172,8 +172,11 @@ export function AnswerDetailScreen() {
         <p className="arca-user-text arca-user-text--reading">{content}</p>
         {isWhitespaceOnly(content) && <p className="arca-text-secondary">{copy['CPY-COM-004']}</p>}
       </RecordPanel>
-      {isEdited && <p className="arca-caption arca-text-secondary">{copy['CPY-F21-007']}</p>}
-      <InlineStatus message={dialogRoute ? null : status.message} tone={status.danger ? 'danger' : 'neutral'} />
+      <InlineStatus
+        message={dialogRoute ? null : status.message}
+        tone={status.danger ? 'danger' : 'neutral'}
+        quiet={notice === 'editSaved'}
+      />
       <div className="arca-actions">
         {editUnresolved ? (
           <PixelButton onClick={() => navigate(paths.edit, { answerRef: routeState?.answerRef ?? '' })}>
