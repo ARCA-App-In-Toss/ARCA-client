@@ -70,11 +70,12 @@ describe('F31 all-data delete (03 §7.2, 04 §6.14, 06 §9.3-9.4)', () => {
     let release!: () => void;
     world.addFault('OP-007', { kind: 'hold', release: new Promise<void>((r) => (release = r)) });
     const dialog = await confirmDelete();
+    expect(within(dialog).queryByText(copy['CPY-F31-015'])).toBeNull();
     await waitFor(() => expect(opCount(world, 'OP-007')).toBe(1));
     expect(within(dialog).getByRole('button', { name: copy['CPY-F31-013'] })).toBeDisabled();
     fireEvent.keyDown(dialog, { key: 'Escape' });
     expect(screen.getByRole('alertdialog')).toBeInTheDocument();
-    expect(within(dialog).getByText(copy['CPY-F31-015'])).toBeInTheDocument();
+    expect(await within(dialog).findByText(copy['CPY-F31-015'])).toBeInTheDocument();
     expect(hasText(storage, '기기에 남은 합성 임시본')).toBe(true);
     release();
 

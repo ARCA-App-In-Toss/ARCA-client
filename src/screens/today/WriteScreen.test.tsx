@@ -193,6 +193,22 @@ describe('MS-CORE-001 question → write → save → read again', () => {
     expect(answer.querySelector('.arca-user-text')?.textContent).toBe(text);
   });
 
+  test('a save shows only the busy Primary at first; the progress line and waiting actions follow after 0.5s', async () => {
+    const { world, textarea } = await openWrite();
+    let release!: () => void;
+    world.addFault('OP-006', { kind: 'hold', release: new Promise<void>((r) => (release = r)) });
+    fireEvent.change(textarea, { target: { value: '느린 저장 합성' } });
+    await userEvent.click(screen.getByRole('button', { name: copy['CPY-F11-018'] }));
+    await waitFor(() => expect(textarea).toHaveAttribute('readonly'));
+    expect(screen.getByRole('button', { name: copy['CPY-F11-018'] })).toHaveAttribute('aria-busy', 'true');
+    expect(screen.queryByText(copy['CPY-F11-019'])).toBeNull();
+    expect(screen.queryByRole('button', { name: copy['CPY-F11-029'] })).toBeNull();
+    expect(await screen.findByText(copy['CPY-F11-019'])).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: copy['CPY-F11-029'] })).toBeInTheDocument();
+    release();
+    await screen.findByRole('heading', { level: 2, name: copy['CPY-F12-004'] });
+  });
+
   test('while saving the text is read-only and the switch is locked', async () => {
     const { world, textarea } = await openWrite();
     let release!: () => void;

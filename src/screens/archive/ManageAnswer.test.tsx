@@ -278,11 +278,12 @@ describe('F23 single delete (03 §6.4, 04 §6.12, 06 §9.2)', () => {
     await userEvent.click(screen.getByRole('button', { name: copy['CPY-F21-009'] }));
     const dialog = await screen.findByRole('alertdialog', { name: copy['CPY-F23-001'] });
     await userEvent.click(within(dialog).getByRole('button', { name: copy['CPY-F23-007'] }));
+    expect(within(dialog).queryByText(copy['CPY-F23-008'])).toBeNull();
     await waitFor(() => expect(opCount(world, 'OP-007')).toBe(1));
     expect(within(dialog).getByRole('button', { name: copy['CPY-F23-006'] })).toBeDisabled();
     fireEvent.keyDown(dialog, { key: 'Escape' });
     expect(screen.getByRole('alertdialog')).toBeInTheDocument();
-    expect(within(dialog).getByText(copy['CPY-F23-008'])).toBeInTheDocument();
+    expect(await within(dialog).findByText(copy['CPY-F23-008'])).toBeInTheDocument();
     expect(screen.getByText('8월 합성 답변')).toBeInTheDocument();
     release();
 
