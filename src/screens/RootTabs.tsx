@@ -1,8 +1,10 @@
 import { paths, useArcaNavigate } from '../app/navigation.ts';
-import { PixelIconButton, RootFloatingTabs, ScreenTitle } from '../ui/components.tsx';
-import { copy, rootTabLabels } from '../ui/copy.ts';
+import type { Today } from '../domain/models.ts';
+import { MemoryCount, RootFloatingTabs, type RootTabId, ScreenTitle } from '../ui/components.tsx';
+import { copy, fill, rootTabLabels } from '../ui/copy.ts';
+import { formatCount } from '../ui/format.ts';
 
-export function RootTabs({ current }: { current: 'today' | 'archive' }) {
+export function RootTabs({ current }: { current: RootTabId }) {
   const navigate = useArcaNavigate();
   return (
     <RootFloatingTabs
@@ -10,17 +12,23 @@ export function RootTabs({ current }: { current: 'today' | 'archive' }) {
       tabs={[
         { id: 'today', label: rootTabLabels.today, onSelect: () => navigate(paths.today) },
         { id: 'archive', label: rootTabLabels.archive, onSelect: () => navigate(paths.archive) },
+        { id: 'settings', label: rootTabLabels.settings, onSelect: () => navigate(paths.settings) },
       ]}
     />
   );
 }
 
-export function RootHeader({ title }: { title: string }) {
-  const navigate = useArcaNavigate();
+export function RootHeader({ title, count }: { title: string; count?: Today['activeAnswerCount'] | undefined }) {
+  const memoryCount = count?.state === 'AVAILABLE' ? formatCount(count.value.count) : null;
   return (
     <div className="arca-root-header">
       <ScreenTitle>{title}</ScreenTitle>
-      <PixelIconButton label={copy['CPY-F10-002']} icon="settings" onClick={() => navigate(paths.settings)} />
+      {memoryCount !== null && (
+        <MemoryCount
+          label={fill(copy['CPY-COM-003'], { memoryCount })}
+          value={fill(copy['CPY-COM-029'], { memoryCount })}
+        />
+      )}
     </div>
   );
 }

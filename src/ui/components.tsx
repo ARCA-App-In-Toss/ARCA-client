@@ -214,11 +214,12 @@ export function RecordPanel({
   );
 }
 
-export function MemoryCount({ text }: { text: string }) {
+export function MemoryCount({ label, value }: { label: string; value: string }) {
   return (
     <p className="arca-memory-count">
       <MemoryFragment cell={2} />
-      <span>{text}</span>
+      <span className="arca-visually-hidden">{label}</span>
+      <span aria-hidden="true">{value}</span>
     </p>
   );
 }
@@ -321,14 +322,16 @@ export function PixelTextField({
   );
 }
 
-const tabIcons: Record<'today' | 'archive', IconName> = { today: 'today', archive: 'archive' };
+export type RootTabId = 'today' | 'archive' | 'settings';
+
+const tabIcons: Record<RootTabId, IconName> = { today: 'today', archive: 'archive', settings: 'settings' };
 
 export function RootFloatingTabs({
   current,
   tabs,
 }: {
-  current: 'today' | 'archive';
-  tabs: { id: 'today' | 'archive'; label: string; onSelect: () => void }[];
+  current: RootTabId;
+  tabs: { id: RootTabId; label: string; onSelect: () => void }[];
 }) {
   return (
     <nav className="arca-root-tabs arca-px">

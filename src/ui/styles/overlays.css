@@ -138,12 +138,13 @@
 
 .arca-root-header {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-200);
+  gap: var(--space-200) var(--space-400);
 }
 
-.arca-root-header .arca-icon-button {
-  margin-right: calc(var(--space-300) * -1);
+.arca-root-header .arca-memory-count {
+  flex: none;
+  align-self: center;
 }

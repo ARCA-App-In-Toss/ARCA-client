@@ -6,7 +6,6 @@ import type { ArchiveView } from '../../domain/archive/archiveChains.ts';
 import type { ArchiveItem } from '../../domain/models.ts';
 import {
   InlineStatus,
-  MemoryCount,
   MemoryRow,
   PixelAppShell,
   PixelButton,
@@ -132,10 +131,7 @@ export function ArchiveScreen() {
   return (
     <PixelAppShell tabs={tabs}>
       <div ref={containerRef} className="arca-stack">
-        <RootHeader title={copy['CPY-F20-001']} />
-        {count?.state === 'AVAILABLE' && (
-          <MemoryCount text={fill(copy['CPY-F20-002'], { memoryCount: formatCount(count.value.count) })} />
-        )}
+        <RootHeader title={copy['CPY-F20-001']} count={count} />
         {body}
       </div>
       {view.phase === 'ready' && view.candidateReady && (

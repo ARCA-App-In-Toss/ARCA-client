@@ -11,7 +11,15 @@ const errorCopy: Record<NicknameError, CopyId> = {
   forbidden: 'CPY-F30-014',
 };
 
-export function PassengerGroup({ passengerCode, nickname }: { passengerCode: string; nickname: string | null }) {
+export function PassengerGroup({
+  passengerCode,
+  nickname,
+  onEditingChange,
+}: {
+  passengerCode: string;
+  nickname: string | null;
+  onEditingChange?: (editing: boolean) => void;
+}) {
   const save = useNicknameSave();
   const input = useNicknameInput();
   const [editing, setEditing] = useState(false);
@@ -25,6 +33,11 @@ export function PassengerGroup({ passengerCode, nickname }: { passengerCode: str
   const stored = nickname ?? '';
   const { visibleError } = input;
   const unchanged = input.check.normalized === stored;
+
+  useEffect(() => {
+    onEditingChange?.(editing);
+    return () => onEditingChange?.(false);
+  }, [editing, onEditingChange]);
 
   useEffect(() => {
     if (editing) inputRef.current?.focus();

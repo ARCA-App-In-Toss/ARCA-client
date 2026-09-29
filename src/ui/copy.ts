@@ -1,4 +1,4 @@
-export const rootTabLabels = { today: '오늘', archive: '기록' } as const;
+export const rootTabLabels = { today: '오늘', archive: '기록', settings: '설정' } as const;
 
 export const copy = {
   'CPY-F00-001': 'ARCA 시작',
@@ -70,9 +70,9 @@ export const copy = {
   'CPY-COM-028': '이전 삭제 결과를 더는 확인할 수 없어요. 현재 상태를 확인하고 이어갈 수 있어요.',
   'CPY-COM-002': 'SEMA 코드 · {semaCode}',
   'CPY-COM-003': '기억 조각 {memoryCount}개',
+  'CPY-COM-029': '{memoryCount}개',
   'CPY-COM-004': '공백만 포함된 응답이에요.',
   'CPY-F10-001': '오늘의 항해',
-  'CPY-F10-002': '설정',
   'CPY-F10-003': 'JOY의 질문',
   'CPY-F10-005': '답변 쓰기',
   'CPY-F10-006': '다른 질문 보기',
@@ -171,7 +171,6 @@ export const copy = {
   'CPY-F13-017': '임시본이 만료됐어요',
   'CPY-F13-018': '마지막 수정 후 7일이 지나 이 기기에서 삭제됐어요.',
   'CPY-F20-001': '항해 기록',
-  'CPY-F20-002': '기억 조각 {memoryCount}개',
   'CPY-F20-003': '{year}년 {month}월',
   'CPY-F20-004': '내 답변',
   'CPY-F20-005': '내 답변 일부',

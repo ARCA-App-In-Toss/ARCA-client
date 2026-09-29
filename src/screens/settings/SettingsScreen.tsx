@@ -1,34 +1,26 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router';
 import { usePassengerProfile } from '../../app/hooks/passenger.ts';
 import { appVersion, type SettingsLink, useSettingsLinks } from '../../app/hooks/settings.ts';
-import { paths, useArcaNavigate, useRouteState } from '../../app/navigation.ts';
+import { paths, useArcaNavigate } from '../../app/navigation.ts';
 import {
   InlineStatus,
   InsetPanel,
   PixelAppShell,
   PixelButton,
-  PixelIconButton,
   PixelPlaceholder,
   RecordPanel,
-  ScreenTitle,
   StatePanel,
 } from '../../ui/components.tsx';
 import { copy, fill } from '../../ui/copy.ts';
+import { RootHeader, RootTabs } from '../RootTabs.tsx';
 import { PassengerGroup } from './PassengerGroup.tsx';
 
 export function SettingsScreen() {
   const profile = usePassengerProfile();
-  const routeState = useRouteState();
-  const routerNavigate = useNavigate();
   const navigate = useArcaNavigate();
   const openLink = useSettingsLinks();
   const [linkFailed, setLinkFailed] = useState(false);
-
-  const back = () => {
-    if (routeState) routerNavigate(-1);
-    else navigate(paths.today, {}, { replace: true });
-  };
+  const [editingNickname, setEditingNickname] = useState(false);
 
   const open = async (link: SettingsLink) => {
     setLinkFailed(false);
@@ -36,22 +28,19 @@ export function SettingsScreen() {
     if (result.kind === 'unavailable') setLinkFailed(true);
   };
 
-  const header = (
-    <div className="arca-screen-header">
-      <PixelIconButton label={copy['CPY-COM-005']} icon="back" onClick={back} />
-      <ScreenTitle>{copy['CPY-F30-001']}</ScreenTitle>
-    </div>
-  );
-
   return (
-    <PixelAppShell>
-      {header}
+    <PixelAppShell tabs={editingNickname ? undefined : <RootTabs current="settings" />}>
+      <RootHeader title={copy['CPY-F30-001']} />
       <section className="arca-settings-group" aria-labelledby="f30-passenger">
         <h2 className="arca-label" id="f30-passenger">
           {copy['CPY-F30-002']}
         </h2>
         {profile.data ? (
-          <PassengerGroup passengerCode={profile.data.passengerCode} nickname={profile.data.nickname} />
+          <PassengerGroup
+            passengerCode={profile.data.passengerCode}
+            nickname={profile.data.nickname}
+            onEditingChange={setEditingNickname}
+          />
         ) : profile.isError ? (
           <StatePanel>
             <p>{copy['CPY-F20-022']}</p>

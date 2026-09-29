@@ -21,8 +21,9 @@
   --px-line: transparent;
   display: inline-flex;
   align-items: center;
+  flex-wrap: wrap;
   justify-content: center;
-  gap: var(--space-200);
+  gap: 0 var(--space-200);
   flex: 1;
   min-width: 0;
   white-space: nowrap;

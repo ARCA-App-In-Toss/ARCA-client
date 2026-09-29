@@ -7,7 +7,6 @@ import type { Today, TodayAnswer } from '../../domain/models.ts';
 import {
   InlineStatus,
   InsetPanel,
-  MemoryCount,
   MemoryRow,
   PixelAppShell,
   PixelButton,
@@ -17,7 +16,7 @@ import {
   StatePanel,
 } from '../../ui/components.tsx';
 import { copy, fill } from '../../ui/copy.ts';
-import { formatCount, formatDateKst, formatInstantKst, isWhitespaceOnly } from '../../ui/format.ts';
+import { formatDateKst, formatInstantKst, isWhitespaceOnly } from '../../ui/format.ts';
 import { PixelSheet } from '../../ui/PixelSheet.tsx';
 import { MemoryFragment, ObservationScene } from '../../ui/pixel.tsx';
 import { RootHeader, RootTabs } from '../RootTabs.tsx';
@@ -95,7 +94,7 @@ export function TodayScreen() {
     announcement;
   return (
     <PixelAppShell tabs={<RootTabs current="today" />}>
-      <RootHeader title={copy['CPY-F10-001']} />
+      <RootHeader title={copy['CPY-F10-001']} count={data.activeAnswerCount} />
       {data.answer.state === 'UNANSWERED' ? (
         <Unanswered today={data} onAnnounce={setAnnouncement} pendingQuestionId={pendingQuestionId} />
       ) : (
@@ -144,13 +143,6 @@ function QuestionHero({ today, text }: { today: Today; text: string }) {
   );
 }
 
-function Count({ today }: { today: Today }) {
-  if (today.activeAnswerCount.state !== 'AVAILABLE') return null;
-  return (
-    <MemoryCount text={fill(copy['CPY-COM-003'], { memoryCount: formatCount(today.activeAnswerCount.value.count) })} />
-  );
-}
-
 function Unanswered({
   today,
   pendingQuestionId,
@@ -175,7 +167,6 @@ function Unanswered({
             {copy['CPY-F10-039']}
           </PixelButton>
         </div>
-        <Count today={today} />
       </>
     );
   }
@@ -198,7 +189,6 @@ function Unanswered({
           {role === 'PRIMARY' ? copy['CPY-F10-006'] : copy['CPY-F10-007']}
         </PixelButton>
       </div>
-      <Count today={today} />
     </>
   );
 }
@@ -266,7 +256,6 @@ function Answered({
           {copy['CPY-F10-016']}
         </PixelButton>
       </div>
-      <Count today={today} />
     </>
   );
 }
