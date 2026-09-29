@@ -14,12 +14,11 @@ import {
   ScreenTitle,
   StatePanel,
 } from '../../ui/components.tsx';
-import { copy, fill } from '../../ui/copy.ts';
+import { copy } from '../../ui/copy.ts';
 import { formatDateKst, isWhitespaceOnly } from '../../ui/format.ts';
 import { PixelAlertDialog } from '../../ui/PixelAlertDialog.tsx';
 import { useOfflineOnFailure } from '../shared/offline.ts';
 import { deleteDialogState, detailStatus, type Notice } from './detailStatus.ts';
-import { questionPartOf } from './questionPart.ts';
 
 export function AnswerDetailScreen() {
   const routeState = useRouteState();
@@ -152,7 +151,6 @@ export function AnswerDetailScreen() {
 
   const status = detailStatus({ editUnresolved, deleteUnresolved, notice });
   const dialog = deleteDialogState(view, deleteRunning);
-  const questionPart = questionPartOf(question.text);
   const deleteBusy = (deleteRunning && view.kind === 'working') || leavingDeleted.current;
 
   return (
@@ -208,10 +206,11 @@ export function AnswerDetailScreen() {
       <PixelAlertDialog
         open={dialogRoute}
         title={copy['CPY-F23-001']}
-        description={fill(copy['CPY-F23-002'], { dateKst: formatDateKst(createdDateKst) })}
+        description={copy['CPY-F23-005']}
         cancelLabel={deleteUnconfirmed ? copy['CPY-F23-012'] : copy['CPY-F23-006']}
         actionLabel={dialog.actionLabel}
         danger={!deleteUnconfirmed}
+        pairActions={!deleteUnconfirmed}
         locked={deleteBusy}
         busy={deleteBusy}
         status={dialog.status}
@@ -227,16 +226,7 @@ export function AnswerDetailScreen() {
           setDeleting(true);
           command.remove(revision);
         }}
-      >
-        <div className="arca-dialog-context">
-          <p className="arca-label">{copy['CPY-F23-003']}</p>
-          <p className="arca-text-secondary">
-            {questionPart.text}
-            {questionPart.isTruncated && <span aria-hidden="true">…</span>}
-          </p>
-          <p className="arca-user-text">{copy['CPY-F23-005']}</p>
-        </div>
-      </PixelAlertDialog>
+      />
     </PixelAppShell>
   );
 }

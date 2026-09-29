@@ -54,6 +54,7 @@ export function DeleteAllScreen() {
   const dialog = deleteDialogContent(view, session?.mode === 'DELETION_RECOVERY');
 
   const openDialog = () => setDialogOpen(true);
+  const pairedActions = !recovery && view.kind !== 'prepared' && view.kind !== 'unconfirmed';
 
   return (
     <PixelAppShell>
@@ -86,7 +87,7 @@ export function DeleteAllScreen() {
       </InsetPanel>
       <p className="arca-user-text">{copy['CPY-F31-008']}</p>
       <InlineStatus message={status && !dialogOpen ? copy[status] : null} tone={tone} />
-      <div className="arca-actions">
+      <div className={pairedActions ? 'arca-actions arca-actions--pair' : 'arca-actions'}>
         {!recovery && (
           <PixelButton disabled={working} onClick={leave}>
             {copy['CPY-F31-009']}
@@ -110,6 +111,7 @@ export function DeleteAllScreen() {
         cancelLabel={dialog.cancelLabel}
         actionLabel={dialog.actionLabel}
         danger={view.kind !== 'unconfirmed'}
+        pairActions={view.kind !== 'unconfirmed'}
         locked={working}
         busy={working}
         status={dialog.status}

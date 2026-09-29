@@ -16,6 +16,7 @@ export interface PixelAlertDialogProps {
   children?: ReactNode;
   status?: string | null;
   danger?: boolean;
+  pairActions?: boolean;
 }
 
 export function PixelAlertDialog({
@@ -32,6 +33,7 @@ export function PixelAlertDialog({
   children,
   status = null,
   danger = false,
+  pairActions = false,
 }: PixelAlertDialogProps) {
   const busyShown = usePendingReveal(busy);
   return (
@@ -61,7 +63,7 @@ export function PixelAlertDialog({
           <div role="status" aria-live="polite" className="arca-inline-status">
             {busy && !busyShown ? null : status}
           </div>
-          <div className="arca-actions">
+          <div className={pairActions ? 'arca-actions arca-actions--pair' : 'arca-actions'}>
             <AlertDialog.Cancel asChild>
               <button type="button" className="arca-button arca-button--secondary arca-px" disabled={locked}>
                 {cancelLabel}
