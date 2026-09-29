@@ -1,7 +1,7 @@
 # ARCA 프런트엔드 구현 명세
 
-- 문서 버전: v1.7
-- 최근 수정일: 2026년 9월 28일
+- 문서 버전: v1.8
+- 최근 수정일: 2026년 9월 29일
 - 상태: 확정
 - 승인 주체: 제품 책임자
 - 구현·검증 상태: 로컬 Mock·핵심 UI 구현 및 단위/브라우저 회귀 실행 완료(08 §14.1). 실서버·실제 토스 WebView·운영 출시는 별도 미검증
@@ -272,15 +272,15 @@ mutation은 논리 대상별로 직렬화합니다.
 | F01 | `/intro` | PRE_PASSENGER | root Back은 플랫폼 종료, 완료→F02 |
 | F02 | `/join` | PRE_PASSENGER와 OP-001 정책 | Back→F01, OP-003 ACTIVE 성공→F03 `replace` |
 | F03 | `/join/complete` | ACTIVE와 현재 탑승 continuation | 빈 값·저장 성공·승인된 건너뛰기→F10 `replace` |
-| F10 | `/today` | ACTIVE | 루트 탭·설정, root Back은 플랫폼 정책 |
+| F10 | `/today` | ACTIVE | 루트 탭, root Back은 플랫폼 정책 |
 | F11 | `/today/write` | ACTIVE, `history.state`의 질문 ref와 OP-005 문맥 | 안전 이탈→F10, 현재 화면 성공→F12 |
 | F12 | `/today/saved` | 현재 방문의 확인된 신규 저장 completion model | Back/행동→F10 또는 F20. context 없으면 F10 |
 | F13 | `/today/drafts` | `history.state`의 draft ref | Back·오늘 이동→F10. ref 없으면 F10 |
-| F20 | `/archive` | ACTIVE | 루트 탭·설정, row→F21 |
+| F20 | `/archive` | ACTIVE | 루트 탭, row→F21 |
 | F21 | `/archive/detail` | `history.state`의 answer ref | Back→F20, 수정→F22, 삭제→F23 |
 | F22 | `/archive/edit` | answer ref와 OP-011 detail | 안전 이탈/취소→F21, 성공→F21 |
 | F23 | `/archive/detail/delete` | answer ref, F21을 배경으로 한 논리 modal route | 취소→F21, 성공→F20 `replace` |
-| F30 | `/settings` | ACTIVE | Back은 진입한 F10/F20, 전체 삭제→F31 |
+| F30 | `/settings` | ACTIVE | 루트 탭, root Back은 플랫폼 정책, 전체 삭제→F31 |
 | F31 | `/settings/delete` | ACTIVE | 취소→F30, 성공 뒤 local 정리→F01 |
 | F90 | `/error/start` | F00의 안전한 오류 분류 | 재시도→F00 `replace`, 지원 연결 |
 
