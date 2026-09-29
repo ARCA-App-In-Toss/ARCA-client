@@ -4,7 +4,6 @@ import { appVersion, type SettingsLink, useSettingsLinks } from '../../app/hooks
 import { paths, useArcaNavigate } from '../../app/navigation.ts';
 import {
   InlineStatus,
-  InsetPanel,
   PixelAppShell,
   PixelButton,
   PixelPlaceholder,
@@ -54,10 +53,6 @@ export function SettingsScreen() {
           </RecordPanel>
         )}
       </section>
-      <InsetPanel>
-        <h2 className="arca-label">{copy['CPY-F30-023']}</h2>
-        <p className="arca-text-secondary">{copy['CPY-F30-024']}</p>
-      </InsetPanel>
       <section className="arca-settings-group" aria-labelledby="f30-support">
         <h2 className="arca-label" id="f30-support">
           {copy['CPY-F30-025']}
