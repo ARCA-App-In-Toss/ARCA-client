@@ -136,26 +136,34 @@ SDK 출시 제약은 [플랫폼 기준 §3 · L30–34](../../spec/platform/ARCA
 
 ```text
 src/
-  app/                 composition root, bootstrap, routes, lifecycle, NavigationContext
+  app/                 composition root(composition.ts), services context, bootstrap, routes, navigation
+    hooks/             화면이 쓰는 요약값·좁은 행동 hook(today·archive·answers·writes·drafts·…)
   scenes/              F10~F12 공통 장면 layout·geometry·motion
   screens/
+    shared/            화면 간 공통 흐름(이탈 가드·IME 입력·복사 결과)
     onboarding/        F01~F03
     today/             F10~F13
     archive/           F20~F23
     settings/          F30~F31
     error/             F90
   domain/
+    models.ts          ArcaApi가 만드는 domain model
+    failures.ts        화면까지 전달되는 네 가지 failure
+    ports/             api·storage·platform 인터페이스(바깥 계층이 구현)
     session/           session epoch·generation 적용 판정
     commands/          operation journal·복구·target lock
     drafts/            draft identity·7일 만료·쓰기 상태
+    archive/           F20 page chain(메모리 전용)
     analytics/         allowlist event queue
   data/
-    api/                generated wire 경계·ArcaApi 변환·오류 정규화
-    query/              query key·조회 hook·cache 반영
-    storage/            Storage journal·manifest·codec
-  platform/             Apps in Toss capability adapter
+    api/                generated wire 경계·ArcaApi 구현·오류 정규화
+    query/              query key
+    storage/            Storage journal(JournalPort 구현)·manifest·codec
+  platform/             Apps in Toss adapter(PlatformPort 구현)
   ui/                   02의 CMP 구현, 선별 외부 UI·편입 소스와 ARCA wrapper
 ```
+
+`domain/`은 `ports/`의 인터페이스에만 의존하고 `data/`·`platform/`·`app/`·`ui/`·React를 import하지 않습니다. `data/`와 `platform/`은 domain 포트를 구현하며, 구체 객체는 composition root에서만 조립합니다. 이 방향과 화면 import 제한은 `biome.json`의 `noRestrictedImports`가 강제합니다.
 
 외부 UI import·편입 소스는 `ui/` 내부에 두고 화면은 ARCA CMP를 사용합니다. 외부 UI가 domain·API·SDK Storage·분석을 직접 호출하지 않으며 값과 행동은 기존 hook/use case로 연결합니다.
 
