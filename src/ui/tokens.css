@@ -154,6 +154,7 @@
   --motion-duration-instant: 0ms;
   --motion-duration-fast: 120ms;
   --motion-duration-base: 180ms;
+  --motion-duration-state: 200ms;
   --motion-duration-scene: 320ms;
   --motion-duration-depart: 900ms;
   --motion-duration-glow: 3000ms;
@@ -167,6 +168,7 @@
     --motion-press-offset: 0px;
     --motion-duration-fast: 0ms;
     --motion-duration-base: 0ms;
+    --motion-duration-state: 0ms;
     --motion-duration-scene: 0ms;
     --motion-duration-depart: 0ms;
     --motion-duration-memory: 0ms;

@@ -1,3 +1,15 @@
+@property --px-fill {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: transparent;
+}
+
+@property --px-line {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: transparent;
+}
+
 .arca-px {
   --px-fill: var(--color-bg-scene);
   --px-line: var(--color-border-on-dark);
