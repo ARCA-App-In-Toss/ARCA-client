@@ -3,8 +3,9 @@ import { useAllDeletedNotice } from '../../app/hooks/onboarding.ts';
 import { paths, useArcaNavigate } from '../../app/navigation.ts';
 import { PixelAppShell, PixelButton, ScreenTitle } from '../../ui/components.tsx';
 import { copy, fill } from '../../ui/copy.ts';
+import { prefersReducedMotion } from '../../ui/motion.ts';
 import { IntroScene, PixelArt } from '../../ui/pixel.tsx';
-import { prefersReducedMotion, scenes, totalScenes, useIntroPlayback } from './useIntroPlayback.ts';
+import { scenes, totalScenes, useIntroPlayback } from './useIntroPlayback.ts';
 
 const DEPART_MS = 900;
 
@@ -22,6 +23,7 @@ export function IntroScreen() {
     done,
     announce,
     boarding,
+    closing,
     boardRef,
     quietFocus,
     advance,
@@ -79,7 +81,7 @@ export function IntroScreen() {
       <div className="arca-intro-stage" onClick={advance}>
         <div className="arca-intro-view" />
         {boarding ? (
-          <div className="arca-actions">
+          <div className="arca-actions arca-intro-board">
             <PixelButton ref={boardRef} variant="primary" data-quiet-focus={quietFocus || undefined} onClick={board}>
               {copy['CPY-F01-005']}
             </PixelButton>
@@ -92,6 +94,7 @@ export function IntroScreen() {
             typed={typed}
             sentenceText={sentenceText}
             done={done}
+            closing={closing}
             onNext={onNext}
           />
         )}
@@ -111,6 +114,7 @@ function IntroDialog({
   typed,
   sentenceText,
   done,
+  closing,
   onNext,
 }: {
   sentences: readonly string[];
@@ -119,10 +123,14 @@ function IntroDialog({
   typed: number;
   sentenceText: string;
   done: boolean;
+  closing: boolean;
   onNext: (event: MouseEvent) => void;
 }) {
   return (
-    <div className="arca-intro-dialog arca-px">
+    <div
+      className={closing ? 'arca-intro-dialog arca-intro-dialog--closing arca-px' : 'arca-intro-dialog arca-px'}
+      inert={closing}
+    >
       <div className="arca-intro-lines" aria-hidden="true">
         {sentences.map((sentence, index) =>
           index === current ? (

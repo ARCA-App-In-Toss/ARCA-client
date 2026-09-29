@@ -5,6 +5,7 @@ import scene3 from '../../../design/assets/AST-004/export/scene-3.webp?no-inline
 import scene4 from '../../../design/assets/AST-004/export/scene-4.webp?no-inline';
 import scene5 from '../../../design/assets/AST-004/export/scene-5.webp?no-inline';
 import scene6 from '../../../design/assets/AST-004/export/scene-6.webp?no-inline';
+import { prefersReducedMotion } from '../motion.ts';
 import { PixelArt } from './art.tsx';
 import { introScenes } from './scenes.tsx';
 
@@ -37,10 +38,6 @@ function prefetchLaterScenes(): () => void {
   }
   const timer = window.setTimeout(load, 200);
   return () => window.clearTimeout(timer);
-}
-
-function prefersReducedMotion(): boolean {
-  return typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
 export function IntroScene({ index }: { index: number }) {

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { copy } from '../../ui/copy.ts';
+import { prefersReducedMotion } from '../../ui/motion.ts';
 
 export const scenes = [
   copy['CPY-F01-013'],
@@ -13,16 +14,14 @@ export const totalScenes = String(scenes.length);
 
 const TYPE_STEP_MS = 35;
 const SCENE_SETTLE_MS = 320;
-
-export function prefersReducedMotion(): boolean {
-  return typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-}
+const DIALOG_CLOSE_MS = 320;
 
 const sentenceLength = (scene: number, sentence: number) => Array.from(scenes[scene]?.[sentence] ?? '').length;
 
 export function useIntroPlayback() {
   const [position, setPosition] = useState({ scene: 0, sentence: 0 });
   const [boarding, setBoarding] = useState(false);
+  const [closing, setClosing] = useState(false);
   const [quietFocus, setQuietFocus] = useState(false);
   const pointerLedRef = useRef(false);
   const sceneSentences = scenes[position.scene] ?? [];
@@ -76,6 +75,15 @@ export function useIntroPlayback() {
     if (boarding) boardRef.current?.focus();
   }, [boarding]);
 
+  useEffect(() => {
+    if (!closing) return;
+    const timer = window.setTimeout(() => {
+      setClosing(false);
+      setBoarding(true);
+    }, DIALOG_CLOSE_MS);
+    return () => window.clearTimeout(timer);
+  }, [closing]);
+
   const lastSentence = position.sentence === sceneSentences.length - 1;
 
   const moveTo = useCallback((scene: number, sentence: number) => {
@@ -84,7 +92,7 @@ export function useIntroPlayback() {
   }, []);
 
   const advance = useCallback(() => {
-    if (boarding) return;
+    if (boarding || closing) return;
     if (typedRef.current < characters.length) {
       setTyped(characters.length);
       return;
@@ -102,8 +110,9 @@ export function useIntroPlayback() {
     }
     setAnnounce(null);
     setQuietFocus(pointerLedRef.current);
-    setBoarding(true);
-  }, [boarding, characters.length, lastSentence, moveTo, position.scene, position.sentence]);
+    if (prefersReducedMotion()) setBoarding(true);
+    else setClosing(true);
+  }, [boarding, closing, characters.length, lastSentence, moveTo, position.scene, position.sentence]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -126,6 +135,7 @@ export function useIntroPlayback() {
     done: typed >= characters.length,
     announce,
     boarding,
+    closing,
     boardRef,
     quietFocus,
     advance,

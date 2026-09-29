@@ -126,6 +126,23 @@
   padding-right: var(--space-600);
 }
 
+.arca-intro-dialog--closing {
+  animation: arca-intro-dialog-close var(--motion-duration-scene) var(--motion-easing-settle) both;
+}
+
+@keyframes arca-intro-dialog-close {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.arca-intro-board {
+  animation: arca-intro-scene-enter var(--motion-duration-scene) var(--motion-easing-settle) both;
+}
+
 .arca-intro-line {
   grid-area: 1 / 1;
   margin: 0;
