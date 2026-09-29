@@ -71,7 +71,7 @@ export const copy = {
   'CPY-COM-029': '{memoryCount}개',
   'CPY-COM-004': '공백만 포함된 응답이에요.',
   'CPY-F10-001': '오늘의 항해',
-  'CPY-F10-003': 'JOY의 질문',
+  'CPY-F10-003': 'From. JOY',
   'CPY-F10-005': '답변 작성하기',
   'CPY-F10-006': '다른 질문 보기',
   'CPY-F10-007': '처음 질문 보기',
