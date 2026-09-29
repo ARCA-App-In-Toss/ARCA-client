@@ -175,12 +175,20 @@ export function InlineStatus({
   message,
   tone = 'neutral',
   live = true,
+  quiet = false,
 }: {
   message: string | null;
   tone?: 'neutral' | 'danger';
   live?: boolean;
+  quiet?: boolean;
 }) {
-  const className = tone === 'danger' ? 'arca-inline-status arca-inline-status--danger' : 'arca-inline-status';
+  const className = [
+    'arca-inline-status',
+    tone === 'danger' && 'arca-inline-status--danger',
+    quiet && 'arca-inline-status--quiet',
+  ]
+    .filter(Boolean)
+    .join(' ');
   if (!live) return message ? <p className={className}>{message}</p> : null;
   return (
     <div role="status" aria-live="polite" className={className}>

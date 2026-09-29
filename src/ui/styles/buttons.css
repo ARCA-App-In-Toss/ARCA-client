@@ -165,7 +165,8 @@
   color: var(--color-text-on-dark-secondary);
 }
 
-.arca-inline-status:empty {
+.arca-inline-status:empty,
+.arca-inline-status--quiet {
   min-height: 0;
   position: absolute;
   width: var(--a11y-pixel);

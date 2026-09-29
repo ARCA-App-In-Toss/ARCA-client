@@ -14,9 +14,14 @@ export interface WriteStatusInput {
   saveProblem: boolean;
 }
 
-export function writeStatus(input: WriteStatusInput): { message: string | null; danger: boolean } {
+export function writeStatus(input: WriteStatusInput): {
+  message: string | null;
+  danger: boolean;
+  announcement: string | null;
+} {
   const { view, keep } = input;
   const parts: string[] = [];
+  let announcement: string | null = null;
   if (input.loading) parts.push(copy['CPY-F11-009']);
   if (input.semaStopped) {
     if (keep.failed) parts.push(copy['CPY-F11-034']);
@@ -57,8 +62,8 @@ export function writeStatus(input: WriteStatusInput): { message: string | null; 
       default:
         if (input.switchBlocked) parts.push(copy['CPY-F11-017']);
         else if (keep.failed) parts.push(copy['CPY-F11-013']);
-        else if (input.restoredClean) parts.push(copy['CPY-F11-012']);
-        else if (input.announcement) parts.push(input.announcement);
+        else if (input.restoredClean) announcement = copy['CPY-F11-012'];
+        else announcement = input.announcement;
     }
   }
   const copied = copyResultMessage(input.copyResult);
@@ -66,5 +71,6 @@ export function writeStatus(input: WriteStatusInput): { message: string | null; 
   return {
     message: parts.length > 0 ? parts.join(' ') : null,
     danger: input.saveProblem || keep.failed || input.copyResult === 'failed' || parts.includes(copy['CPY-F11-027']),
+    announcement,
   };
 }

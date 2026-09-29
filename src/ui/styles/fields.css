@@ -92,3 +92,16 @@
   margin-top: calc((var(--type-caption-line) - var(--icon-size-default)) / 2);
   color: var(--color-signal-step-1);
 }
+
+.arca-privacy--centered {
+  display: block;
+  margin-top: calc(var(--space-300) * -1);
+  text-align: center;
+  text-wrap: balance;
+}
+
+.arca-privacy--centered .arca-icon {
+  display: inline-block;
+  margin: 0 var(--space-100) 0 0;
+  vertical-align: middle;
+}

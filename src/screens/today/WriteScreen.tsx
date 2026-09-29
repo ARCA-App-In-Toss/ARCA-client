@@ -206,6 +206,7 @@ export function WriteScreen() {
   };
 
   const keep = keepStateOf(draft);
+  const restoredClean = draft.load.kind === 'ready' && draft.load.restored && draft.status.kind === 'clean';
   const saveProblem =
     (view.kind === 'notApplied' && view.code !== 'COMMAND_CLOSED') ||
     (view.kind === 'rejected' && !semaStopped && !leavingForPast) ||
@@ -216,7 +217,7 @@ export function WriteScreen() {
     semaStopped,
     keep,
     switchBlocked,
-    restoredClean: draft.load.kind === 'ready' && draft.load.restored && draft.status.kind === 'clean',
+    restoredClean,
     announcement,
     copyResult,
     saveProblem,
@@ -270,7 +271,7 @@ export function WriteScreen() {
               {...input.fieldHandlers}
             />
             <div className="arca-field-help" id={helpId}>
-              <span>{keepLabel(draft.status, KEEP_LABELS) ?? ''}</span>
+              <span>{keepLabel(draft.status, KEEP_LABELS) ?? (restoredClean ? copy['CPY-F11-012'] : '')}</span>
               <span>{fill(copy['CPY-F11-007'], { currentCount: formatCount(currentCount) })}</span>
             </div>
             {overflow && (
@@ -278,12 +279,6 @@ export function WriteScreen() {
                 {fill(copy['CPY-F11-008'], { overCount: formatCount(measured.overCount) })}
               </p>
             )}
-            <p className="arca-privacy" id="f11-privacy">
-              <PixelIcon name="lock" />
-              <span>
-                {copy['CPY-F11-005']} {copy['CPY-F11-006']}
-              </span>
-            </p>
             {draft.status.kind === 'failed' && !pending && (
               <PixelButton variant="ghost" onClick={() => void draft.flush()}>
                 {copy['CPY-F11-014']}
@@ -292,7 +287,11 @@ export function WriteScreen() {
           </>
         )}
       </RecordPanel>
-      <InlineStatus message={status.message} tone={status.danger ? 'danger' : 'neutral'} />
+      <InlineStatus
+        message={status.message ?? status.announcement}
+        tone={status.danger ? 'danger' : 'neutral'}
+        quiet={status.message === null}
+      />
       <div className="arca-actions">
         {semaStopped ? (
           <>
@@ -368,6 +367,12 @@ export function WriteScreen() {
         )}
         {canLeaveWhilePending && <PixelButton onClick={() => navigate(paths.today)}>{copy['CPY-F11-040']}</PixelButton>}
       </div>
+      <p className="arca-privacy arca-privacy--centered" id="f11-privacy">
+        <PixelIcon name="lock" />
+        <span>
+          {copy['CPY-F11-005']} {copy['CPY-F11-006']}
+        </span>
+      </p>
       <LeaveConfirmDialog guard={guard} returnFocusRef={backButtonRef} />
     </PixelAppShell>
   );
