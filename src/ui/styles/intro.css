@@ -36,6 +36,18 @@
   }
 }
 
+.arca-intro-scene--whole {
+  --scene-cell: 100vw / 156;
+  top: min((100dvh - var(--scene-cell) * 156) / 2, 100dvh - var(--scene-cell) * 156);
+}
+
+@supports (width: round(up, 1px, 1px)) {
+  .arca-intro-scene--whole {
+    --scene-cell: round(up, 100vw / 156, 1px);
+    top: min(round(down, (100dvh - var(--scene-cell) * 156) / 2, 1px), 100dvh - var(--scene-cell) * 156);
+  }
+}
+
 .arca-intro-scene--entering {
   animation: arca-intro-scene-enter var(--motion-duration-scene) steps(4, end) both;
 }

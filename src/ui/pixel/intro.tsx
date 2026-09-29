@@ -15,6 +15,17 @@ function IntroSceneArt({ index }: { index: number }) {
 }
 
 const introSceneImages: readonly string[] = [scene1, scene2, scene3, scene4, scene5, scene6];
+const wholeFrameScenes: ReadonlySet<string> = new Set([scene6]);
+
+function sceneClass(src: string, entering: boolean): string {
+  return [
+    'arca-intro-scene',
+    wholeFrameScenes.has(src) ? 'arca-intro-scene--whole' : null,
+    entering ? 'arca-intro-scene--entering' : null,
+  ]
+    .filter(Boolean)
+    .join(' ');
+}
 
 function prefetchLaterScenes(): () => void {
   const load = () => {
@@ -48,10 +59,10 @@ export function IntroScene({ index }: { index: number }) {
   if (!src || failed.has(src)) return <IntroSceneArt index={index} />;
   return (
     <>
-      {previous ? <img key={previous} className="arca-intro-scene" src={previous} alt="" /> : null}
+      {previous ? <img key={previous} className={sceneClass(previous, false)} src={previous} alt="" /> : null}
       <img
         key={src}
-        className={previous ? 'arca-intro-scene arca-intro-scene--entering' : 'arca-intro-scene'}
+        className={sceneClass(src, previous !== null)}
         src={src}
         alt=""
         decoding="async"
