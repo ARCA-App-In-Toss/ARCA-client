@@ -79,7 +79,6 @@ export function BoardingScreen() {
         </div>
         <InlineStatus message={message} tone={status.kind === 'message' ? 'danger' : 'neutral'} />
         <div className="arca-actions">
-          <p className="arca-caption arca-text-secondary">{copy['CPY-F02-003']}</p>
           {allAgreed ? null : (
             <p id="arca-boarding-reason" className="arca-visually-hidden">
               {copy['CPY-F02-009']}
