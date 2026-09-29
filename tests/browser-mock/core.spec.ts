@@ -9,7 +9,7 @@ async function writeAndSave(page: Page) {
   const field = page.getByRole('textbox', { name: '내 답변' });
   await field.fill(TEXT);
   await expect(page.getByText('기기에 임시 보관됨')).toBeVisible();
-  await page.getByRole('button', { name: '기억 조각으로 저장' }).click();
+  await page.getByRole('button', { name: '저장하기', exact: true }).click();
   await expect(page.getByRole('heading', { level: 2, name: '기억 조각으로 저장됐어요.' })).toBeFocused();
 }
 
@@ -38,7 +38,7 @@ test('320px with 200% text: no horizontal scroll and the save control stays reac
   await expect(page.getByRole('heading', { level: 1, name: '오늘의 항해' })).toBeVisible({ timeout: 15_000 });
   await page.getByRole('button', { name: '답변 작성하기' }).click();
   await page.getByRole('textbox', { name: '내 답변' }).fill('긴 글 합성\n'.repeat(30));
-  const save = page.getByRole('button', { name: '기억 조각으로 저장' });
+  const save = page.getByRole('button', { name: '저장하기', exact: true });
   await save.scrollIntoViewIfNeeded();
   await expect(save).toBeInViewport();
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);

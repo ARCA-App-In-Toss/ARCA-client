@@ -8,7 +8,7 @@ async function saveAcrossMidnight(page: Page) {
   await page.getByRole('button', { name: '답변 작성하기' }).click();
   await page.getByRole('textbox', { name: '내 답변' }).fill(TEXT);
   await expect(page.getByText('기기에 임시 보관됨')).toBeVisible();
-  await page.getByRole('button', { name: '기억 조각으로 저장' }).click();
+  await page.getByRole('button', { name: '저장하기', exact: true }).click();
   await expect(page.getByRole('heading', { level: 1, name: '날짜가 바뀌었어요' })).toBeVisible();
 }
 

@@ -53,7 +53,7 @@ test('edit: exact text saved, F21 shows it with 수정됨; no F12', async ({ pag
   await expect(field).toHaveValue('역 뒤편 공원의 세 번째 벤치에서 한 정거장을 걸을지 고민했다. (1)');
   const edited = '브라우저에서 고친 합성\n둘째 줄  ';
   await field.fill(edited);
-  await page.getByRole('button', { name: '수정 내용 저장' }).click();
+  await page.getByRole('button', { name: '저장하기', exact: true }).click();
   await expect(page.getByRole('heading', { level: 1, name: '기억 조각' })).toBeVisible();
   await expect(page.getByText('수정한 내용을 저장했어요.')).toBeVisible();
   await expect(page.getByText('수정됨')).toBeVisible();
@@ -77,7 +77,7 @@ test('delete: Escape cancels with focus back; confirm removes the row and return
   await expect(trigger).toBeFocused();
 
   await trigger.click();
-  await page.getByRole('alertdialog').getByRole('button', { name: '기억 조각 삭제' }).click();
+  await page.getByRole('alertdialog').getByRole('button', { name: '삭제', exact: true }).click();
   await expect(page.getByRole('heading', { level: 1, name: '항해 기록' })).toBeVisible();
   await expect(page.getByText(deletedDate, { exact: true })).toHaveCount(0);
   await expect(page.locator('.arca-memory-row')).toHaveCount(20);
@@ -102,7 +102,7 @@ test('320px with 200% text: F21 actions and the F23 dialog stay reachable, no ho
   }
   await page.getByRole('button', { name: '삭제하기' }).click();
   const dialog = page.getByRole('alertdialog');
-  for (const name of ['취소', '기억 조각 삭제']) {
+  for (const name of ['취소', '삭제']) {
     const button = dialog.getByRole('button', { name });
     await button.scrollIntoViewIfNeeded();
     await expect(button).toBeInViewport();
@@ -113,7 +113,7 @@ test('320px with 200% text: F21 actions and the F23 dialog stay reachable, no ho
   await page.keyboard.press('Escape');
   await page.getByRole('button', { name: '수정하기' }).click();
   await page.getByRole('textbox', { name: '내 답변' }).fill('좁은 화면 합성');
-  for (const name of ['수정 내용 저장', '수정 내용 버리기']) {
+  for (const name of ['저장하기', '수정 내용 버리기']) {
     const button = page.getByRole('button', { name, exact: true });
     await button.scrollIntoViewIfNeeded();
     await expect(button).toBeInViewport();

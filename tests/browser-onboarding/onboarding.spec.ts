@@ -31,7 +31,7 @@ test('intro → consent → passenger → nickname → first question', async ({
 
   await page.getByText('에 동의해요').first().click();
   await page.getByRole('checkbox', { name: '필수, 개인정보처리방침에 동의' }).check();
-  await page.getByRole('button', { name: '동의하고 탑승하기' }).click();
+  await page.getByRole('button', { name: '동의 후 탑승하기' }).click();
 
   await expect(page.getByRole('heading', { level: 1, name: 'ARCA에 탑승했어요' })).toBeFocused();
   await expect(page).toHaveURL(/\/join\/complete$/);
@@ -51,11 +51,13 @@ test('320px with 200% text: every intro scene and consent screen reflow without 
   await page.goto('/');
   await page.addStyleTag({ content: 'html { font-size: 200%; }' });
   await expect(page.getByRole('heading', { level: 1, name: 'ARCA 이야기' })).toBeVisible({ timeout: 15_000 });
-  const board = page.getByRole('button', { name: '탑승 준비하기' });
-  for (let press = 0; press < 30 && !(await board.isVisible()); press += 1) {
+  const board = page.getByRole('button', { name: '탑승하기', exact: true });
+  const closing = page.locator('.arca-intro-dialog--closing');
+  for (let press = 0; press < 30 && !(await board.isVisible()) && (await closing.count()) === 0; press += 1) {
     await noHorizontalScroll(page);
     await page.getByRole('button', { name: '다음' }).click();
   }
+  await expect(board).toBeVisible();
   await noHorizontalScroll(page);
   await board.scrollIntoViewIfNeeded();
   await expect(board).toBeInViewport();
@@ -63,7 +65,7 @@ test('320px with 200% text: every intro scene and consent screen reflow without 
   await page.getByRole('button', { name: '건너뛰기' }).click();
   await page.addStyleTag({ content: 'html { font-size: 200%; }' });
   await noHorizontalScroll(page);
-  const consent = page.getByRole('button', { name: '동의하고 탑승하기' });
+  const consent = page.getByRole('button', { name: '동의 후 탑승하기' });
   await consent.scrollIntoViewIfNeeded();
   await expect(consent).toBeInViewport();
 });
@@ -125,20 +127,20 @@ test('the F01, F02 and F03 Primaries share one bottom position', async ({ page }
     await page.goto('/');
     await expect(page.getByRole('heading', { level: 1, name: 'ARCA 이야기' })).toBeVisible({ timeout: 15_000 });
     const bottomOf = async (name: string) => {
-      const box = await page.getByRole('button', { name }).boundingBox();
+      const box = await page.getByRole('button', { name, exact: true }).boundingBox();
       return Math.round((box?.y ?? 0) + (box?.height ?? 0));
     };
-    const board = page.getByRole('button', { name: '탑승 준비하기' });
+    const board = page.getByRole('button', { name: '탑승하기', exact: true });
     for (let press = 0; press < 30 && !(await board.isVisible()); press += 1) {
       await page.getByRole('button', { name: '다음' }).click();
     }
-    const intro = await bottomOf('탑승 준비하기');
+    const intro = await bottomOf('탑승하기');
     await board.click();
     await expect(page.getByRole('heading', { level: 1, name: '탑승 준비' })).toBeFocused();
-    const join = await bottomOf('동의하고 탑승하기');
+    const join = await bottomOf('동의 후 탑승하기');
     await page.getByText('에 동의해요').first().click();
     await page.getByRole('checkbox', { name: '필수, 개인정보처리방침에 동의' }).check();
-    await page.getByRole('button', { name: '동의하고 탑승하기' }).click();
+    await page.getByRole('button', { name: '동의 후 탑승하기' }).click();
     await expect(page.getByRole('heading', { level: 1, name: 'ARCA에 탑승했어요' })).toBeFocused();
     const complete = await bottomOf('첫 질문 만나기');
     expect([join, complete], `bottoms at ${width}px`).toEqual([intro, intro]);
@@ -154,7 +156,7 @@ test('no native tap highlight on F01, F02 and F03 controls', async ({ page }) =>
   await expectNoTapHighlight(page);
   await page.getByText('에 동의해요').first().click();
   await page.getByRole('checkbox', { name: '필수, 개인정보처리방침에 동의' }).check();
-  await page.getByRole('button', { name: '동의하고 탑승하기' }).click();
+  await page.getByRole('button', { name: '동의 후 탑승하기' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'ARCA에 탑승했어요' })).toBeFocused();
   await expectNoTapHighlight(page);
 });
