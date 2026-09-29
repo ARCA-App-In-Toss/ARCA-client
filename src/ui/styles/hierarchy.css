@@ -37,16 +37,6 @@
   text-align: center;
 }
 
-.arca-excerpt {
-  --px-fill: var(--color-bg-record);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-200);
-  width: 100%;
-  padding: var(--space-400) var(--space-500);
-  text-align: start;
-}
-
 .arca-screen-title--result {
   justify-content: center;
   text-align: center;

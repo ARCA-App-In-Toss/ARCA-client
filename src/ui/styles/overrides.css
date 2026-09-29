@@ -29,15 +29,15 @@
   color: var(--color-text-on-dark-primary);
 }
 
+.arca-page--saved .arca-shell__content {
+  min-height: 100dvh;
+}
+
 .arca-page--saved .arca-scene-panel {
   background: none;
   padding: var(--space-500) 0 0;
   gap: var(--space-500);
-}
-
-.arca-page--saved .arca-excerpt {
-  padding: var(--space-600);
-  margin-block: var(--space-200);
+  margin-block: auto;
 }
 
 .arca-screen-title--result,

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Navigate } from 'react-router';
 import { useCompletionRefresh, useCompletions } from '../../app/hooks/writes.ts';
 import { paths, useAnswerRefs, useArcaNavigate, useRouteState } from '../../app/navigation.ts';
-import type { AnswerWritePresentation, Availability, Excerpt, Today } from '../../domain/models.ts';
+import type { AnswerWritePresentation, Availability, Today } from '../../domain/models.ts';
 import { InlineStatus, PixelAppShell, PixelButton, ScenePanel } from '../../ui/components.tsx';
 import { copy, fill } from '../../ui/copy.ts';
 import { formatCount } from '../../ui/format.ts';
@@ -10,15 +10,11 @@ import { MemoryFragment } from '../../ui/pixel.tsx';
 
 type Hierarchy = 'archive-first' | 'today-first';
 
-function savedInfo(presentation: AnswerWritePresentation | undefined, refreshed: Today | undefined) {
-  let excerpt: Availability<Excerpt> | null = presentation?.state === 'AVAILABLE' ? presentation.excerpt : null;
-  let count: Availability<{ count: number }> | null =
+function savedCount(presentation: AnswerWritePresentation | undefined, refreshed: Today | undefined) {
+  const count: Availability<{ count: number }> | null =
     presentation?.state === 'AVAILABLE' ? presentation.activeAnswerCount : null;
-  if (refreshed?.answer.state === 'ANSWERED') {
-    if (excerpt?.state !== 'AVAILABLE') excerpt = refreshed.answer.value.excerpt;
-    if (count?.state !== 'AVAILABLE') count = refreshed.activeAnswerCount;
-  }
-  return { excerpt, count };
+  if (count?.state !== 'AVAILABLE' && refreshed?.answer.state === 'ANSWERED') return refreshed.activeAnswerCount;
+  return count;
 }
 
 export function SavedScreen() {
@@ -30,7 +26,7 @@ export function SavedScreen() {
   const completion = completions.get(refs.resolve(routeState?.answerRef));
   const resultRef = useRef<HTMLHeadingElement>(null);
 
-  const { excerpt, count } = savedInfo(completion?.presentation, refresh.data);
+  const count = savedCount(completion?.presentation, refresh.data);
 
   const [hierarchy] = useState<Hierarchy>(() =>
     count?.state === 'AVAILABLE' && count.value.count === 1 ? 'archive-first' : 'today-first',
@@ -43,7 +39,7 @@ export function SavedScreen() {
 
   if (!completion) return <Navigate to={paths.today} replace />;
 
-  const infoFailed = excerpt?.state !== 'AVAILABLE' || count?.state !== 'AVAILABLE';
+  const infoFailed = count?.state !== 'AVAILABLE';
   const showRefresh = infoFailed || refresh.fetchStatus !== 'idle' || refresh.dataUpdatedAt > 0;
   const toArchive = (
     <PixelButton
@@ -70,17 +66,6 @@ export function SavedScreen() {
           {copy['CPY-F12-004']}
         </h2>
         {repeatShown && <p className="arca-text-secondary">{copy['CPY-F12-006']}</p>}
-        {excerpt?.state === 'AVAILABLE' ? (
-          <div className="arca-excerpt arca-plain-small">
-            <p className="arca-label" id="f12-excerpt-label">
-              {excerpt.value.isTruncated ? copy['CPY-F12-010'] : copy['CPY-F12-009']}
-            </p>
-            <p className="arca-user-text arca-user-text--reading" aria-describedby="f12-excerpt-label">
-              {excerpt.value.text}
-              {excerpt.value.isTruncated && <span aria-hidden="true">…</span>}
-            </p>
-          </div>
-        ) : null}
         {count?.state === 'AVAILABLE' ? (
           // biome-ignore lint/a11y/useSemanticElements: 기록 수를 이름 붙은 group으로 묶는다.
           <div role="group" aria-label={copy['CPY-F12-019']} className="arca-memory-count">
@@ -96,9 +81,7 @@ export function SavedScreen() {
       </ScenePanel>
       {showRefresh && (
         <div className="arca-actions">
-          <InlineStatus
-            message={infoFailed ? (excerpt?.state !== 'AVAILABLE' ? copy['CPY-F12-016'] : copy['CPY-F12-017']) : null}
-          />
+          <InlineStatus message={infoFailed ? copy['CPY-F12-017'] : null} />
           <PixelButton variant="ghost" loading={refresh.isFetching} onClick={() => void refresh.refetch()}>
             {copy['CPY-F12-018']}
           </PixelButton>
