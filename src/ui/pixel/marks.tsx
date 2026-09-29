@@ -20,18 +20,18 @@ export function JoyMark({ cell = 4 }: { cell?: number }) {
 }
 
 const fragment: readonly string[] = [
-  '..............',
-  '....MMMMMM....',
-  '...MmmmmmmM...',
-  '..MmmwwmmmnM..',
-  '..MmmmmmmmnM..',
-  '..MmmMMMmmnM..',
-  '..MmmmmmmmnM..',
-  '..MmmMMMmmnM..',
-  '..MmmmmmmnnM..',
-  '...MnnnnnnM...',
-  '....MMMMMM....',
-  '..............',
+  '......NN......',
+  '....NNmnN.....',
+  '..NNmmmnnN....',
+  '..NmmmmnnnN...',
+  '..NmmmmnnnnN..',
+  '.NmmmmmMnnnnN.',
+  '.NmmmmmMnnnnN.',
+  '.NmmmmmMMnnN..',
+  '..NmmmMMMMnN..',
+  '...NmmMMMMNN..',
+  '....NmMNNN....',
+  '.....NN.......',
 ];
 
 export function MemoryFragment({ cell = 4 }: { cell?: number }) {
