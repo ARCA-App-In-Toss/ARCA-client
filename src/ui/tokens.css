@@ -168,6 +168,7 @@
   --motion-duration-depart: 900ms;
   --motion-duration-glow: 3000ms;
   --motion-duration-memory: 1600ms;
+  --motion-duration-count: 400ms;
   --motion-easing-pixel: steps(2, end);
   --motion-easing-settle: cubic-bezier(0.2, 0, 0, 1);
 }
@@ -181,5 +182,6 @@
     --motion-duration-scene: 0ms;
     --motion-duration-depart: 0ms;
     --motion-duration-memory: 0ms;
+    --motion-duration-count: 0ms;
   }
 }

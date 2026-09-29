@@ -3,12 +3,14 @@ import { Navigate } from 'react-router';
 import { useCompletionRefresh, useCompletions } from '../../app/hooks/writes.ts';
 import { paths, useAnswerRefs, useArcaNavigate, useRouteState } from '../../app/navigation.ts';
 import type { AnswerWritePresentation, Availability, Today } from '../../domain/models.ts';
-import { InlineStatus, PixelAppShell, PixelButton, ScenePanel } from '../../ui/components.tsx';
+import { InlineStatus, PixelAppShell, PixelButton, RollingCount, ScenePanel } from '../../ui/components.tsx';
 import { copy, fill } from '../../ui/copy.ts';
 import { formatCount } from '../../ui/format.ts';
 import { MemoryFragment } from '../../ui/pixel.tsx';
 
 type Hierarchy = 'archive-first' | 'today-first';
+
+const [countLead, countTail] = copy['CPY-F12-012'].split('{memoryCount}');
 
 function savedCount(presentation: AnswerWritePresentation | undefined, refreshed: Today | undefined) {
   const count: Availability<{ count: number }> | null =
@@ -69,7 +71,17 @@ export function SavedScreen() {
         {count?.state === 'AVAILABLE' ? (
           // biome-ignore lint/a11y/useSemanticElements: 기록 수를 이름 붙은 group으로 묶는다.
           <div role="group" aria-label={copy['CPY-F12-019']} className="arca-memory-count">
-            {fill(copy['CPY-F12-012'], { memoryCount: formatCount(count.value.count) })}
+            <span className="arca-visually-hidden">
+              {fill(copy['CPY-F12-012'], { memoryCount: formatCount(count.value.count) })}
+            </span>
+            <span aria-hidden="true">
+              {countLead}
+              <RollingCount
+                from={formatCount(Math.max(0, count.value.count - 1))}
+                to={formatCount(count.value.count)}
+              />
+              {countTail}
+            </span>
           </div>
         ) : (
           // biome-ignore lint/a11y/useSemanticElements: 기록 수를 이름 붙은 group으로 묶는다.

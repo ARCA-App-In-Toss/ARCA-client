@@ -247,6 +247,28 @@ export function PrivacyNote({ id, lead, detail }: { id: string; lead: string; de
   );
 }
 
+export function RollingCount({ from, to }: { from: string; to: string }) {
+  const width = Math.max(from.length, to.length);
+  const before = from.padStart(width, ' ');
+  const after = to.padStart(width, ' ');
+  return (
+    <span className="arca-rolling-count">
+      {Array.from(after, (digit, place) =>
+        digit === before[place] ? (
+          // biome-ignore lint/suspicious/noArrayIndexKey: 자리 위치가 곧 식별자다.
+          <span key={place}>{digit}</span>
+        ) : (
+          // biome-ignore lint/suspicious/noArrayIndexKey: 자리 위치가 곧 식별자다.
+          <span key={place} className="arca-rolling-count__reel">
+            <span>{before[place]}</span>
+            <span>{digit}</span>
+          </span>
+        ),
+      )}
+    </span>
+  );
+}
+
 export function PixelIconButton({
   label,
   icon,

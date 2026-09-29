@@ -8,6 +8,40 @@
   animation: arca-fragment-form var(--motion-duration-memory) steps(4, end) 1 both;
 }
 
+.arca-rolling-count {
+  display: inline-flex;
+  align-items: flex-start;
+  height: var(--type-control-line);
+  overflow: hidden;
+  vertical-align: top;
+}
+
+.arca-rolling-count > span {
+  line-height: var(--type-control-line);
+}
+
+.arca-rolling-count__reel {
+  display: flex;
+  flex-direction: column;
+  animation: arca-count-roll var(--motion-duration-count) var(--motion-easing-settle)
+    calc(var(--motion-duration-memory) - var(--motion-duration-count)) both;
+}
+
+.arca-rolling-count__reel > span {
+  display: block;
+  height: var(--type-control-line);
+  white-space: pre;
+}
+
+@keyframes arca-count-roll {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-50%);
+  }
+}
+
 @keyframes arca-fragment-form {
   from {
     opacity: 0.2;
