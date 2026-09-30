@@ -17,6 +17,7 @@ export function toDomainFailure(body: unknown): DomainFailure | ProtocolFailure 
   const raw = body.error;
   const option = typeof raw.code === 'string' ? optionsByCode.get(raw.code) : undefined;
   if (!option) return new ProtocolFailure('envelope');
+  if ('recovery' in raw && !('recovery' in option.shape)) return new ProtocolFailure('envelope');
 
   const known = Object.fromEntries(Object.keys(option.shape).flatMap((key) => (key in raw ? [[key, raw[key]]] : [])));
   const parsed = option.safeParse(known);
