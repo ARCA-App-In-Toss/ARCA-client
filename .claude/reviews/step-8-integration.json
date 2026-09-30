@@ -1,32 +1,79 @@
 {
   "id": "step-8-integration",
-  "reviewers": { "spec": "PASS", "architecture": "PASS", "experience": "PASS" },
-  "methods": { "spec": "agent", "architecture": "local", "experience": "local" },
+  "reviewers": {
+    "spec": "PASS",
+    "architecture": "PASS",
+    "experience": "PASS"
+  },
+  "methods": {
+    "spec": "agent",
+    "architecture": "agent",
+    "experience": "local"
+  },
   "files": [
-    "src/mocks/handlers.ts",
-    "src/mocks/handlers.contract.test.ts",
-    "src/data/api/errorEnvelope.ts",
+    "src/app/composition.ts",
+    "src/app/hooks/analytics.ts",
     "src/data/api/arcaApi.test.ts",
+    "src/data/api/arcaApi.ts",
+    "src/data/api/errorEnvelope.ts",
+    "src/domain/analytics/",
     "src/domain/commands/answerWriteCoordinator.test.ts",
-    "src/domain/drafts/draftWriter.test.ts",
     "src/domain/drafts/draftRepository.test.ts",
-    "src/screens/today/PastDraftScreen.test.tsx",
-    "src/screens/today/WriteScreen.test.tsx",
+    "src/domain/drafts/draftWriter.test.ts",
+    "src/domain/ports/api.ts",
+    "src/domain/ports/platform.ts",
+    "src/mocks/dev.ts",
+    "src/mocks/handlers.contract.test.ts",
+    "src/mocks/handlers.ts",
+    "src/mocks/platform.ts",
+    "src/mocks/world.ts",
     "src/platform/appsInTossPlatform.test.ts",
-    "tests/support/privacy-sinks.ts",
-    "tests/browser-mock/privacy.spec.ts",
+    "src/platform/appsInTossPlatform.ts",
+    "src/screens/archive/ArchiveScreen.tsx",
+    "src/screens/archive/EditScreen.tsx",
+    "src/screens/onboarding/BoardedScreen.test.tsx",
+    "src/screens/onboarding/BoardingScreen.test.tsx",
+    "src/screens/onboarding/IntroScreen.test.tsx",
+    "src/screens/onboarding/IntroScreen.tsx",
+    "src/screens/productEvents.test.tsx",
+    "src/screens/today/PastDraftScreen.test.tsx",
+    "src/screens/today/TodayScreen.test.tsx",
+    "src/screens/today/TodayScreen.tsx",
+    "src/screens/today/WriteScreen.test.tsx",
+    "src/screens/today/WriteScreen.tsx",
+    "src/test/boot.tsx",
     "tests/browser-mock/core.spec.ts",
+    "tests/browser-mock/privacy.spec.ts",
+    "tests/browser-time/date-change.spec.ts",
     "tests/browser-time/privacy.spec.ts",
-    "tests/browser-time/date-change.spec.ts"
+    "tests/support/privacy-sinks.ts"
   ],
-  "gate": { "mode": "--release", "result": "PASS" },
+  "gate": {
+    "mode": "--release",
+    "result": "PASS"
+  },
   "external_evidence": [
-    { "status": "BLOCKED", "ref": "08 §14.1 실서버 API-V-001~027·운영 retention/backup" },
-    { "status": "BLOCKED", "ref": "08 §14.1 실제 iOS/Android 토스 WebView·OS IME·VoiceOver/TalkBack" },
-    { "status": "BLOCKED", "ref": "08 §13.6 법무·고객센터·SEMA·API·CORS·TLS 연결" },
-    { "status": "NOT_RUN", "ref": "08 §14.1 분석 수신·allowlist·오류 보고 sink (FE OP-014 미구현)" },
-    { "status": "NOT_RUN", "ref": "08 §14.1 원격 CI" }
+    {
+      "status": "BLOCKED",
+      "ref": "08 §14.1 실서버 API-V-001~027·운영 retention/backup"
+    },
+    {
+      "status": "BLOCKED",
+      "ref": "08 §14.1 실제 iOS/Android 토스 WebView·OS IME·VoiceOver/TalkBack"
+    },
+    {
+      "status": "BLOCKED",
+      "ref": "08 §13.6 법무·고객센터·SEMA·API·CORS·TLS 연결"
+    },
+    {
+      "status": "NOT_RUN",
+      "ref": "08 §14.1 원격 CI"
+    },
+    {
+      "status": "NOT_RUN",
+      "ref": "08 §14.1 실서버 분석 수신·보존, 오류 보고(Sentry 미구현)"
+    }
   ],
   "commit": null,
-  "ts": "2026-09-30T00:45:00.000Z"
+  "ts": "2026-09-30T05:00:00.000Z"
 }

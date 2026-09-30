@@ -260,7 +260,8 @@
           "error envelope recovery check",
           "MS ID test linkage 62/64",
           "privacy canary sink tests",
-          "--release gate PASS (local)"
+          "--release gate PASS (local)",
+          "OP-014 FE product events (AnalyticsQueue, 8 events, MS-ANALYTICS-001/002)"
         ],
         "next": [
           "await real server / devices / ops inputs"
@@ -269,8 +270,8 @@
           "API-V-001~027 real server",
           "real iOS/Android/WebView/AT",
           "CORS/TLS/SEMA/policy URLs",
-          "OP-014 FE analytics",
-          "HTTP status-code pair check"
+          "HTTP status-code pair check",
+          "error reporting (Sentry)"
         ]
       }
     }
@@ -308,10 +309,6 @@
     }
   },
   "log": [
-    {
-      "ts": "2026-09-27T13:29:43.546Z",
-      "msg": "step-5 round-1: spec PASS (after continuation), architecture FAIL (2), experience FAIL (1 + sheet Back); fix attempt 1 applied; unit 214, browser 22 PASS; architecture round-2 PASS"
-    },
     {
       "ts": "2026-09-27T13:30:41.955Z",
       "msg": "step-5-recovery COMPLETED: full gate PASS, unit 214, browser 22 PASS, reviews spec/architecture/experience PASS; awaiting user approval"
@@ -387,6 +384,10 @@
     {
       "ts": "2026-09-30T01:00:00.000Z",
       "msg": "step-7 approved; step-8 started; backend-independent slices done, release gate PASS, external evidence BLOCKED"
+    },
+    {
+      "ts": "2026-09-30T05:00:00.000Z",
+      "msg": "step-8 OP-014 FE events done; release gate PASS; architecture review PASS"
     }
   ]
 }
