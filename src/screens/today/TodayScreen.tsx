@@ -1,4 +1,9 @@
 import { type ReactNode, useEffect, useRef, useState } from 'react';
+import {
+  useAlternateQuestionViewedEvent,
+  useProductEvents,
+  useTodaySemaViewedEvent,
+} from '../../app/hooks/analytics.ts';
 import { usePastDrafts } from '../../app/hooks/pastDrafts.ts';
 import { useSkyPhase } from '../../app/hooks/sky.ts';
 import { useToday, useTodayRefreshEvents } from '../../app/hooks/today.ts';
@@ -36,6 +41,7 @@ function QuestionLabel({ id, text, dateKst }: { id: string; text: string; dateKs
 export function TodayScreen() {
   const today = useToday();
   useTodayRefreshEvents({ onEntry: true });
+  useTodaySemaViewedEvent(today.data);
   const offline = useOfflineOnFailure(today.error);
   const sky = useSkyPhase();
 
@@ -146,11 +152,17 @@ function Unanswered({
   onAnnounce: (message: string) => void;
 }) {
   const navigate = useArcaNavigate();
+  const events = useProductEvents();
   const [role, setRole] = useState<QuestionRole>('PRIMARY');
+  const pendingRole: QuestionRole | null =
+    pendingQuestionId === null
+      ? null
+      : pendingQuestionId === today.sema.alternateQuestion.questionId
+        ? 'ALTERNATE'
+        : 'PRIMARY';
+  useAlternateQuestionViewedEvent(today.sema, (pendingRole ?? role) === 'ALTERNATE');
 
-  if (pendingQuestionId !== null) {
-    const pendingRole: QuestionRole =
-      pendingQuestionId === today.sema.alternateQuestion.questionId ? 'ALTERNATE' : 'PRIMARY';
+  if (pendingRole !== null) {
     return (
       <QuestionCapsule today={today} text={questionOf(today, pendingRole).text}>
         <InlineStatus message={copy['CPY-F10-038']} live={false} />
@@ -173,6 +185,7 @@ function Unanswered({
           variant="ghost"
           onClick={() => {
             const next: QuestionRole = role === 'PRIMARY' ? 'ALTERNATE' : 'PRIMARY';
+            events.semaQuestionChanged(role, next);
             setRole(next);
             onAnnounce(fill(copy['CPY-F10-035'], { questionText: questionOf(today, next).text }));
           }}

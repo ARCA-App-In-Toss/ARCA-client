@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useArchiveViewedEvent } from '../../app/hooks/analytics.ts';
 import { useArchive } from '../../app/hooks/archive.ts';
 import { useRefreshToday, useToday } from '../../app/hooks/today.ts';
 import { paths, useAnswerRefs, useArcaNavigate } from '../../app/navigation.ts';
@@ -34,6 +35,7 @@ const atTop = () => window.scrollY <= TOP_SLACK_PX;
 export function ArchiveScreen() {
   const archive = useArchive();
   const { view } = archive;
+  useArchiveViewedEvent(view);
   const today = useToday();
   const refreshToday = useRefreshToday();
   const navigate = useArcaNavigate();

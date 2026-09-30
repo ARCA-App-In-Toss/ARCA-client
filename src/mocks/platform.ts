@@ -109,6 +109,7 @@ export function createFakePlatform(options: FakePlatformOptions = {}): FakePlatf
   const clipboardWrites: string[] = [];
   const openedPolicies: string[] = [];
   const visibilityListeners = new Set<(visible: boolean) => void>();
+  const reconnectListeners = new Set<() => void>();
   const storage = options.storage ?? createFakeStorage();
   const platform: FakePlatform = {
     hapticCount: 0,
@@ -121,7 +122,13 @@ export function createFakePlatform(options: FakePlatformOptions = {}): FakePlatf
       },
     },
     clock: { now: options.now ?? (() => Date.now()) },
-    network: { isOffline: async () => offline },
+    network: {
+      isOffline: async () => offline,
+      onReconnect(listener) {
+        reconnectListeners.add(listener);
+        return () => reconnectListeners.delete(listener);
+      },
+    },
     clipboard: {
       async writeText(text) {
         if (clipboardFails) return { kind: 'failed' };
@@ -146,7 +153,9 @@ export function createFakePlatform(options: FakePlatformOptions = {}): FakePlatf
       keyResult = result;
     },
     setOffline(value) {
+      const reconnected = offline && !value;
       offline = value;
+      if (reconnected) for (const listener of reconnectListeners) listener();
     },
     setClipboardFails(fails) {
       clipboardFails = fails;

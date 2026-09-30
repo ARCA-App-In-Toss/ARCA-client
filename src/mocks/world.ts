@@ -19,6 +19,7 @@ export type MockOp =
   | 'OP-011'
   | 'OP-012'
   | 'OP-013'
+  | 'OP-014'
   | 'OP-015';
 
 export type MockFault =
@@ -47,6 +48,14 @@ export interface MockTicket {
   answerTarget?: { kind: 'UPDATE' | 'DELETE'; answerId: string; expectedRevision: string };
   deleteEffect?: 'DELETED' | 'ALREADY_ABSENT';
   proofRevision?: string;
+}
+
+export interface MockProductEvent {
+  owner: string;
+  eventId: string;
+  name: string;
+  properties: Record<string, string>;
+  appVersion: string | null;
 }
 
 export interface Passenger {
@@ -229,6 +238,7 @@ export interface MockWorld {
   answers: Map<string, MockAnswer>;
   tickets: Map<string, MockTicket>;
   deletions: Map<string, MockDeletion>;
+  productEvents: Map<string, MockProductEvent>;
   deletionCommitFails: boolean;
   deletionFence(anonymousKey: string): MockDeletion | undefined;
   asyncExecution: boolean;
@@ -265,6 +275,7 @@ export function createMockWorld(base: ServerBase): MockWorld {
   const answers = new Map<string, MockAnswer>();
   const tickets = new Map<string, MockTicket>();
   const deletions = new Map<string, MockDeletion>();
+  const productEvents = new Map<string, MockProductEvent>();
   let tokenSeq = 0;
   let answerSeq = 0;
   let revisionSeq = 1;
@@ -279,6 +290,7 @@ export function createMockWorld(base: ServerBase): MockWorld {
     answers,
     tickets,
     deletions,
+    productEvents,
     deletionCommitFails: false,
     deletionFence(anonymousKey) {
       return [...deletions.values()].find(
@@ -302,6 +314,7 @@ export function createMockWorld(base: ServerBase): MockWorld {
         for (const answer of [...answers.values()]) if (answer.owner === owner) answers.delete(answer.answerId);
         for (const ticket of [...tickets.values()]) if (ticket.owner === owner) tickets.delete(ticket.ticketId);
         world.nicknameReceipts = world.nicknameReceipts.filter((r) => r.anonymousKey !== owner);
+        for (const event of [...productEvents.values()]) if (event.owner === owner) productEvents.delete(event.eventId);
         deletion.state = 'SUCCEEDED';
       }
       for (const ticket of tickets.values()) {

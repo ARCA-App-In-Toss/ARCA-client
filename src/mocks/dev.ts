@@ -10,5 +10,6 @@ export async function startDevMock(scenarioName: string): Promise<AppServices> {
   const worker = setupWorker(...createHandlers(world));
   await worker.start({ onUnhandledRequest: 'bypass', quiet: true });
   const platform = createFakePlatform({ anonymousKey: definition.anonymousKey });
+  document.addEventListener('visibilitychange', () => platform.setVisible(document.visibilityState === 'visible'));
   return createAppServices({ platform, apiBase: MOCK_API_BASE });
 }

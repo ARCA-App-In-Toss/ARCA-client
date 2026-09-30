@@ -229,3 +229,68 @@ describe('OP-006 prepareAnswerWrite pending target', () => {
     expect(resent.status).toBe(200);
   });
 });
+
+describe('OP-014 submitProductEventBatch', () => {
+  const event = (n: number, extra: Record<string, unknown> = {}) => ({
+    eventId: opId(100 + n),
+    schemaVersion: 1,
+    name: 'today_sema_viewed',
+    occurredAt: '2026-09-27T01:00:00Z',
+    properties: { answerState: 'UNANSWERED' },
+    ...extra,
+  });
+
+  async function submit(bearer: string, body: unknown) {
+    const response = await fetch(`${MOCK_API_BASE}/v1/analytics/event-batches`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${bearer}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const text = await response.text();
+    return { status: response.status, text, body: text ? (JSON.parse(text) as unknown) : undefined };
+  }
+
+  test('MS-ANALYTICS-001 allowlisted batch is accepted once; a repeated event ID adds nothing', async () => {
+    const world = setup();
+    const bearer = world.issueToken(SYNTHETIC_KEYS.registered);
+    const accepted = await submit(bearer, { events: [event(1), event(2)], appVersion: '0.0.0' });
+    expect(accepted.status).toBe(202);
+    expect(world.productEvents.size).toBe(2);
+
+    const repeated = await submit(bearer, { events: [event(1)] });
+    expect(repeated.status).toBe(202);
+    expect(world.productEvents.size).toBe(2);
+  });
+
+  test('MS-ANALYTICS-001 unknown event or property rejects the whole batch without reflecting values', async () => {
+    const world = setup();
+    const bearer = world.issueToken(SYNTHETIC_KEYS.registered);
+    const canary = '카나리 답변 PRV7Q3';
+    for (const bad of [
+      { events: [event(1), event(2, { name: 'answer_saved', properties: {} })] },
+      { events: [event(1), event(3, { properties: { answerState: 'UNANSWERED', excerpt: canary } })] },
+      { events: [event(1)], passengerCode: 'ARC-2417' },
+      { events: [event(1), event(4, { name: 'custom_event', properties: { text: canary } })] },
+    ]) {
+      const rejected = await submit(bearer, bad);
+      expect(rejected.status).toBe(400);
+      expect(errorCode(rejected.body)).toBe('INVALID_REQUEST');
+      expect(rejected.text).not.toContain('PRV7Q3');
+      expect(rejected.text).not.toContain('ARC-2417');
+    }
+    expect(world.productEvents.size).toBe(0);
+  });
+
+  test('MS-ANALYTICS-001 PRE_PASSENGER may send; a deletion recovery session may not', async () => {
+    const pre = setup('server.prePassenger');
+    const preBearer = pre.issueToken(SYNTHETIC_KEYS.unregistered);
+    expect((await submit(preBearer, { events: [event(1)] })).status).toBe(202);
+
+    const world = setup();
+    const bearer = world.issueToken(SYNTHETIC_KEYS.registered);
+    const ticketId = await prepareDeletion(bearer);
+    const recovery = await submit(deletionRecoveryBearer(world, ticketId), { events: [event(2)] });
+    expect(recovery.status).toBe(403);
+    expect(errorCode(recovery.body)).toBe('SESSION_SCOPE_INSUFFICIENT');
+  });
+});

@@ -18,6 +18,7 @@ test('MS-PRIVACY-001 question → write → save → read again keeps canaries o
   await page.locator('.arca-memory-row').first().click();
   await expect(page.getByRole('heading', { level: 1, name: '기억 조각' })).toBeFocused();
   await expect(page.getByRole('region', { name: '내 답변' }).locator('.arca-user-text')).toHaveText(CANARY.answer);
+  await sinks.flushAnalytics();
   await sinks.assertClean();
 });
 

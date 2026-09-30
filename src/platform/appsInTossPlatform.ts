@@ -79,6 +79,12 @@ export function createAppsInTossPlatform(): PlatformPort {
           return typeof navigator !== 'undefined' && navigator.onLine === false;
         }
       },
+      onReconnect(listener) {
+        if (typeof window === 'undefined') return () => undefined;
+        const handler = () => listener();
+        window.addEventListener('online', handler);
+        return () => window.removeEventListener('online', handler);
+      },
     },
     clipboard: { writeText: writeClipboard },
     external: {

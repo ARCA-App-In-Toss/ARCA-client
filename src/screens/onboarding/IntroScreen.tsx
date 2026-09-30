@@ -1,4 +1,5 @@
 import { type MouseEvent, useEffect, useState } from 'react';
+import { useOnboardingStartedEvent, useProductEvents } from '../../app/hooks/analytics.ts';
 import { useAllDeletedNotice } from '../../app/hooks/onboarding.ts';
 import { paths, useArcaNavigate } from '../../app/navigation.ts';
 import { PixelAppShell, PixelButton, ScreenTitle } from '../../ui/components.tsx';
@@ -14,6 +15,8 @@ const nextMark: readonly string[] = ['#####', '.###.', '..#..'];
 export function IntroScreen() {
   const navigate = useArcaNavigate();
   const deletedNotice = useAllDeletedNotice();
+  const events = useProductEvents();
+  useOnboardingStartedEvent();
   const {
     position,
     sceneSentences,
@@ -31,6 +34,10 @@ export function IntroScreen() {
   const [departing, setDeparting] = useState(false);
 
   const toJoin = () => navigate(paths.join);
+  const skip = () => {
+    events.onboardingSkipped();
+    toJoin();
+  };
 
   const board = () => {
     if (departing) return;
@@ -69,7 +76,7 @@ export function IntroScreen() {
           </span>
           {fill(copy['CPY-F01-002'], { currentScene: current, totalScenes })}
         </p>
-        <PixelButton variant="ghost" className="arca-intro-skip" onClick={toJoin}>
+        <PixelButton variant="ghost" className="arca-intro-skip" onClick={skip}>
           {copy['CPY-F01-006']}
         </PixelButton>
       </div>

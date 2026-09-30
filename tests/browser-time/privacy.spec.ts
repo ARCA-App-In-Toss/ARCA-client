@@ -19,5 +19,6 @@ test('MS-PRIVACY-001 date change recovery keeps the canary answer out of forbidd
   await page.getByRole('dialog', { name: '지난 임시본' }).locator('.arca-memory-row').first().click();
   await expect(page.getByRole('heading', { level: 1, name: '지난 임시본' })).toBeVisible();
   await expect(page.getByRole('textbox', { name: '작성한 내용' })).toHaveValue(CANARY.answer);
+  await sinks.flushAnalytics();
   await sinks.assertClean();
 });

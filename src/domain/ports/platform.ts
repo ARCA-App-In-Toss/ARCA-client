@@ -19,6 +19,7 @@ export interface ClockPort {
 
 export interface NetworkPort {
   isOffline(): Promise<boolean>;
+  onReconnect(listener: () => void): () => void;
 }
 
 export type ClipboardResult = { kind: 'copied' } | { kind: 'failed' };

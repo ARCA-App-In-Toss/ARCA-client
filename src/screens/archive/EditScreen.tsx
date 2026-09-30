@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router';
+import { useAnswerSaveFailedEvent, useAnswerStartedEvent } from '../../app/hooks/analytics.ts';
 import { useAnswerCommand, usePendingAnswer } from '../../app/hooks/answers.ts';
 import { useAnswer, useArchive } from '../../app/hooks/archive.ts';
 import { useCopyText } from '../../app/hooks/device.ts';
@@ -88,6 +89,12 @@ function EditForm({
   const { view } = command;
   const [edited, setEdited] = useState(false);
   const input = useAnswerInput(draft, () => setEdited(true));
+  useAnswerStartedEvent('UPDATE', {
+    ready: draft.load.kind !== 'loading',
+    text: draft.text,
+    composing: input.composing,
+  });
+  useAnswerSaveFailedEvent('UPDATE', view);
   const [rebaseState, setRebaseState] = useState<RebaseState>('idle');
   const [copyResult, setCopyResult] = useState<CopyResult>(null);
   const [staleCopy, setStaleCopy] = useState<CopyResult>(null);

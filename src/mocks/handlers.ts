@@ -1,4 +1,5 @@
 import { delay, HttpResponse, http } from 'msw';
+import { zProductEventBatchInput } from '../data/api/generated/zod.gen.ts';
 import {
   type ExcerptProfile,
   excerptOf,
@@ -901,6 +902,42 @@ export function createHandlers(world: MockWorld, baseUrl = MOCK_API_BASE) {
         { items: page.map((a) => excerptAnswer(a, profile)), nextCursor: next, pageSnapshotAt: '2026-09-27T02:00:02Z' },
         { headers: noStore },
       );
+    }),
+
+    http.post(`${baseUrl}/v1/analytics/event-batches`, async ({ request }) => {
+      const bearer = bearerOf(request);
+      world.requests.push({ op: 'OP-014', bearer });
+      const faulted = await applyFault(world, 'OP-014');
+      if (faulted) return faulted;
+      const session = bearer ? world.sessions.get(bearer) : undefined;
+      if (!session) return HttpResponse.json(errorBody('SESSION_INVALID', 'AUTH'), { status: 401, headers: noStore });
+      if (session.revoked) {
+        return HttpResponse.json(
+          errorBody('SESSION_RECOVERY_REQUIRED', 'AUTH', {
+            recovery: { kind: 'REESTABLISH_SESSION', recoveryAllowed: true },
+          }),
+          { status: 401, headers: noStore },
+        );
+      }
+      if (session.deletionTicketId) {
+        return HttpResponse.json(errorBody('SESSION_SCOPE_INSUFFICIENT', 'AUTH'), { status: 403, headers: noStore });
+      }
+      const parsed = zProductEventBatchInput.safeParse(await request.json().catch(() => null));
+      if (!parsed.success) {
+        return HttpResponse.json(errorBody('INVALID_REQUEST', 'VALIDATION'), { status: 400, headers: noStore });
+      }
+      const { events, appVersion } = parsed.data;
+      for (const event of events) {
+        if (world.productEvents.has(event.eventId)) continue;
+        world.productEvents.set(event.eventId, {
+          owner: session.anonymousKey,
+          eventId: event.eventId,
+          name: event.name,
+          properties: { ...event.properties },
+          appVersion: appVersion ?? null,
+        });
+      }
+      return new HttpResponse(null, { status: 202, headers: noStore });
     }),
 
     http.get(`${baseUrl}/v1/answers/:answerId`, async ({ request, params }) => {

@@ -3,6 +3,7 @@ import { createArcaApi } from '../data/api/arcaApi.ts';
 import { createHttpTransport } from '../data/api/transport.ts';
 import { queryKeys } from '../data/query/keys.ts';
 import { StorageJournal } from '../data/storage/journal.ts';
+import { AnalyticsQueue } from '../domain/analytics/analyticsQueue.ts';
 import { ArchiveChains } from '../domain/archive/archiveChains.ts';
 import { AnswerWriteCoordinator, type Completion } from '../domain/commands/answerWriteCoordinator.ts';
 import { AnswerWriteStore } from '../domain/commands/answerWriteStore.ts';
@@ -37,6 +38,7 @@ export interface AppServices {
   boarding: BoardingCoordinator;
   nickname: NicknameCoordinator;
   deletion: AllDataDeleteCoordinator;
+  analytics: AnalyticsQueue;
   takeAllDeletedNotice(): boolean;
   completions: Map<string, Completion>;
   answerRefs: Map<string, string>;
@@ -67,6 +69,7 @@ export function createAppServices(config: AppServicesConfig): AppServices {
   });
   const session = new SessionController({ api, identity: platform.identity, clock: platform.clock });
   const journal = new StorageJournal(platform.storage, platform.clock);
+  const analytics = new AnalyticsQueue({ session, api, clock: platform.clock, appVersion: __APP_VERSION__ });
 
   let snapshot: AppSnapshot = { bootstrap: { phase: 'starting' }, session: null };
   const listeners = new Set<() => void>();
@@ -186,6 +189,7 @@ export function createAppServices(config: AppServicesConfig): AppServices {
       deletionFenced = active;
     },
     discardMemory: () => {
+      analytics.discardAll();
       currentArea = null;
       queryClient.clear();
       resetVisitMemory();
@@ -299,7 +303,10 @@ export function createAppServices(config: AppServicesConfig): AppServices {
     }
   });
 
+  platform.network.onReconnect(() => analytics.hint());
+
   platform.lifecycle.onVisibilityChange((visible) => {
+    analytics.hint();
     if (!visible) {
       writes.suspend();
       answers.suspend();
@@ -334,6 +341,7 @@ export function createAppServices(config: AppServicesConfig): AppServices {
     boarding,
     nickname,
     deletion,
+    analytics,
     takeAllDeletedNotice() {
       const shown = allDeletedNotice;
       allDeletedNotice = false;

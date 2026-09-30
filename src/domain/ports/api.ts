@@ -1,3 +1,4 @@
+import type { ProductEventBatch } from '../analytics/productEvent.ts';
 import type {
   AllDataDeleteClosure,
   AllDataDeleteResult,
@@ -68,4 +69,5 @@ export interface ArcaApi {
   executeAllDataDelete(auth: Bearer, ticketId: string, timeoutMs: number): Promise<AllDataDeleteResult>;
   getAllDataDeleteResult(auth: Bearer, ticketId: string, timeoutMs: number): Promise<AllDataDeleteResult>;
   closeAllDataDelete(auth: Bearer, ticketId: string, timeoutMs: number): Promise<AllDataDeleteClosure>;
+  submitProductEvents(auth: Bearer, batch: ProductEventBatch): Promise<void>;
 }

@@ -1,5 +1,5 @@
 import { expect, type Page } from '@playwright/test';
-import { MOCK_API_BASE, SYNTHETIC_KEYS } from '../../src/mocks/world.ts';
+import { MOCK_API_BASE, SYNTHETIC_KEYS, SYNTHETIC_NEXT_DAY_SEMA, SYNTHETIC_SEMA } from '../../src/mocks/world.ts';
 
 export const CANARY = {
   answer: '카나리 답변 PRV7Q3 한 정거장',
@@ -14,6 +14,22 @@ const PATTERNS: Record<string, string[]> = {
 };
 
 const INTERNAL_ID_PATTERNS = ['synthetic-answer-', 'synthetic-ticket-', 'synthetic-deletion-'];
+
+const ANALYTICS_SINK = 'request.body.analytics';
+const ANALYTICS_FORBIDDEN = [
+  ...[SYNTHETIC_SEMA, SYNTHETIC_NEXT_DAY_SEMA].flatMap((sema) => [
+    sema.dailySemaId,
+    sema.semaId,
+    sema.semaCode,
+    sema.primaryQuestion.questionId,
+    sema.alternateQuestion.questionId,
+    sema.primaryQuestion.text,
+    sema.alternateQuestion.text,
+  ]),
+  'ARC-',
+  'gen-synthetic-',
+];
+const isAnalyticsBatch = (url: string) => url.startsWith(`${MOCK_API_BASE}/v1/analytics/event-batches`);
 
 interface SinkEntry {
   sink: string;
@@ -133,6 +149,7 @@ export async function watchSinks(page: Page) {
     const referer = request.headers().referer;
     if (referer) push('request.referer', referer);
     if (!isMockApi(url)) push('request.body.non-api', request.postData() ?? '');
+    if (isAnalyticsBatch(url)) push(ANALYTICS_SINK, request.postData() ?? '');
   });
 
   const checkpoint = async () => {
@@ -158,9 +175,24 @@ export async function watchSinks(page: Page) {
       if (sink !== 'request.url' && INTERNAL_ID_PATTERNS.some((pattern) => value.includes(pattern))) {
         leaks.add(`${sink} ← internalId`);
       }
+      if (sink === ANALYTICS_SINK && ANALYTICS_FORBIDDEN.some((pattern) => value.includes(pattern))) {
+        leaks.add(`${sink} ← analyticsForbidden`);
+      }
     }
     expect([...leaks]).toEqual([]);
   };
 
-  return { checkpoint, assertClean };
+  const flushAnalytics = async () => {
+    const sent = page.waitForRequest((request) => isAnalyticsBatch(request.url()));
+    await page.evaluate(() => {
+      for (const state of ['hidden', 'visible'] as const) {
+        Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => state });
+        document.dispatchEvent(new Event('visibilitychange'));
+      }
+    });
+    await sent;
+    expect(entries.some(({ sink, value }) => sink === ANALYTICS_SINK && value.includes('"events"'))).toBe(true);
+  };
+
+  return { checkpoint, assertClean, flushAnalytics };
 }

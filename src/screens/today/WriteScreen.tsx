@@ -1,5 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate } from 'react-router';
+import {
+  useAlternateQuestionViewedEvent,
+  useAnswerSaveFailedEvent,
+  useAnswerStartedEvent,
+  useProductEvents,
+} from '../../app/hooks/analytics.ts';
 import { useCopyText } from '../../app/hooks/device.ts';
 import { useDraftSession } from '../../app/hooks/drafts.ts';
 import { type HandoffKeep, usePastDraftRefs } from '../../app/hooks/pastDrafts.ts';
@@ -84,6 +90,14 @@ export function WriteScreen() {
   const input = useAnswerInput(draft);
   const write = useAnswerWrite(sema?.dailySemaId ?? null);
   const view = write.view;
+  const events = useProductEvents();
+  useAlternateQuestionViewedEvent(sema, question !== null && role === 'ALTERNATE');
+  useAnswerStartedEvent('CREATE', {
+    ready: question !== null && draft.load.kind !== 'loading',
+    text: draft.text,
+    composing: input.composing,
+  });
+  useAnswerSaveFailedEvent('CREATE', view);
 
   const busy = view.kind === 'working';
   const busyShown = usePendingReveal(busy);
@@ -190,13 +204,14 @@ export function WriteScreen() {
   };
 
   const onSwitch = async () => {
-    if (!sema || pending) return;
+    if (!sema || !role || pending) return;
     if (!(await draft.flush())) {
       setSwitchBlocked(true);
       return;
     }
     setSwitchBlocked(false);
     const next: QuestionRole = role === 'PRIMARY' ? 'ALTERNATE' : 'PRIMARY';
+    events.semaQuestionChanged(role, next);
     setRole(next);
     input.resetComposition();
     navigate(paths.write, { questionRole: next }, { replace: true });

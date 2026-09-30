@@ -37,6 +37,7 @@ import {
   zEstablishSessionResponse,
   zGetPassengerResponse,
   zNicknameReceipt,
+  zProductEventBatchInput,
   zTodayReadModel,
 } from './generated/zod.gen.ts';
 import type { HttpRequest, HttpTransport } from './transport.ts';
@@ -607,6 +608,30 @@ export function createArcaApi(transport: HttpTransport): ArcaApi {
         }
         return toAllDataDeleteResult(wire) as AllDataDeleteClosure;
       }
+      if (response.status >= 400) throw toDomainFailure(response.body);
+      throw new ProtocolFailure('status');
+    },
+
+    async submitProductEvents(auth, batch) {
+      const body = zProductEventBatchInput.safeParse({
+        events: batch.events.map(({ eventId, occurredAt, name, properties }) => ({
+          eventId,
+          schemaVersion: 1,
+          name,
+          occurredAt,
+          properties,
+        })),
+        ...(batch.appVersion ? { appVersion: batch.appVersion } : {}),
+      });
+      if (!body.success) throw new ProtocolFailure('schema');
+      const response = await transport({
+        method: 'POST',
+        path: '/analytics/event-batches',
+        bearer: auth.bearer,
+        body: body.data,
+        timeoutMs: SAFE_QUERY_TIMEOUT_MS,
+      });
+      if (response.status === 202) return;
       if (response.status >= 400) throw toDomainFailure(response.body);
       throw new ProtocolFailure('status');
     },
