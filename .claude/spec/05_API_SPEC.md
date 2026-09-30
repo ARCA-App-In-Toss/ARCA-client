@@ -1,27 +1,27 @@
 # ARCA API 명세
 
-- 문서 버전: v1.7
-- 최근 수정일: 2026년 9월 28일
+- 문서 버전: v1.8
+- 최근 수정일: 2026년 9월 30일
 - 상태: 확정
 - 승인 주체: 제품 책임자
-- 편집: 중복 인계·설명을 줄이고 작업별 참조 위치를 추가했습니다. 필수 계약은 유지합니다.
+- 편집: 구현된 세션 mode·fence·종료 reconciliation·오류 적용 범위를 정의에 반영하고 기록·이유 문장을 걷어냈습니다.
 
-OP 의미·시간·원자성·복구의 원본입니다. HTTP 경로는 채택한 **제안 계약**이며 실제 API host·서버 구현은 없습니다. wire 구조는 [OpenAPI](./arca.openapi.json), 실제 연결 전 확인 사항은 §13.2가 소유합니다.
+OP 의미·시간·원자성·복구의 원본입니다. HTTP 경로는 채택한 **제안 계약**이며 실제 API host·서버 구현은 없습니다. FE는 이 계약을 OpenAPI 파생 validator와 MSW Mock으로 소비합니다. wire 구조는 [OpenAPI](./arca.openapi.json), 실제 연결 전 확인 사항은 §13.2가 소유합니다.
 
 ### 최소 읽기 경로
 
-현재 파일은 `.claude/spec/05_API_SPEC.md`입니다. 필요한 절부터 읽습니다. 경로·줄 힌트 사용법은 [00 §3 · L47–53](./00_INDEX.md#3-참조-방향과-중복-방지)을 따릅니다.
+현재 파일은 `.claude/spec/05_API_SPEC.md`입니다. 필요한 절부터 읽습니다. 경로·줄 힌트 사용법은 [00 §3 · L49–55](./00_INDEX.md#3-참조-방향과-중복-방지)을 따릅니다.
 
 | 작업 | 읽을 위치 |
 |---|---|
 | 계약 강도·불변식 | [§1.2.1 · L36–44](#121-계약-강도와-원본) → [§2 · L52–102](#2-계약-원칙과-불변식) |
 | OP·소비 화면 찾기 | [§3 · L104–124](#3-오퍼레이션-인벤토리) → [§4 · L126–148](#4-15개-화면과-오퍼레이션-연결) → 해당 §6 OP |
-| 세션·탑승·닉네임 | [§6.1 · L199–219](#61-op-001-establishsession) → [§6.2 · L221–259](#62-op-002004-passenger와-닉네임) |
-| 답변 저장·수정·결과 복구 | [§6.4 · L270–298](#64-op-006-prepareanswerwrite) → [§6.7 · L331–361](#67-op-007009-공통-command-lifecycle) → [§9 · L563–601](#9-멱등성동시성결과-보존) |
-| 개별·전체 삭제 | [§6.5 · L300–313](#65-op-012-prepareanswerdelete) → [§6.6 · L315–329](#66-op-013-preparealldatadelete) → [§10 · L603–638](#10-수정삭제와-데이터-보존-경계) |
-| HTTP·오류·호환성 | [§7 · L391–502](#7-http-wire-계약) → [§8 · L504–561](#8-오류-계약) |
-| 분석·개인정보 | [§11 · L640–693](#11-제품-이벤트-계약) → [§12 · L695–717](#12-개인정보보안로그-계약) |
-| 실제 연결·검증·분할 비교 | [§13.2 · L733–747](#132-실제-값구현-확인-필요) → [§15 · L763–805](#15-계약-검증-추적) → [§16 · L807–819](#16-저장-요청-분할-비교와-상태-전이-검증) |
+| 세션·탑승·닉네임 | [§6.1 · L209–228](#61-op-001-establishsession) → [§6.2 · L230–269](#62-op-002004-passenger와-닉네임) |
+| 답변 저장·수정·결과 복구 | [§6.4 · L280–309](#64-op-006-prepareanswerwrite) → [§6.7 · L341–373](#67-op-007009-공통-command-lifecycle) → [§9 · L585–623](#9-멱등성동시성결과-보존) |
+| 개별·전체 삭제 | [§6.5 · L311–325](#65-op-012-prepareanswerdelete) → [§6.6 · L327–339](#66-op-013-preparealldatadelete) → [§10 · L625–661](#10-수정삭제와-데이터-보존-경계) |
+| HTTP·오류·호환성 | [§7 · L413–524](#7-http-wire-계약) → [§8 · L526–583](#8-오류-계약) |
+| 분석·개인정보 | [§11 · L663–716](#11-제품-이벤트-계약) → [§12 · L718–740](#12-개인정보보안로그-계약) |
+| 실제 연결·검증·분할 비교 | [§13.2 · L756–771](#132-실제-값구현-확인-필요) → [§15 · L787–829](#15-계약-검증-추적) → [§16 · L831–843](#16-저장-요청-분할-비교와-상태-전이-검증) |
 
 ## 1. 범위와 권위
 
@@ -31,7 +31,7 @@ OP 의미·시간·원자성·복구의 원본입니다. HTTP 경로는 채택�
 
 ### 1.2 이 문서가 소유하지 않는 내용
 
-화면·문구는 [03 §3 · L103–123](./03_SCREENS_SPEC.md#3-화면-범위와-추적-지도)·[04 §6 · L351–371](./04_INTERACTIONS_AND_COPY.md#6-화면별-상호작용-인벤토리), 상태·캐시·보관·타이머는 [06 §4 · L209–250](./06_FRONTEND_SPEC.md#4-상태-소유권과-적용-가능성)·[06 §6 · L331–386](./06_FRONTEND_SPEC.md#6-query-cache와-목록)·[06 §8 · L427–525](./06_FRONTEND_SPEC.md#8-storage-journal과-command-복구), Mock·검증은 07·08이 소유합니다. 운영 콘텐츠·법무 자료·실제 연결값은 §13.2에서 추적합니다. DB·내부 서비스 구현은 백엔드 책임이며 §10.3의 전체 삭제 원자성은 필수 제약입니다.
+화면·문구는 [03 §3 · L103–123](./03_SCREENS_SPEC.md#3-화면-범위와-추적-지도)·[04 §6 · L342–362](./04_INTERACTIONS_AND_COPY.md#6-화면별-상호작용-인벤토리), 상태·캐시·보관·타이머는 [06 §4 · L228–270](./06_FRONTEND_SPEC.md#4-상태-소유권과-적용-가능성)·[06 §6 · L353–411](./06_FRONTEND_SPEC.md#6-query-cache와-목록)·[06 §8 · L453–551](./06_FRONTEND_SPEC.md#8-storage-journal과-command-복구), Mock·검증은 07·08이 소유합니다. 운영 콘텐츠·법무 자료·실제 연결값은 §13.2에서 추적합니다. DB·내부 서비스 구현은 백엔드 책임이며 §10.3의 전체 삭제 원자성은 필수 제약입니다.
 
 ### 1.2.1 계약 강도와 원본
 
@@ -41,13 +41,13 @@ OP 의미·시간·원자성·복구의 원본입니다. HTTP 경로는 채택�
 | 채택 계약 | OP의 의미, 결과 상태·복구·권한, OpenAPI의 현재 wire 구조 | FE·BE·Mock이 함께 소비하는 기준. backend 합의 전에도 무단 불일치는 금지하며, 동등성 증거와 schema 변경을 함께 기록해 대안을 채택 |
 | 구현 가설·조정 기본값 | prepare/execute 요청 분할, 내부 계층·도구, 발췌 프로필 예산, polling 수치 | 합성 데이터로 비교 가능. 요청 분할은 §16의 실험이며 현재 기본 계약을 유지; 발췌 값은 04 IX-027의 범위에서 조정 |
 
-[arca.openapi.json](./arca.openapi.json)은 경로·method·wire DTO·필수/nullable·오류/이벤트 allowlist의 단일 원본입니다. 본문의 타입명·지도는 설명과 추적이며 schema를 별도로 재작성하는 규범 예시가 아닙니다. 이 문서는 schema로 표현하기 어려운 시간·원자성·재시도·권한 의미를 소유합니다. 둘의 충돌은 [00 §4 · L55–76](./00_INDEX.md#4-충돌-우선순위와-정정-절차)에 따라 같은 변경에서 정정합니다. 현재 계약은 실제 배포 전 제안이며 배포된 v1 클라이언트가 존재한다고 가정하지 않습니다. 향후 배포 뒤의 비호환 변경은 §7.6을 따릅니다.
+[arca.openapi.json](./arca.openapi.json)은 경로·method·wire DTO·필수/nullable·기본 query 값·세션 mode(`x-allowed-session-modes`)·오류/이벤트 allowlist의 단일 원본입니다. 본문의 타입명·지도는 추적용이며 schema를 재작성하는 규범 예시가 아닙니다. 이 문서는 schema로 표현하기 어려운 시간·원자성·재시도·권한 의미를 소유합니다. 둘의 충돌은 [00 §4 · L57–78](./00_INDEX.md#4-충돌-우선순위와-정정-절차)에 따라 같은 변경에서 정정합니다. 현재 계약은 배포 전 제안이며 배포된 v1 클라이언트를 가정하지 않습니다. 배포 뒤의 비호환 변경은 §7.6을 따릅니다.
 
 ### 1.3 근거와 충돌 처리
 
-충돌은 [00 §4 · L55–76](./00_INDEX.md#4-충돌-우선순위와-정정-절차), 제품 결정 상태는 [Open Decisions · L1–25](../../docs/ARCA_OPEN_DECISIONS.md), 개발 선택 이유는 [DECISIONS · L1–11](./DECISIONS.md)를 따릅니다.
+충돌은 [00 §4 · L57–78](./00_INDEX.md#4-충돌-우선순위와-정정-절차), 제품 결정 상태는 [Open Decisions · L1–9](../../docs/ARCA_OPEN_DECISIONS.md), 개발 선택 이유는 [DECISIONS · L1–10](./DECISIONS.md)를 따릅니다.
 
-특히 전체 삭제의 terminal `NOT_APPLIED`는 [Rules AR-06 · L88](../../docs/ARCA_MVP_RULES.md#5-항해-기록과-삭제)에 따라 활성 서비스 데이터가 삭제되지 않았음을 보장합니다. 통신 단절이나 `PREPARED`·`EXECUTING`은 terminal 실패가 아니므로 같은 보장을 표시하지 않습니다. 전체 삭제 뒤 동의 증빙 1년 보존과 백업 최대 30일 만료는 `AR-07~08`의 명시적 예외이며 삭제 누락으로 보지 않습니다.
+특히 전체 삭제의 terminal `NOT_APPLIED`는 [Rules AR-06 · L87](../../docs/ARCA_MVP_RULES.md#5-항해-기록과-삭제)에 따라 활성 서비스 데이터가 삭제되지 않았음을 보장합니다. 통신 단절이나 `PREPARED`·`EXECUTING`은 terminal 실패가 아니므로 같은 보장을 표시하지 않습니다. 전체 삭제 뒤 동의 증빙 1년 보존과 백업 최대 30일 만료는 `AR-07~08`의 명시적 예외이며 삭제 누락으로 보지 않습니다.
 
 ## 2. 계약 원칙과 불변식
 
@@ -105,21 +105,21 @@ OP 의미·시간·원자성·복구의 원본입니다. HTTP 경로는 채택�
 
 | ID | 이름 | 종류 | 주 소비 화면 | 서버 부작용 | 결과 요약 |
 |---|---|---|---|---|---|
-| [OP-001 · L199–219](#61-op-001-establishsession) | `establishSession` | command-like exchange | F00·F90, 세션 복구 | 세션 발급, passenger 생성 없음 | 세션 mode·만료·현재 정책 |
-| [OP-002 · L236–240](#op-002-getpassenger) | `getPassenger` | query | F30, F03/F30 확인 | 없음 | 승객 코드·닉네임·revision |
-| [OP-003 · L242–250](#op-003-createpassenger) | `createPassenger` | idempotent command | F02 | 동의 기록과 passenger 원자 생성 | ACTIVE 세션·현재 profile |
-| [OP-004 · L252–259](#op-004-setnickname) | `setNickname` | idempotent command | F03·F30 | 닉네임 설정 또는 명시적 해제 | NicknameReceipt |
-| [OP-005 · L261–268](#63-op-005-gettoday) | `getToday` | query | F00·F10·F12·F13·F20 | 없음 | 서버 날짜·SEMA·오늘 답변·활성 수 |
-| [OP-006 · L270–298](#64-op-006-prepareanswerwrite) | `prepareAnswerWrite` | command prepare | F11·F22 | 대상·날짜·revision 예약, 본문 저장 없음 | answer-write ticket |
-| [OP-007 · L340–347](#op-007-executecommand) | `executeCommand` | idempotent command | F11·F22·F23·F31 | ticket 종류에 따른 단일 효과 | `EXECUTING` 또는 terminal result |
-| [OP-008 · L349–354](#op-008-getcommandresult) | `getCommandResult` | safe query | F10~F12·F21~F23·F31 | 없음, 부가 정보 보강 가능 | 같은 ticket의 현재 결과 |
-| [OP-009 · L356–361](#op-009-acknowledgecommandresult) | `acknowledgeCommandResult` | idempotent command | 결과 처리 완료 뒤 공통 | 민감 result payload 제거 표시 | 204, outcome tombstone 유지 |
-| [OP-010 · L365–370](#op-010-listanswers) | `listAnswers` | query | F20 | 없음 | bounded keyset page, 최대 20개 |
-| [OP-011 · L372–377](#op-011-getanswer) | `getAnswer` | query | F21·F22·F23 | 없음 | 질문 snapshot·답변 전문·revision |
-| [OP-012 · L300–313](#65-op-012-prepareanswerdelete) | `prepareAnswerDelete` | command prepare | F23 | ownership·revision 예약, 삭제 없음 | answer-delete ticket |
-| [OP-013 · L315–329](#66-op-013-preparealldatadelete) | `prepareAllDataDelete` | command prepare | F31 | 새 mutation 차단용 deletion fence | data-deletion ticket |
-| [OP-014 · L379–381](#69-op-014-submitproducteventbatch) | `submitProductEventBatch` | best-effort command | F00~F31 | 허용된 FE 이벤트 적재 | batch 수락 |
-| [OP-015 · L383–389](#610-op-015-closecommand) | `closeCommand` | idempotent recovery command | F11·F22·F23·F31 | 미실행 명령 봉인 또는 만료 명령의 추가 실행 불가 확인 | 현재 command 결과 또는 종료 receipt |
+| [OP-001 · L209–228](#61-op-001-establishsession) | `establishSession` | command-like exchange | F00·F90, 세션 복구 | 세션 발급, passenger 생성 없음 | 세션 mode·만료·현재 정책 |
+| [OP-002 · L245–249](#op-002-getpassenger) | `getPassenger` | query | F30, F03/F30 확인 | 없음 | 승객 코드·닉네임·revision |
+| [OP-003 · L251–259](#op-003-createpassenger) | `createPassenger` | idempotent command | F02 | 동의 기록과 passenger 원자 생성 | ACTIVE 세션·현재 profile |
+| [OP-004 · L261–269](#op-004-setnickname) | `setNickname` | idempotent command | F03·F30 | 닉네임 설정 또는 명시적 해제 | NicknameReceipt |
+| [OP-005 · L271–278](#63-op-005-gettoday) | `getToday` | query | F00·F10·F12·F13·F20 | 없음 | 서버 날짜·SEMA·오늘 답변·활성 수 |
+| [OP-006 · L280–309](#64-op-006-prepareanswerwrite) | `prepareAnswerWrite` | command prepare | F11·F22 | 대상·날짜·revision 예약, 본문 저장 없음 | answer-write ticket |
+| [OP-007 · L350–358](#op-007-executecommand) | `executeCommand` | idempotent command | F11·F22·F23·F31 | ticket 종류에 따른 단일 효과 | `EXECUTING` 또는 terminal result |
+| [OP-008 · L360–366](#op-008-getcommandresult) | `getCommandResult` | safe query | F10~F12·F21~F23·F31 | 없음, 부가 정보 보강 가능 | 같은 ticket의 현재 결과 |
+| [OP-009 · L368–373](#op-009-acknowledgecommandresult) | `acknowledgeCommandResult` | idempotent command | 결과 처리 완료 뒤 공통 | 민감 result payload 제거 표시 | 204, outcome tombstone 유지 |
+| [OP-010 · L377–382](#op-010-listanswers) | `listAnswers` | query | F20 | 없음 | bounded keyset page, 최대 20개 |
+| [OP-011 · L384–389](#op-011-getanswer) | `getAnswer` | query | F21·F22·F23 | 없음 | 질문 snapshot·답변 전문·revision |
+| [OP-012 · L311–325](#65-op-012-prepareanswerdelete) | `prepareAnswerDelete` | command prepare | F23 | ownership·revision 예약, 삭제 없음 | answer-delete ticket |
+| [OP-013 · L327–339](#66-op-013-preparealldatadelete) | `prepareAllDataDelete` | command prepare | F31 | 새 mutation 차단용 deletion fence | data-deletion ticket |
+| [OP-014 · L391–393](#69-op-014-submitproducteventbatch) | `submitProductEventBatch` | best-effort command | F00~F31 | 허용된 FE 이벤트 적재 | batch 수락 |
+| [OP-015 · L395–411](#610-op-015-closecommand) | `closeCommand` | idempotent recovery command | F11·F22·F23·F31 | 미실행 명령 봉인 또는 만료 명령의 추가 실행 불가 확인 | 현재 command 결과 또는 종료 receipt |
 
 `OP-007~009`는 command 종류와 무관한 공통 lifecycle입니다. OP-015는 사용자 결과 확인/종료 행동의 복구 경로이며 일반 조회나 백그라운드 polling이 임의로 호출하지 않습니다. 신규·수정 저장은 `OP-006`의 discriminated input으로 나누며 별도 화면 API를 만들지 않습니다. 서버가 생성하는 성공 제품 이벤트는 `OP-014`를 거치지 않습니다.
 
@@ -133,9 +133,9 @@ OP 의미·시간·원자성·복구의 원본입니다. HTTP 경로는 채택�
 | F03 | OP-003 ACTIVE context의 profile | 유효한 비어 있지 않은 값만 닉네임 저장 | 조건부 OP-004 | 빈 값·정규화 후 빈 값·실패 뒤 명시적 건너뛰기 |
 | F10 | 오늘 날짜·SEMA 두 질문·응답 상태·수·미확인 결과 | 없음 | OP-005, 조건부 OP-008·009 | 기본/대체 질문 전환·임시본 Sheet·탭 이동 |
 | F11 | 선택 질문과 로컬 임시본 | 신규 답변 command | OP-006~009 | 입력·grapheme 표시·임시 보관·복사 |
-| F12 | 저장 성공 proof·프로필 발췌·활성 수 | 결과 보조 정보 재확인·ack | OP-008~009, 필요 시 OP-005 | 연출·건너뛰기·햅틱·이동 위계 고정 |
+| F12 | 저장 성공 proof·질문 snapshot·활성 수 | 결과 보조 정보 재확인·ack | OP-008~009, 필요 시 OP-005 | 연출·햅틱·이동 위계 고정 |
 | F13 | 서버 호출 필수 없음 | 없음 | 오늘 이동 뒤 F10이 OP-005 | 지난 임시본 열람·복사·로컬 만료 안내 |
-| F20 | OP-010 답변 목록 page, OP-005 활성 누적 수 | 없음 | OP-010, 누적 수는 OP-005 | 월 구획 병합·명시적 더 보기·스크롤 유지 |
+| F20 | OP-010 답변 목록 page, OP-005 활성 누적 수 | 없음 | OP-010, 누적 수는 OP-005 | 월 구획 병합·끝 근접 시 다음 page 요청·스크롤 유지 |
 | F21 | 질문 snapshot·답변 전문·revision | 미확인 수정 결과 확인 | OP-011, 조건부 OP-008·009 | 읽기·수정/삭제 route 이동 |
 | F22 | OP-011 detail과 수정 임시본 | 수정 command | OP-006~009 | 입력·임시 보관·폐기 확인·복사 |
 | F23 | OP-011의 대상 문맥 | 개별 삭제 command | OP-012, OP-007~009 | 1회 확인·취소 |
@@ -143,7 +143,7 @@ OP 의미·시간·원자성·복구의 원본입니다. HTTP 경로는 채택�
 | F31 | 승인된 삭제 범위·보존 예외 | 전체 삭제 command | OP-013, OP-007~009 | 2단계 확인 |
 | F90 | 마지막 안전 오류 ID | 원인이 된 시작 query 재시도 | 주로 OP-001·005 | 고객센터 외부 열기 |
 
-OP-003 성공 응답의 ACTIVE 세션을 F03이 이어받습니다. OP-015는 결과 보존 만료나 실행 전 요청 종료에 한해 해당 작성/삭제 화면에서 소비합니다. F00은 session 응답의 최근 삭제 receipt도 확인해 이전 로컬 generation을 먼저 정리합니다.
+OP-003 성공 응답의 ACTIVE 세션을 F03이 이어받습니다. OP-015는 결과 보존 만료나 실행 전 요청 종료에 한해 해당 작성/삭제 화면에서 소비합니다. F00은 session 응답의 `recentDeletion`도 확인해 이전 로컬 generation을 먼저 정리하고, `DELETION_RECOVERY`이면 해당 삭제 ticket의 결과 확인만 진행합니다.
 
 `OP-014`는 승인된 노출·행동 이벤트가 발생하는 화면에 횡단 적용되며, 기능 요청의 성공이나 이동을 기다리게 하지 않습니다.
 
@@ -157,11 +157,19 @@ OP-003 성공 응답의 ACTIVE 세션을 F03이 이어받습니다. OP-015는 �
 
 ### 5.2 정책·세션·승객
 
-- `EstablishSessionResponse`: access token·만료·`PRE_PASSENGER | ACTIVE | DELETION_RECOVERY` context·현재 정책, 선택적 `recentDeletion` receipt.
-- `CreatePassengerResponse`: 명시적 ACTIVE 세션·현재 profile·정책을 반환합니다. 새 token은 효과의 멱등성 대상이 아니며 재응답에서 새로 발급할 수 있습니다.
+- `EstablishSessionResponse`: access token·만료·context·현재 정책, 선택적 `recentDeletion`.
+- `SessionContext`는 mode별로 닫힌 구조입니다.
+
+  | mode | 필드 | 허용 범위 |
+  |---|---|---|
+  | `PRE_PASSENGER` | `passenger: null` | OP-003, OP-014; OP-002는 404 `PASSENGER_NOT_FOUND` |
+  | `ACTIVE` | `PassengerProfile`, opaque `dataGeneration` | OP-002·004~015, OP-003은 같은 생성 재전송만 |
+  | `DELETION_RECOVERY` | `passenger: null`, `deletionTicketId`, 삭제 대상 `dataGeneration` | 그 삭제 ticket의 OP-007(같은 payload)·008·009·015 |
+
+- `CreatePassengerResponse`: ACTIVE context·현재 정책·선택적 `recentDeletion`을 반환합니다. 새 token은 효과의 멱등성 대상이 아니며 재응답에서 새로 발급할 수 있습니다.
 - `PassengerProfile`: 표시용 승객 코드·nullable 닉네임·revision. 내부 section은 노출하지 않습니다.
-- `NicknameReceipt`: operation ID·적용 당시 profile·결과 보존 만료. receipt의 profile은 과거 적용 증명이며 현재 화면은 필요 시 OP-002 정본을 조회합니다.
-- `recentDeletion`: 전체 삭제 최소 receipt와 ticket ID를 결과 보존 기한까지만 제공합니다. 기존 active 데이터 조회 권한은 포함하지 않습니다.
+- `NicknameReceipt`: operation ID·적용 당시 profile·`resultExpiresAt`. receipt의 profile은 과거 적용 증명이며 현재 profile은 OP-002가 정본입니다.
+- `recentDeletion`: 삭제 `ticketId`·`deletedGeneration`·`resultExpiresAt`·전체 삭제 proof(§5.5)를 결과 보존 기한까지만 제공합니다. 해당 ticket의 OP-008·009 외 과거 데이터 접근 권한은 포함하지 않습니다.
 
 ### 5.3 SEMA·질문·답변
 
@@ -169,9 +177,9 @@ OP-003 성공 응답의 ACTIVE 세션을 F03이 이어받습니다. OP-015는 �
 - `AnswerCore`에는 dailySemaId와 저장 당시 semaId·semaVersion·semaCode, 질문 ID·버전·role·원문 snapshot, 생성/수정 시각·revision을 보존합니다. 완료 화면의 발신 문맥은 현재 교체 콘텐츠와 섞지 않습니다.
 - 발췌 `Excerpt`는 `profile: COMPACT | STANDARD | EXPANDED`, 실제 `limits`(maxGraphemes·maxLogicalLines), `sourceRevision`, `text`, `isTruncated`입니다. 화면별 응답 필드는 공통 `excerpt`를 사용합니다.
 - 서버는 선택한 프로필의 실제 예산 안에서 원문 시작부터 가장 긴 연속 prefix를 생성합니다. 빈 줄·공백·개행을 보존하고 EGC 경계에서만 자릅니다. 줄임표는 본문에 넣지 않습니다. FE는 pre-wrap 및 실제 wrapping overflow를 합쳐 생략 여부를 결정합니다.
-- 프로필별 현재 예산과 F10/F12/F20 선택의 SSOT는 [04 IX-027 · L217–258](./04_INTERACTIONS_AND_COPY.md#510-발췌날짜동적-값--ix-027ix-028)입니다. OP-005·008·010의 `excerptProfile` query로 선택하며 값 자체를 enum 이름에 넣지 않습니다. 조정한 예산은 배포 설정에 반영하고 응답의 실제 limits를 사용합니다. 전면 본문 조회나 행별 상세 요청으로 우회하지 않습니다.
+- 프로필별 현재 예산과 화면별 선택의 SSOT는 [04 IX-027 · L214–255](./04_INTERACTIONS_AND_COPY.md#510-발췌날짜동적-값--ix-027ix-028)입니다. OP-005·008·010의 `excerptProfile` query로 선택하며, 생략 시 기본값은 OpenAPI의 OP별 default(OP-005 EXPANDED, OP-008 COMPACT, OP-010 STANDARD)입니다. 예산 수치를 enum 이름에 넣지 않고, 조정한 예산은 배포 설정에 반영하며 응답의 실제 limits를 사용합니다. 전면 본문 조회나 행별 상세 요청으로 우회하지 않습니다.
 
-현행 F20은 질문·날짜만 표시하고 응답은 F21에서 읽습니다(03 §6.1). OP-010의 STANDARD `excerpt`와 기존 query·DTO·revision·privacy 계약은 호환을 위해 그대로 유지합니다. 목록에서 필드를 받는다는 이유로 화면 또는 접근성 이름에 응답 발췌를 노출하지 않습니다. 이번 UI 변경은 wire schema나 서버 동작 변경이 아닙니다.
+F12·F20은 응답 발췌를 표시하지 않습니다(03 §5.3·§6.1). OP-008·010의 `excerpt`는 wire 계약으로 유지하며, FE는 받은 발췌를 해당 화면이나 접근성 이름에 노출하지 않습니다.
 
 ### 5.4 오늘과 목록
 
@@ -190,11 +198,11 @@ OP-003 성공 응답의 ACTIVE 세션을 F03이 이어받습니다. OP-015는 �
 | NOT_APPLIED | 해당 요청은 적용되지 않았고 앞으로도 적용 불가 | 오류별 복구 후 새로운 사용자 행동 |
 | CLOSED_OUTCOME_UNAVAILABLE | 과거 결과 보존은 끝났으나 이전 명령의 추가 적용이 불가능함을 인증 | 과거 성공/실패 표시 금지, OP-015의 최신 상태를 바탕으로 다음 행동 안내 |
 
-`CommandTicket`에는 ticketId·operationId·kind·target·acceptedAt·acceptedDateKst·executeBy를 고정합니다. 생성 응답은 PREPARED이며 재요청은 같은 ticket의 현재 `CommandResult`를 반환합니다. 실행 후에는 EXECUTING이 될 수 있습니다. resultExpiresAt은 terminal 진입 때 처음 확정하며 PREPARED/EXECUTING에는 넣지 않습니다.
+`CommandTicket`에는 ticketId·operationId·kind·target·acceptedAt·acceptedDateKst·executeBy를 고정합니다. target은 kind별로 `ANSWER_WRITE` CREATE(dailySemaId)·UPDATE(answerId·expectedRevision), `ANSWER_DELETE`(answerId·expectedRevision), `ALL_DATA_DELETE`(빈 객체)입니다. 생성 응답은 PREPARED이며 재요청은 같은 ticket의 현재 `CommandResult`를 반환합니다. terminal 결과에는 completedAt·resultExpiresAt을 넣고 PREPARED/EXECUTING에는 넣지 않습니다. CLOSED_OUTCOME_UNAVAILABLE은 `executionSealed: true`를 가지며 OP-015 응답에서만 `reconciliation`(§6.10)을 필수로 포함합니다.
 
-`SUCCEEDED.proof`는 종류별 최소 receipt입니다. 답변 write는 answerId·revision·mode·acceptedDateKst, 개별 삭제는 대상·DELETED/ALREADY_ABSENT·삭제 시각, 전체 삭제는 삭제 시각·보존 예외 종료일을 증명합니다. 질문 원문·발췌·닉네임은 proof에 넣지 않습니다. `NOT_APPLIED.error`의 안정 code·category도 ack 후까지 유지합니다.
+`SUCCEEDED.proof`는 종류별 최소 receipt입니다. 답변 write는 answerId·revision·mode(CREATED/UPDATED)·acceptedDateKst, 개별 삭제는 answerId·effect(DELETED/ALREADY_ABSENT)·deletedAt, 전체 삭제는 effect(DELETED)·deletedAt·consentEvidenceRetainedUntil·backupsExpireBy입니다. 질문 원문·발췌·닉네임은 proof에 넣지 않습니다. `NOT_APPLIED.error`는 terminal 오류 code·category만 담고 ack 후에도 유지합니다.
 
-표시 정보 `presentation`은 AVAILABLE/UNAVAILABLE/ACKNOWLEDGED/RESOURCE_CHANGED로 분리합니다. AVAILABLE 안의 발췌와 활성 수도 독립 availability를 갖습니다. 발췌·질문 snapshot은 proof의 revision과 같을 때만 보강하며, 수정·삭제로 달라졌으면 RESOURCE_CHANGED를 반환하고 OP-005·010·011로 현재 상태를 조회합니다. 과거 성공을 취소하거나 새 원문을 옛 revision에 결합하지 않습니다. 활성 수는 조회 당시 observedAt을 표시 의미로 사용합니다. ack로 presentation을 제거해도 proof와 오류는 resultExpiresAt까지 유지합니다.
+표시 정보 `presentation`은 kind별로 다릅니다. `ANSWER_WRITE`는 AVAILABLE(질문 snapshot·발췌·활성 수)/UNAVAILABLE/ACKNOWLEDGED/RESOURCE_CHANGED, `ANSWER_DELETE`는 AVAILABLE(활성 수)/UNAVAILABLE/ACKNOWLEDGED이며 `ALL_DATA_DELETE`에는 presentation이 없습니다. AVAILABLE 안의 발췌와 활성 수도 독립 availability를 갖습니다. 발췌·질문 snapshot은 proof의 revision과 같을 때만 보강하며, 수정·삭제로 달라졌으면 RESOURCE_CHANGED를 반환하고 OP-005·010·011로 현재 상태를 조회합니다. 과거 성공을 취소하거나 새 원문을 옛 revision에 결합하지 않습니다. 활성 수는 조회 당시 observedAt을 표시 의미로 사용합니다. ack로 presentation을 제거해도 proof와 오류는 resultExpiresAt까지 유지합니다.
 
 ## 6. 도메인 오퍼레이션 계약
 
@@ -209,14 +217,13 @@ type EstablishSessionInput = {
 1. FE는 앱인토스가 반환한 유효 `HASH`만 전송합니다. SDK 오류·미지원·`INVALID_CATEGORY`·빈 값에는 passenger 생성이나 임의 키 fallback을 하지 않고 F90으로 이동합니다.
 2. ARCA 서버는 partner server 자격과 mTLS로 앱인토스 서버에 키를 검증한 뒤에만 세션을 발급합니다.
 3. 유효하지만 ARCA에 등록되지 않았거나 이전과 다른 유효 hash는 `PRE_PASSENGER`, 기존 활성 passenger와 연결된 같은 hash는 기기 변경과 무관하게 `ACTIVE`입니다. 현재 호출에서 유효 hash를 받지 못한 상태와 유효하지만 미등록인 hash를 구분합니다.
-4. 전체 삭제가 실행 중이거나 성공했지만 결과가 아직 acknowledgement·만료되지 않은 키는 `DELETION_RECOVERY`이며 해당 삭제 ticket의 OP-008·009·015와 이미 수락한 OP-007의 동일 payload 재전송만 허용합니다. 일반 요청이나 새로운 실행은 허용하지 않습니다. 삭제 `NOT_APPLIED` 뒤에는 기존 passenger의 `ACTIVE`, 성공 결과 ack·만료 뒤에는 새 `PRE_PASSENGER`를 발급합니다.
+4. 전체 삭제가 EXECUTING이거나, SUCCEEDED이지만 아직 ack·만료되지 않은 키는 `DELETION_RECOVERY`이며 해당 삭제 ticket의 OP-008·009·015와 이미 수락한 OP-007의 동일 payload 재전송만 허용합니다. 그 밖의 OP는 403 `SESSION_SCOPE_INSUFFICIENT`입니다. 삭제 PREPARED·`NOT_APPLIED`에는 기존 passenger의 `ACTIVE`, 성공 결과 ack 또는 만료 뒤에는 `PRE_PASSENGER`(재탑승했다면 새 `ACTIVE`)를 발급하고 resultExpiresAt 전이면 `recentDeletion`을 함께 반환합니다.
 5. access token은 opaque이고 `expiresAt`을 반환합니다. refresh token과 cookie는 사용하지 않습니다.
-6. `SESSION_RECOVERY_REQUIRED`와 `recoveryAllowed: true`를 서버가 명시한 경우에만 FE가 익명 키 재검증 뒤 같은 요청을 한 번 자동 재시도합니다. timeout이나 임의 401 추정으로 복구하지 않습니다.
-7. 재교환 뒤 dataGeneration이 바뀌거나 PRE_PASSENGER로 바뀌면 이전 generation의 mutation 자동 재시도를 중단하고 로컬 소유 영역을 정리합니다. OP-003의 PRE→ACTIVE 동일 생성 복구와 해당 삭제 receipt 확인만 명시적 예외입니다. command 실행 재시도는 반드시 같은 ticket·generation이어야 하며 새 command를 만들지 않습니다.
+6. 서버가 폐기한 token(OP-003으로 대체된 PRE token, 전체 삭제 실행 수락으로 폐기된 normal token)의 요청은 401 `SESSION_RECOVERY_REQUIRED`와 `recoveryAllowed: true`를 반환합니다. 이 경우에만 FE가 OP-001 재교환 뒤 같은 요청을 한 번 자동 재시도합니다. 알 수 없는 token은 `SESSION_INVALID`이며 timeout이나 임의 401 추정으로 복구하지 않습니다.
+7. FE는 새 session 응답을 로컬 복구보다 먼저 확인합니다. PRE_PASSENGER이거나 ACTIVE의 dataGeneration이 기존 로컬 소유 영역과 다르면 이전 generation의 mutation 자동 재시도를 중단하고 민감 cache·임시본·추적 상태를 제거하며, 그 결과를 새 generation에 적용하지 않습니다. 이 정리는 과거 command의 성공/실패를 새로 주장하지 않습니다. OP-003의 PRE→ACTIVE 동일 생성 복구와 해당 삭제 receipt 확인만 예외입니다. command 실행 재시도는 같은 ticket·generation으로만 하며 새 command를 만들지 않습니다.
+8. `recentDeletion.deletedGeneration`은 정리할 이전 로컬 영역을 확인하는 최소 식별자이며 비밀이나 인증 수단이 아닙니다.
 
 닉네임·passenger code를 이용한 로그인, 복구 code, 별도 계정 연결과 수동 복구 endpoint는 MVP에 두지 않습니다. 익명 키가 바뀌면 삭제 전 passenger와 기록을 합치지 않습니다.
-
-새 session 응답을 로컬 복구보다 먼저 확인합니다. PRE_PASSENGER이거나 ACTIVE의 dataGeneration이 기존 로컬 소유 영역과 다르면 이전 generation의 민감 cache·임시본·추적 상태를 제거하고 그 결과를 새 generation에 적용하지 않습니다. 이 정리는 과거 개별 command의 성공/실패를 새로 주장하지 않습니다. recentDeletion.deletedGeneration은 같은 이전 영역을 확인하는 최소 식별자이며 비밀이나 인증 수단이 아닙니다.
 
 원본 익명 키는 이 요청의 JSON body 외에 URL·query·분석·로그·오류·영속 클라이언트 저장에 포함하지 않습니다. 서버 내부 연결 방식과 암호화 키 관리는 백엔드 책임입니다.
 
@@ -258,7 +265,8 @@ type SetNicknameInput = {
 - F03의 빈 값·정규화 뒤 빈 값·저장 확정 실패 뒤 `닉네임 없이 계속하기`에는 요청을 보내지 않습니다.
 - F30에서 지우기는 `null`을 전송합니다.
 - 같은 주체·generation·operation ID·입력 재전송은 revision 재검증 전에 같은 NicknameReceipt를 재사용합니다. 첫 요청의 expectedRevision이 다르면 REVISION_CONFLICT이며 명령 효과는 없습니다.
-- 결과는 완료 후 7일간 보존합니다. 이후 같은 key는 OPERATION_RESULT_EXPIRED로 거절하며 재실행하지 않습니다. 최소 key/fingerprint 봉인 정보는 현 generation 수명까지만 유지하고 전체 삭제 시 제거합니다. 현재 profile 확인 뒤 사용자가 새로 저장하면 새 key·최신 revision을 사용합니다. 전체 삭제 fence는 OP-004도 차단합니다.
+- 결과는 완료 후 7일간 보존합니다. 이후 같은 key는 OPERATION_RESULT_EXPIRED로 거절하며 재실행하지 않습니다. 최소 key/fingerprint 봉인 정보는 현 generation 수명까지만 유지하고 전체 삭제 시 제거합니다. 현재 profile 확인 뒤 사용자가 새로 저장하면 새 key·최신 revision을 사용합니다.
+- 전체 삭제 fence(§9.4) 중에는 409 `COMMAND_ALREADY_PENDING`과 삭제 ticket의 `QUERY_COMMAND` recovery를 반환하고 적용하지 않습니다.
 
 ### 6.3 OP-005 `getToday`
 
@@ -293,8 +301,9 @@ type PrepareAnswerWriteInput =
 - prepare는 본문을 받거나 저장하지 않습니다.
 - `CREATE`는 수락 순간 서버 KST 날짜·활성 SEMA·정본 질문·한 활성 답변 제약을 확인하고 승객·dailySemaId write slot을 예약합니다.
 - 클라이언트가 질문 원문을 보내지 않습니다. 서버가 `questionId`·version에 해당하는 정본을 snapshot 후보로 고정합니다.
-- `UPDATE`는 소유권과 `expectedRevision`을 고정합니다. 저장 당시 질문 snapshot은 바꾸지 않습니다.
-- 같은 대상의 기존 미결 command가 있으면 새 ticket을 만들지 않고 `COMMAND_ALREADY_PENDING`과 복구 가능한 ticket ID를 반환합니다.
+- `CREATE` 거절은 `dailySemaId`가 현재 날짜가 아니면 `DATE_CHANGED`, 같은 날짜의 semaId·version이 현재 콘텐츠가 아니면 `SEMA_REPLACED`, 해당 dailySemaId에 활성 답변이 있으면 `ANSWER_ALREADY_EXISTS`입니다.
+- `UPDATE`는 소유권과 `expectedRevision`을 고정합니다. 없거나 비소유면 404 `ANSWER_NOT_FOUND`, revision이 다르면 409 `REVISION_CONFLICT`입니다. 저장 당시 질문 snapshot은 바꾸지 않습니다.
+- 같은 대상의 기존 미결 command나 전체 삭제 fence가 있으면 새 ticket을 만들지 않고 409 `COMMAND_ALREADY_PENDING`과 해당 ticket의 `QUERY_COMMAND` recovery를 반환합니다.
 - executeBy는 실행 payload 최초 영속 수락 기한입니다. PREPARED에서 기한이 지나면 예약을 해제하고 NOT_APPLIED / COMMAND_EXPIRED로 끝냅니다. 실행 수락과 만료/OP-015는 같은 원자적 상태 전이로 경쟁하며 한쪽만 이깁니다. EXECUTING은 기한 경과로 취소하지 않고 실제 commit 또는 rollback까지 결과를 추적합니다.
 - prepare 응답 유실로 ticketId가 없으면 기기에 먼저 보관한 operation ID·동일 prepare 입력으로 재전송해 현재 CommandResult를 복원합니다. 새 operation ID를 만들지 않습니다. 이 재전송은 아직 미수락이었다면 예약을 처음 생성할 수 있으나 본문을 실행하지는 않습니다.
 - 재진입의 PREPARED 실행은 원 저장 의도와 정확한 보관 payload가 확인될 때만 같은 ticket으로 수행합니다. 본문이 없거나 바뀌었으면 자동 실행하지 않고 OP-015로 종료한 뒤 사용자 재시도를 받습니다.
@@ -309,8 +318,9 @@ type PrepareAnswerDeleteInput = {
 }
 ```
 
-- prepare 시 ownership·현재 revision을 확인하고 ticket에 고정합니다.
-- 처음부터 없거나 삭제됐거나 비소유인 대상은 모두 `ANSWER_NOT_FOUND`입니다.
+- prepare 시 ownership·현재 revision을 확인하고 ticket에 고정합니다. revision이 다르면 409 `REVISION_CONFLICT`입니다.
+- 처음부터 없거나 삭제됐거나 비소유인 대상은 모두 404 `ANSWER_NOT_FOUND`입니다.
+- 전체 삭제 fence 중에는 OP-006과 같은 409 `COMMAND_ALREADY_PENDING`입니다.
 - prepare 뒤 같은 revision이 다른 삭제로 먼저 사라지면 실행 결과는 `SUCCEEDED / ALREADY_ABSENT`입니다.
 - prepare 뒤 내용이 수정돼 revision이 달라지면 `NOT_APPLIED / REVISION_CONFLICT`이며 수정된 답변을 삭제하지 않습니다.
 
@@ -323,12 +333,10 @@ type PrepareAllDataDeleteInput = {
 ```
 
 - `ACTIVE` 세션만 준비할 수 있습니다.
-- prepare 성공부터 같은 passenger의 OP-004 및 새 write/delete 준비·기존 PREPARED 실행을 차단합니다. 이미 EXECUTING인 변경이 있으면 prepare 자체를 COMMAND_ALREADY_PENDING으로 거절합니다. 이미 예약된 command는 삭제 성공 때 폐기하며, 삭제 예약 만료/미적용이면 원래 기한 안에서만 재개할 수 있습니다. 삭제 기한 안에 실행되지 않으면 fence를 해제하고 COMMAND_EXPIRED로 끝냅니다.
-- 실행을 수락하면 현재 normal session을 폐기하고 다음 OP-001은 처리 중에 `DELETION_RECOVERY`를 발급합니다.
-- 성공 범위는 활성 답변·발췌·passenger profile·닉네임·설정·활성 동의 연결·linkable raw analytics와 서버 idempotency payload입니다.
-- 성공 뒤 접근권한과 논리 영역을 분리한 증빙 저장소에는 약관 종류·버전·동의 시각·삭제 시각·가명 동의 주체값만 1년 보존합니다. 백업은 복구에 사용하지 않고 요청일부터 최대 30일 안에 만료합니다.
-- MVP의 삭제 대상 활성 데이터·linkable raw analytics·command 제어 정보와 분리된 동의 증빙은 하나의 ACID 트랜잭션 경계에서 변경합니다. 동의 증빙은 접근권한·논리 저장 영역을 분리하되 동일 트랜잭션을 지원해야 합니다. 상세 제약은 §10.3을 따릅니다.
-- 삭제 commit 전 rollback은 NOT_APPLIED / ALL_DATA_DELETE_FAILED로 기존 활성 데이터를 유지합니다. commit과 SUCCEEDED receipt를 원자적으로 기록합니다. 응답 유실은 실패가 아니며 EXECUTING 조회로 실제 commit 여부를 복원합니다. 비가역 삭제 뒤 복원을 보장하는 분산 보상 방식은 기본 구현으로 채택하지 않습니다.
+- prepare 성공부터 삭제 ticket이 PREPARED·EXECUTING인 동안 deletion fence(§9.4)를 적용합니다. fence는 같은 passenger의 OP-004·006·012와 기존 PREPARED ticket의 OP-007을 409 `COMMAND_ALREADY_PENDING`(삭제 ticket의 `QUERY_COMMAND`)으로 거절합니다. 이미 EXECUTING인 변경이나 다른 삭제 ticket이 있으면 OP-013 자체를 같은 오류와 그 ticket으로 거절합니다. 이미 예약된 command는 삭제 성공 때 폐기하며, 삭제가 미적용으로 끝나면 원래 기한 안에서만 재개할 수 있습니다. 삭제 기한 안에 실행되지 않으면 fence를 해제하고 COMMAND_EXPIRED로 끝냅니다.
+- 실행을 수락하면 현재 normal session을 폐기하고, 다음 OP-001은 처리 중과 성공 ack 전까지 `DELETION_RECOVERY`를 발급합니다.
+- 삭제 범위·보존 예외·원자성 경계는 §10.3이 정의합니다.
+- 삭제 commit 전 rollback은 NOT_APPLIED / ALL_DATA_DELETE_FAILED로 기존 활성 데이터를 유지합니다. commit과 SUCCEEDED receipt를 원자적으로 기록합니다. 응답 유실은 실패가 아니며 EXECUTING 조회로 실제 commit 여부를 복원합니다. 비가역 삭제 뒤의 분산 보상 복원으로 NOT_APPLIED를 표시하지 않습니다.
 
 ### 6.7 OP-007~009 공통 command lifecycle
 
@@ -341,7 +349,8 @@ type ExecuteCommandInput =
 
 #### OP-007 `executeCommand`
 
-- ticket에 저장된 kind·passenger·target·revision·generation과 input kind를 대조합니다.
+- ticket에 저장된 kind·passenger·target·revision·generation과 input kind를 대조합니다. 없거나 비소유인 ticket은 404 `COMMAND_NOT_FOUND`, 유효한 kind가 ticket 종류와 다르면 422 `COMMAND_PAYLOAD_MISMATCH`이며 ticket 상태는 바뀌지 않습니다.
+- PREPARED ticket의 실행은 전체 삭제 fence 중 409 `COMMAND_ALREADY_PENDING`(삭제 ticket)으로 거절합니다. 이미 수락된 ticket의 동일 payload 재전송은 fence와 무관하게 현재 결과를 반환합니다.
 - answer content는 trim·축약하지 않고 Unicode 확장 grapheme 1~2,000자로 검증·저장합니다. 결합 이모지는 한 EGC, 논리적 줄바꿈 하나는 한 EGC이며 공백만 있는 문자열도 유효합니다.
 - wire 형식은 맞지만 content domain 검증이 실패한 첫 실행은 `NOT_APPLIED / ANSWER_CONTENT_INVALID`로 terminal 처리합니다. 같은 ticket에 내용을 고쳐 재실행하지 않고 현재 날짜의 새 prepare가 필요합니다.
 - 처음 수락한 실행 payload의 digest를 ticket에 고정합니다. 같은 ticket 실행은 최초 효과와 결과를 재사용하고, 다른 content로 재사용하면 적용하지 않고 `COMMAND_PAYLOAD_MISMATCH`를 반환합니다.
@@ -353,7 +362,8 @@ type ExecuteCommandInput =
 - 데이터 변경이 없는 safe query이며 §5.5의 다섯 상태를 반환합니다. 조회가 PREPARED를 실행하거나 취소하지 않습니다. 서버 만료 처리는 별도 worker/트랜잭션 책임입니다.
 - PREPARED·EXECUTING·조회 timeout·CLOSED_OUTCOME_UNAVAILABLE을 NOT_APPLIED로 바꾸지 않습니다.
 - answer write proof는 불변이고 표시 정보만 §5.5의 revision·observedAt 규칙으로 보강합니다.
-- normal session 폐기 뒤 전체 삭제 ticket은 처리 중과 terminal 성공의 ack·만료 전까지 같은 익명 키로 얻은 `DELETION_RECOVERY` 세션에서 조회할 수 있습니다.
+- normal session 폐기 뒤 전체 삭제 ticket은 처리 중과 terminal 성공의 ack·만료 전까지 같은 익명 키로 얻은 `DELETION_RECOVERY` 세션에서 조회할 수 있습니다. 다른 ticket 조회는 403 `SESSION_SCOPE_INSUFFICIENT`입니다.
+- 없거나 비소유인 ticket은 404 `COMMAND_NOT_FOUND`이며 미적용 증거가 아닙니다.
 
 #### OP-009 `acknowledgeCommandResult`
 
@@ -387,7 +397,17 @@ type ExecuteCommandInput =
 - 인증된 소유 ticket에 대한 idempotent 복구 명령입니다. 본문 `{}`이며 UI의 명시적 요청 종료 또는 만료 결과 정리 행동에서만 호출합니다.
 - PREPARED이면 실행 수락과 원자적으로 경쟁해 NOT_APPLIED / COMMAND_CLOSED를 기록합니다. EXECUTING이면 202의 같은 상태를 반환하고 강제 취소하지 않습니다. terminal 보존 중이면 기존 결과를 반환합니다.
 - 결과 보존 만료 뒤에는 최소 봉인 registry로 과거 명령의 추가 실행 불가를 검증하고 CLOSED_OUTCOME_UNAVAILABLE과 reconciliation을 반환합니다. registry조차 없거나 비소유이면 COMMAND_NOT_FOUND이며 미적용·종료 증거로 사용하지 않습니다.
-- reconciliation은 checkedAt, `CREATE_CURRENT_DAY | REVIEW_CURRENT_ANSWER | RETURN_TODAY | RETURN_ARCHIVE` 중 nextAction, 필요 시 현재 answerId·revision을 포함합니다. 서버는 현재 날짜·해당 dailySemaId 활성 답변·대상 존재·미결 경쟁 명령을 같은 snapshot에서 확인합니다. 경쟁 명령은 COMMAND_ALREADY_PENDING과 ticket을 반환합니다. 전체 삭제 성공 뒤의 정상 작업 재개는 OP-001의 현재 generation으로만 합니다.
+- reconciliation은 checkedAt과 nextAction을 포함합니다. 서버는 현재 날짜·해당 dailySemaId 활성 답변·대상 존재·미결 경쟁 명령을 같은 snapshot에서 확인합니다.
+
+  | nextAction | 조건 | 추가 필드 |
+  |---|---|---|
+  | `REVIEW_CURRENT_ANSWER` | UPDATE·DELETE 대상 답변이 존재, 또는 CREATE의 dailySemaId에 활성 답변이 존재 | 현재 answerId·revision |
+  | `CREATE_CURRENT_DAY` | CREATE의 dailySemaId가 현재 날짜이고 활성 답변 없음 | 없음 |
+  | `RETURN_TODAY` | CREATE의 날짜가 지났고 그 날짜의 활성 답변 없음 | 없음 |
+  | `RETURN_ARCHIVE` | UPDATE·DELETE 대상 답변이 없음 | 없음 |
+  | `RETURN_TODAY` | 전체 삭제 ticket | 없음 |
+
+- 경쟁 명령이 미결이면 409 `COMMAND_ALREADY_PENDING`과 그 ticket을 반환합니다. 전체 삭제 ticket의 정상 작업 재개는 nextAction과 무관하게 OP-001의 현재 generation으로만 합니다.
 - nextAction은 그 snapshot의 안내이며 새 변경의 허가 토큰이 아닙니다. 다음 사용자 저장/삭제는 새 ID·최신 날짜·revision으로 다시 검증합니다. 과거 요청의 성공·실패를 추정하거나 자동 재저장하지 않습니다.
 
 ## 7. HTTP wire 계약
@@ -415,12 +435,12 @@ access token과 anonymous key는 query, URL path, referrer와 오류 정보에 �
 | OP | Method·path | 인증 mode | 입력 | 성공 상태·body |
 |---|---|---|---|---|
 | OP-001 | `POST /v1/sessions` | 없음 | `EstablishSessionInput` | `201 EstablishSessionResponse` |
-| OP-002 | `GET /v1/passenger` | ACTIVE | 없음 | `200 PassengerProfile` |
+| OP-002 | `GET /v1/passenger` | ACTIVE·PRE_PASSENGER | 없음 | `200 PassengerProfile`; PRE는 404 |
 | OP-003 | `POST /v1/passenger` | PRE_PASSENGER 또는 같은 주체 ACTIVE 재요청 | `Idempotency-Key`, consent body | `201/200 CreatePassengerResponse` |
 | OP-004 | `PUT /v1/passenger/nickname` | ACTIVE | `Idempotency-Key`, SetNicknameInput body | `200 NicknameReceipt` |
 | OP-005 | `GET /v1/today` | ACTIVE | excerptProfile query(선택) | `200 TodayReadModel` |
 | OP-006 | `POST /v1/answer-write-commands` | ACTIVE | `Idempotency-Key`, prepare body | `201/200 CommandResult` |
-| OP-007 | `PUT /v1/commands/{ticketId}/execution` | ticket owner | 종류별 execution body | `200 terminal` 또는 `202 EXECUTING` |
+| OP-007 | `PUT /v1/commands/{ticketId}/execution` | ticket owner의 ACTIVE 또는 해당 DELETION_RECOVERY | 종류별 execution body | `200 terminal` 또는 `202 EXECUTING` |
 | OP-008 | `GET /v1/commands/{ticketId}` | ACTIVE·해당 DELETION_RECOVERY·recentDeletion 제한 권한 | excerptProfile query(선택) | `200 CommandResult` |
 | OP-009 | `PUT /v1/commands/{ticketId}/acknowledgement` | OP-008과 같음 | `{}` | `204` |
 | OP-010 | `GET /v1/answers?cursor={cursor}` | ACTIVE | cursor·excerptProfile query(선택) | `200 AnswerPage` |
@@ -517,9 +537,9 @@ requestId는 서버의 무작위 비식별 진단값입니다. 오류의 알려�
 |---|---|---|---|---|
 | `INVALID_REQUEST` | VALIDATION | 400 | 공통 | wire 형식 거절, 서버 부작용 없음 |
 | `ANONYMOUS_KEY_INVALID` | AUTH | 401 | OP-001 | 검증 실패, passenger·session 생성 없음 |
-| `SESSION_RECOVERY_REQUIRED` | AUTH | 401 | OP-002~015 | `recoveryAllowed: true`, OP-001 뒤 동일 요청 최대 1회 |
+| `SESSION_RECOVERY_REQUIRED` | AUTH | 401 | OP-002~015 | 서버가 폐기한 token(§6.1). `recoveryAllowed: true`, OP-001 뒤 동일 요청 최대 1회 |
 | `SESSION_INVALID` | AUTH | 401 | OP-002~015 | 자동 복구 지시 없음, 입력 보존 뒤 F90/재진입 |
-| `SESSION_SCOPE_INSUFFICIENT` | AUTH | 403 | OP-002~015 | 현재 mode에서 금지, mutation 재시도 금지 |
+| `SESSION_SCOPE_INSUFFICIENT` | AUTH | 403 | OP-002~015 | 현재 mode·DELETION_RECOVERY 대상 ticket 밖의 요청, mutation 재시도 금지 |
 | `PASSENGER_NOT_FOUND` | VALIDATION | 404 | OP-002 | passenger 생성 없음 |
 | `PASSENGER_ALREADY_EXISTS` | CONFLICT | 409 | OP-003 | OP-002로 기존 profile 확인 |
 | `CONSENT_REQUIRED` | VALIDATION | 422 | OP-003 | 필수 동의 부족, passenger 생성 없음 |
@@ -529,12 +549,12 @@ requestId는 서버의 무작위 비식별 진단값입니다. 오류의 알려�
 | `DATE_CHANGED` | VALIDATION | 422 | OP-006 | 과거 신규 저장 prepare 거절, F13 연결 |
 | `SEMA_REPLACED` | VALIDATION | 422 | OP-006 | 이전 SEMA 신규 저장 prepare 거절, OP-005 갱신 |
 | `ANSWER_ALREADY_EXISTS` | CONFLICT | 409 | OP-006 | 같은 passenger·SEMA의 활성 답변 유지 |
-| `ANSWER_NOT_FOUND` | VALIDATION | 404 또는 terminal | OP-007·011~012 | 없음·삭제·비소유 통합, 대상 변경 없음 |
+| `ANSWER_NOT_FOUND` | VALIDATION | 404 또는 terminal | OP-006~007·011~012 | 없음·삭제·비소유 통합, 대상 변경 없음 |
 | `REVISION_CONFLICT` | CONFLICT | 409 또는 terminal | OP-004·006~007·012 | 최신 resource 조회 전 재mutation 금지 |
 | `CURSOR_INVALID` | VALIDATION | 400 | OP-010 | 첫 page 새로고침 필요 |
-| `COMMAND_ALREADY_PENDING` | CONFLICT | 409 | OP-004·006·007·012·013·015 | `QUERY_COMMAND`로 기존 ticket 확인 |
-| `COMMAND_NOT_FOUND` | VALIDATION | 404 | OP-007~009 | 다른 소유자와 없음·만료를 구분 노출하지 않음 |
-| `COMMAND_PAYLOAD_MISMATCH` | VALIDATION | 422 | OP-007 | 적용 없음, 올바른 같은 ticket만 실행 가능 |
+| `COMMAND_ALREADY_PENDING` | CONFLICT | 409 | OP-004·006·007·012·013·015 | 미결 경쟁 command 또는 전체 삭제 fence. `QUERY_COMMAND`의 ticket 확인 |
+| `COMMAND_NOT_FOUND` | VALIDATION | 404 | OP-007~009·015 | 다른 소유자와 없음·만료를 구분 노출하지 않음 |
+| `COMMAND_PAYLOAD_MISMATCH` | VALIDATION | 422 | OP-007 | 수락된 payload와 다른 content 또는 ticket과 다른 kind. 적용 없음, 올바른 같은 ticket만 실행 가능 |
 | `IDEMPOTENCY_KEY_REUSED` | CONFLICT | 409 | OP-003·004·006·012·013 | 다른 payload 재사용, 적용 없음 |
 | `COMMAND_CLOSED` | CONFLICT | terminal `NOT_APPLIED` | OP-015 | 실행 전 원자적 봉인 완료 |
 | `COMMAND_NOT_TERMINAL` | CONFLICT | 409 | OP-009 | 아직 ack 불가, 결과 조회 |
@@ -545,7 +565,7 @@ requestId는 서버의 무작위 비식별 진단값입니다. 오류의 알려�
 | `MAINTENANCE` | MAINTENANCE | 503 | 공통 | 현재 입력·목록 유지, 사용자 재시도 |
 | `INTERNAL_ERROR` | MAINTENANCE | 500 | 공통 | 원인 비노출, mutation 결과는 ticket으로만 확인 |
 
-`DATE_CHANGED`, `SEMA_REPLACED`, `ANSWER_ALREADY_EXISTS`는 신규 저장 prepare에서만 판정합니다. 한 번 수락된 create ticket은 실행 때 날짜·SEMA를 다시 평가하지 않으며 executeBy·generation fence·예약/유일성 보호를 적용합니다. `ANSWER_NOT_FOUND`와 `REVISION_CONFLICT`는 prepare 전에 HTTP 오류일 수 있고, 유효 prepare 뒤 대상이 삭제·수정된 경우에는 terminal `NOT_APPLIED.error`가 됩니다.
+`DATE_CHANGED`, `SEMA_REPLACED`, `ANSWER_ALREADY_EXISTS`는 신규 저장 prepare에서만 판정합니다. 한 번 수락된 create ticket은 실행 때 날짜·SEMA를 다시 평가하지 않으며 executeBy·generation fence·예약/유일성 보호를 적용합니다. `ANSWER_NOT_FOUND`와 `REVISION_CONFLICT`는 prepare 전에 HTTP 오류일 수 있고, 유효 prepare 뒤 대상이 삭제·수정된 경우에는 terminal `NOT_APPLIED.error`가 됩니다. terminal `NOT_APPLIED.error`는 OpenAPI `DomainError`의 여섯 code(ANSWER_CONTENT_INVALID·ANSWER_NOT_FOUND·REVISION_CONFLICT·COMMAND_CLOSED·COMMAND_EXPIRED·ALL_DATA_DELETE_FAILED)로 닫혀 있으며, 표의 적용 OP와 무관하게 `CommandResult`를 반환하는 모든 OP(006~008·012·013·015)의 응답에 나타날 수 있습니다.
 
 ### 8.3 결과 확실성
 
@@ -560,7 +580,7 @@ requestId는 서버의 무작위 비식별 진단값입니다. 오류의 알려�
 | timeout·connection error·응답 parse 실패 | 적용 여부 알 수 없음 | ticket이 있으면 OP-008; prepare 응답 유실이면 같은 ID·입력으로 ticket 복원 |
 | command 조회 부재·timeout | 미적용을 뜻하지 않음 | 추적 상태·본문 보관, 재조회/지원 경로 |
 
-오직 서버가 인증된 SUCCEEDED/NOT_APPLIED를 반환한 경우에만 저장·삭제 완료 또는 미적용을 표시합니다([Interaction IX-036 · L287–298](./04_INTERACTIONS_AND_COPY.md#514-저장-결과-확인과-안전한-이탈--ix-036)).
+오직 서버가 인증된 SUCCEEDED/NOT_APPLIED를 반환한 경우에만 저장·삭제 완료 또는 미적용을 표시합니다([Interaction IX-036 · L284–295](./04_INTERACTIONS_AND_COPY.md#514-저장-결과-확인과-안전한-이탈--ix-036)).
 
 ## 9. 멱등성·동시성·결과 보존
 
@@ -598,7 +618,7 @@ requestId는 서버의 무작위 비식별 진단값입니다. 오류의 알려�
 ### 9.4 generation fence
 
 - 모든 ACTIVE session과 command ticket은 서버 내부 passenger data generation에 묶입니다.
-- 전체 삭제 prepare는 OP-004·새 mutation 준비·기존 PREPARED 실행을 막고, 실행 수락은 normal session을 폐기합니다. ACTIVE session 응답의 opaque dataGeneration은 로컬 소유 영역 분리에만 사용하며 FE가 해석하거나 변경 권한으로 제출하지 않습니다.
+- deletion fence는 삭제 ticket이 PREPARED·EXECUTING인 동안 OP-004·새 mutation 준비·기존 PREPARED 실행을 409 `COMMAND_ALREADY_PENDING`(삭제 ticket의 `QUERY_COMMAND`)으로 막습니다. 실행 수락은 normal session을 폐기합니다. ACTIVE session 응답의 opaque dataGeneration은 로컬 소유 영역 분리에만 사용하며 FE가 해석하거나 변경 권한으로 제출하지 않습니다.
 - 삭제 성공 뒤 과거 generation의 session·ticket·idempotency payload·지연 worker는 읽기·쓰기를 수행할 수 없습니다.
 - 같은 익명 키가 이후 다시 들어오면 새 `PRE_PASSENGER`에서 새 passenger를 만들 수 있지만 삭제 전 데이터와 합치지 않습니다.
 
@@ -627,6 +647,7 @@ requestId는 서버의 무작위 비식별 진단값입니다. 오류의 알려�
 |---|---|
 | 답변 원문·질문 snapshot·발췌 | 활성 저장소에서 제거 |
 | passenger profile·nickname·settings | 활성 저장소에서 제거 |
+| 활성 동의 연결·idempotency payload·명령 registry | 활성 저장소에서 제거 |
 | 현재 session·이전 generation·미완료 command | 폐기·실행 차단 |
 | linkable raw analytics | terminal 성공 전 삭제·비가역 unlink 확인 |
 | 비식별 일별 aggregate | 개인과 재연결할 수 없는 경우 장기 유지 가능 |
@@ -635,7 +656,7 @@ requestId는 서버의 무작위 비식별 진단값입니다. 오류의 알려�
 | 삭제 command receipt | content 없이 `resultExpiresAt`까지 제한 조회 |
 | 기기 임시본·캐시·세션 | SUCCEEDED 뒤 이전 generation 영역 제거, 제한 token은 ack 시도 뒤 제거 |
 
-MVP에서는 답변·profile·settings·raw analytics·event dedupe·명령 registry·generation/세션 폐기·삭제 receipt를 하나의 ACID 경계에서 처리합니다. 동의 증빙은 접근권한과 논리 저장소를 분리한 테이블로 같은 commit에 기록합니다. 외부 분석 저장소나 답변 검색 인덱스에 삭제 대상 복제본을 만들지 않습니다. 메모리 cache·queue·worker는 모든 read/write 직전에 generation fence를 확인해 commit 뒤 과거 작업을 차단하고 민감 payload를 지속 보관하지 않습니다. 원자성 경계를 나눌 필요가 생기면 이 계약의 구현 가설 변경으로 숨기지 않고 AR-06 약속을 충족하는 설계·장애 증거를 먼저 채택합니다. DB 제품·테이블 상세는 백엔드가 선택합니다.
+MVP에서는 답변·profile·settings·동의 연결·raw analytics·event dedupe·idempotency payload·명령 registry·generation/세션 폐기·삭제 receipt를 하나의 ACID 경계에서 처리합니다. 동의 증빙은 접근권한과 논리 저장소를 분리한 테이블로 같은 commit에 기록합니다. 외부 분석 저장소나 답변 검색 인덱스에 삭제 대상 복제본을 만들지 않습니다. 메모리 cache·queue·worker는 모든 read/write 직전에 generation fence를 확인해 commit 뒤 과거 작업을 차단하고 민감 payload를 지속 보관하지 않습니다. 원자성 경계를 나누는 설계는 AR-06을 충족하는 설계·장애 증거와 함께 이 계약의 변경으로 채택합니다. DB 제품·테이블 상세는 백엔드가 선택합니다.
 
 `all_data_deleted` 측정은 삭제된 분석 주체를 다시 만들지 않도록 개인 raw event가 아니라 비식별 aggregate 증가로 기록합니다. terminal 실패에는 기존 상태를 유지하며 삭제됐다는 문구나 로컬 clear를 실행하지 않습니다.
 
@@ -659,7 +680,7 @@ MVP에서는 답변·profile·settings·raw analytics·event dedupe·명령 regi
 | `answer_deleted` | BE | answer delete command `SUCCEEDED` |
 | `all_data_deleted` | BE aggregate | 전체 삭제 terminal 성공 뒤 비식별 증가 |
 
-FE는 BE 소유 성공 이벤트를 전송하지 않습니다. 이 경계로 응답 유실·화면 이탈에 따른 성공 이벤트 누락과 중복을 막습니다.
+FE는 BE 소유 성공 이벤트를 전송하지 않습니다.
 
 ### 11.2 batch DTO와 중복 제거
 
@@ -710,7 +731,7 @@ FE는 BE 소유 성공 이벤트를 전송하지 않습니다. 이 경계로 응
 
 ### 12.2 서버와 FE 공통 의무
 
-- 전송은 HTTPS, 저장 데이터는 at-rest encryption을 적용합니다([Rules DP-01 · L127](../../docs/ARCA_MVP_RULES.md#데이터-보호와-관찰-가능성)).
+- 전송은 HTTPS, 저장 데이터는 at-rest encryption을 적용합니다([Rules DP-01 · L126](../../docs/ARCA_MVP_RULES.md#데이터-보호와-관찰-가능성)).
 - reverse proxy, APM, API gateway, Sentry와 애플리케이션 logger에서 민감 header·body·response를 redact합니다.
 - 허용 운영 로그는 route template, method, status, latency, 안전한 request ID, 안정 error code처럼 내용 없는 값으로 제한합니다.
 - `Cache-Control: no-store`를 모든 인증·session 응답에 적용하고 CDN shared cache를 사용하지 않습니다.
@@ -728,16 +749,17 @@ FE는 BE 소유 성공 이벤트를 전송하지 않습니다. 이 경계로 응
 - [`getServerTime`](https://developers-apps-in-toss.toss.im/bedrock/reference/framework/%EB%84%A4%ED%8A%B8%EC%9B%8C%ED%81%AC/network.html): Unix millisecond server time capability
 - [`Storage`](https://developers-apps-in-toss.toss.im/bedrock/reference/framework/%EC%A0%80%EC%9E%A5%EC%86%8C/Storage.html): 기기 로컬 key-value capability
 
-공개 공식 문서의 SDK 2.x 표기와 로컬 승인 결정의 SDK 3.x 기준이 일치하지 않습니다. 이 문서는 SDK major에 의존하지 않고 capability 경계를 정의하며, 실제 SDK·WebView 최소 버전과 import 방식은 프로젝트 생성·출시 직전에 공식 콘솔과 문서로 재확인합니다.
+이 문서는 SDK major에 의존하지 않고 capability 경계만 정의합니다. SDK·WebView 최소 버전과 import 방식은 06 §2.3과 출시 전 공식 콘솔·문서로 확인합니다.
 
-공식 문서가 보여 주는 anonymous key 검증은 유효한 앱별 key인지 확인하는 흐름입니다. 요청마다 holder proof·nonce·attestation을 제공한다는 계약은 확인되지 않았으므로, 이 문서는 그 보장을 가정하지 않습니다.
+anonymous key 검증은 유효한 앱별 key인지 확인하는 흐름이며, 이 계약은 요청별 holder proof·nonce·attestation을 가정하지 않습니다.
 
 ### 13.2 실제 값·구현 확인 필요
 
 | 항목 | 현재 상태 | 완료 조건·영향 |
 |---|---|---|
 | ARCA API host·환경·CORS origin | 없음 | 실제 배포값과 TLS 확인 전 실서버 통합 차단 |
-| OpenAPI·백엔드 route·DTO 구현 | 제안 OpenAPI 작성, 서버 없음 | schema 파생 구현·양방향 contract test 통과 |
+| OpenAPI·백엔드 route·DTO 구현 | 제안 OpenAPI, FE 파생 타입·validator·MSW Mock 있음, 서버 없음 | 서버 구현·양방향 contract test 통과 |
+| OP-014 FE 전송 경로 | ArcaApi·Mock 모두 미구현(06 단계 8) | 06 §10의 queue·flush 구현과 08 §9 검증 |
 | partner app 식별·mTLS 인증서·Toss 검증 설정 | 없음 | OP-001 sandbox/운영 검증 전 로그인 흐름 통합 차단 |
 | session TTL·command `executeBy` 운영 수치 | 없음 | response field를 구현하고 07 경계 fixture 확정 |
 | 약관·개인정보처리방침 ID·version·실제 URL | 없음 | F02·F30 운영 연결과 법무 승인 전 출시 차단 |
@@ -752,15 +774,15 @@ FE는 BE 소유 성공 이벤트를 전송하지 않습니다. 이 경계로 응
 
 ### 14.1 프런트엔드 구현 연결
 
-OP port·wire·오류 정규화는 [06 §3 · L128–207](./06_FRONTEND_SPEC.md#3-최소-구조와-의존-방향), session·generation은 [06 §4 · L209–250](./06_FRONTEND_SPEC.md#4-상태-소유권과-적용-가능성)·[06 §5 · L252–329](./06_FRONTEND_SPEC.md#5-라우팅과-앱-시작), cache는 [06 §6 · L331–386](./06_FRONTEND_SPEC.md#6-query-cache와-목록), 보관·복구·ack·삭제는 [06 §8 · L427–525](./06_FRONTEND_SPEC.md#8-storage-journal과-command-복구)·[06 §9 · L527–576](./06_FRONTEND_SPEC.md#9-세션-닉네임과-삭제), 분석·개인정보는 [06 §10 · L578–642](./06_FRONTEND_SPEC.md#10-플랫폼-ui-분석-오류와-보호)에서 구현합니다.
+OP port·wire·오류 정규화는 [06 §3 · L133–226](./06_FRONTEND_SPEC.md#3-최소-구조와-의존-방향), session·generation은 [06 §4 · L228–270](./06_FRONTEND_SPEC.md#4-상태-소유권과-적용-가능성)·[06 §5 · L272–351](./06_FRONTEND_SPEC.md#5-라우팅과-앱-시작), cache는 [06 §6 · L353–411](./06_FRONTEND_SPEC.md#6-query-cache와-목록), 보관·복구·ack·삭제는 [06 §8 · L453–551](./06_FRONTEND_SPEC.md#8-storage-journal과-command-복구)·[06 §9 · L553–602](./06_FRONTEND_SPEC.md#9-세션-닉네임과-삭제), 분석·개인정보는 [06 §10 · L604–659](./06_FRONTEND_SPEC.md#10-플랫폼-ui-분석-오류와-보호)에서 구현합니다.
 
 ### 14.2 `07_MOCK_SCENARIOS.md`
 
-해당 slice의 정상·실패·경계 시나리오는 [07 §11 · L179–307](./07_MOCK_SCENARIOS.md#11-이름-있는-시나리오-카탈로그), 고정 고위험 사건 조합은 [07 §12.1 · L311–320](./07_MOCK_SCENARIOS.md#121-base--delta--pairwise)을 사용합니다. API-V-001~027·§16의 불변식은 유지하며 자동 전이 생성·seed·pairwise는 [07 §12.2 · L322–324](./07_MOCK_SCENARIOS.md#122-seeded-state-transition-생성)의 선택 확장입니다. HTTP 상태·OP마다 별도 테스트를 의무화하지 않습니다.
+해당 slice의 정상·실패·경계 시나리오는 [07 §11 · L181–309](./07_MOCK_SCENARIOS.md#11-이름-있는-시나리오-카탈로그), 고정 고위험 사건 조합은 [07 §12.1 · L313–322](./07_MOCK_SCENARIOS.md#121-base--delta--pairwise)을 사용합니다. API-V-001~027·§16의 불변식은 유지하며 자동 전이 생성·seed·pairwise는 [07 §12.2 · L324–326](./07_MOCK_SCENARIOS.md#122-seeded-state-transition-생성)의 선택 확장입니다. HTTP 상태·OP마다 별도 테스트를 의무화하지 않습니다.
 
 ### 14.3 `08_QA_AND_INTEGRATION.md`
 
-API-V·OP의 Mock/실서버 동등성은 [08 §4 · L78–103](./08_QA_AND_INTEGRATION.md#4-계약mock실서버-동등성), 플랫폼은 [08 §7 · L126–138](./08_QA_AND_INTEGRATION.md#7-입력-접근성-플랫폼-검증), 민감정보·보존/삭제는 [08 §9 · L148–177](./08_QA_AND_INTEGRATION.md#9-개인정보-분석-보안과-artifact), 실제 법무·운영 연결과 출시는 [08 §13 · L225–265](./08_QA_AND_INTEGRATION.md#13-결함-flaky-예외와-gate)을 따릅니다. [06 §12 · L666–683](./06_FRONTEND_SPEC.md#12-구현-순서)의 각 slice에서 검증을 누적하고 실서버·출시 증거를 마감합니다.
+API-V·OP의 Mock/실서버 동등성은 [08 §4 · L78–103](./08_QA_AND_INTEGRATION.md#4-계약mock실서버-동등성), 플랫폼은 [08 §7 · L126–138](./08_QA_AND_INTEGRATION.md#7-입력-접근성-플랫폼-검증), 민감정보·보존/삭제는 [08 §9 · L148–177](./08_QA_AND_INTEGRATION.md#9-개인정보-분석-보안과-artifact), 실제 법무·운영 연결과 출시는 [08 §13 · L242–282](./08_QA_AND_INTEGRATION.md#13-결함-flaky-예외와-gate)을 따릅니다. [06 §12 · L683–700](./06_FRONTEND_SPEC.md#12-구현-순서)의 각 slice에서 검증을 누적하고 실서버·출시 증거를 마감합니다.
 
 ## 15. 계약 검증 추적
 
@@ -802,13 +824,13 @@ API-V·OP의 Mock/실서버 동등성은 [08 §4 · L78–103](./08_QA_AND_INTEG
 
 ### 15.2 기계 판독 계약의 재현 검증
 
-기계 판독 원본은 [OpenAPI](./arca.openapi.json), 합성 데이터는 [계약 예시](./contract_examples.json)입니다. 계약 검증 실행기와 고정된 검증 의존성은 현재 제공되지 않았습니다. 프런트엔드 저장소에서 실행기를 마련하고 재현 가능한 환경·설치/실행 명령·결과를 `08_QA_AND_INTEGRATION.md`에 연결합니다.
+기계 판독 원본은 [OpenAPI](./arca.openapi.json), 합성 데이터는 [계약 예시](./contract_examples.json)입니다. FE 저장소의 `api:generate`가 OpenAPI에서 타입·Zod validator를 생성하고, `test:contract`가 생성물 최신 여부와 계약 예시의 정상/거절 판정을 검증합니다. 실행 결과는 `08_QA_AND_INTEGRATION.md`에 연결합니다.
 
 검증기는 OpenAPI 구조·내부 참조·15개 OP 연결·합성 정상/거절 예시를 확인해야 합니다. 형식 기준은 [OpenAPI 3.1.1](https://spec.openapis.org/oas/v3.1.1.html)과 [JSON Schema 2020-12](https://json-schema.org/draft/2020-12/json-schema-validation)를 사용합니다. 구조 검증과 별개로 EGC·소유권·commit/rollback·경쟁 실행의 증거를 API-V와 07·08에 연결합니다.
 
 ## 16. 저장 요청 분할 비교와 상태 전이 검증
 
-D-API-028은 단일 수락 방식의 비교 권한 승인입니다. 기본 계약은 현재 prepare/execute이며 단일 수락 endpoint를 운영 OpenAPI에 추가하지 않습니다. 비교안은 content·operation ID·대상·revision을 한 번에 영속 수락하고 즉시 terminal 또는 EXECUTING을 반환합니다. 요청 미도착/지연 수락과 종료가 경쟁할 때 원자적으로 ID를 봉인하는 방식까지 포함해야 합니다.
+기본 계약은 prepare/execute이며 단일 수락 endpoint는 운영 OpenAPI에 없습니다(D-API-028). 비교안은 content·operation ID·대상·revision을 한 번에 영속 수락하고 즉시 terminal 또는 EXECUTING을 반환합니다. 요청 미도착/지연 수락과 종료가 경쟁할 때 원자적으로 ID를 봉인하는 방식까지 포함해야 합니다.
 
 | 비교 항목 | 필요한 증거 |
 |---|---|
@@ -818,4 +840,4 @@ D-API-028은 단일 수락 방식의 비교 권한 승인입니다. 기본 계�
 | 복잡도 | FE 복구 상태·필요 영속값·BE 예약/봉인 상태와 운영 복구 부담 비교 |
 | 채택 | API-V 불변식 동일 통과, 지연 개선과 복잡도 비용 근거, FE/BE adapter·OpenAPI·담당 명세를 함께 갱신 |
 
-호출 순서·내부 함수 이름 대신 효과 최대 1회·하루 한 활성 응답·원문 보존·terminal 비역행·삭제 후 부활 없음·민감 로그 없음·복구 가능성을 검증합니다. 가상 시간·두 기기의 고정 사건 순서는 [07 §12.1 · L311–320](./07_MOCK_SCENARIOS.md#121-base--delta--pairwise), Mock/실서버 동등성은 [08 §4 · L78–103](./08_QA_AND_INTEGRATION.md#4-계약mock실서버-동등성)를 따릅니다. 자동 전이 생성·seed·최소 실패 순서 축소는 선택 확장이며 도입 시 재현 정보를 남깁니다. schema 검증만으로 동작 검증을 완료하지 않습니다.
+호출 순서·내부 함수 이름 대신 효과 최대 1회·하루 한 활성 응답·원문 보존·terminal 비역행·삭제 후 부활 없음·민감 로그 없음·복구 가능성을 검증합니다. 가상 시간·두 기기의 고정 사건 순서는 [07 §12.1 · L313–322](./07_MOCK_SCENARIOS.md#121-base--delta--pairwise), Mock/실서버 동등성은 [08 §4 · L78–103](./08_QA_AND_INTEGRATION.md#4-계약mock실서버-동등성)를 따릅니다. 자동 전이 생성·seed·최소 실패 순서 축소는 선택 확장이며 도입 시 재현 정보를 남깁니다. schema 검증만으로 동작 검증을 완료하지 않습니다.

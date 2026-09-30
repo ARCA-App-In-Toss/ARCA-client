@@ -79,7 +79,8 @@
         "x-arca-operation-id": "OP-002",
         "x-contract-status": "adopted-proposal",
         "x-allowed-session-modes": [
-          "ACTIVE"
+          "ACTIVE",
+          "PRE_PASSENGER"
         ],
         "responses": {
           "200": {
