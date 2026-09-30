@@ -45,6 +45,8 @@ lerna-debug.log*
 # Local product and platform references
 /docs/
 /spec/
+/ARCA_BACKEND_REQUIREMENTS.md
+/ARCA_API_RESPONSE_SPEC.md
 
 # AST-004·AST-012 generation work files (sources, references, grid PNGs, converter, prompts); the app uses export/ only
 /design/assets/AST-004/*

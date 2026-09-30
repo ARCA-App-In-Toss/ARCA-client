@@ -239,7 +239,7 @@
     },
     {
       "id": "step-8-integration",
-      "status": "TODO",
+      "status": "IN_PROGRESS",
       "phase_file": ".claude/resource/phases/step-8-integration.md",
       "scope": [
         "real-server",
@@ -251,7 +251,28 @@
         "spec",
         "architecture",
         "experience"
-      ]
+      ],
+      "work": {
+        "goal": "backend-independent release evidence; real-server/device rows BLOCKED",
+        "done": [
+          "spec reconciliation to current implementation",
+          "mock contract fixes (OP-005/006/007/011/012/015)",
+          "error envelope recovery check",
+          "MS ID test linkage 62/64",
+          "privacy canary sink tests",
+          "--release gate PASS (local)"
+        ],
+        "next": [
+          "await real server / devices / ops inputs"
+        ],
+        "deferred": [
+          "API-V-001~027 real server",
+          "real iOS/Android/WebView/AT",
+          "CORS/TLS/SEMA/policy URLs",
+          "OP-014 FE analytics",
+          "HTTP status-code pair check"
+        ]
+      }
     }
   ],
   "retry": {},
@@ -280,81 +301,13 @@
     "step-6-archive-management": {
       "ts": "2026-09-27T15:28:18.667Z",
       "evidence": "사용자: 새 컨텍스트에서 7단계 진행 지시 (6단계 커밋, push 후)"
+    },
+    "step-7-settings-delete": {
+      "ts": "2026-09-30T00:00:00.000Z",
+      "evidence": "사용자: \"백엔드랑 무관한 부분 먼저 시작\" 8단계 진입 지시, 이후 \"4-1. 허용\"으로 기록 허용"
     }
   },
   "log": [
-    {
-      "ts": "2026-09-27T09:51:45.325Z",
-      "msg": "step-2 approved; step-3-core-experience started"
-    },
-    {
-      "ts": "2026-09-27T11:23:49.017Z",
-      "msg": "step-3 manual-review: retry budget exhausted after round-2 fixes (arch unlock, IX-037 wording); gate checks run individually"
-    },
-    {
-      "ts": "2026-09-27T11:29:24.348Z",
-      "msg": "step-3 manual-review: user chose B (confirmation review of two round-2 fixes, 1 round)"
-    },
-    {
-      "ts": "2026-09-27T11:30:52.197Z",
-      "msg": "step-3 B confirmation: experience PASS, architecture FAIL (silent setView on same-epoch fence loss); code untouched, manual-review kept"
-    },
-    {
-      "ts": "2026-09-27T11:32:32.398Z",
-      "msg": "step-3 resumed: user allowed up to 2 more fix attempts (answer C); retry reset"
-    },
-    {
-      "ts": "2026-09-27T11:33:41.607Z",
-      "msg": "step-3 fix attempt 1: Run.setView throws AbandonedRun when !alive(); +2 unit tests (fail without fix); 40/40 PASS"
-    },
-    {
-      "ts": "2026-09-27T11:35:44.024Z",
-      "msg": "step-3 confirmation architecture PASS after fix attempt 1; retry cleared"
-    },
-    {
-      "ts": "2026-09-27T11:35:44.024Z",
-      "msg": "step-3-core-experience COMPLETED: full gate PASS, reviews spec/architecture/experience PASS; awaiting user approval"
-    },
-    {
-      "ts": "2026-09-27T11:40:15.682Z",
-      "msg": "step-3 approved; step-4-onboarding started"
-    },
-    {
-      "ts": "2026-09-27T11:43:06.699Z",
-      "msg": "step-4 slice F01 intro done; lint/typecheck/unit PASS"
-    },
-    {
-      "ts": "2026-09-27T12:06:12.759Z",
-      "msg": "step-4 slice F02/OP-003/handoff done; unit 139 + contract PASS"
-    },
-    {
-      "ts": "2026-09-27T12:13:49.859Z",
-      "msg": "step-4 completion candidate: all slices done; unit 163, contract 59, browser 18 PASS; round-1 reviews started"
-    },
-    {
-      "ts": "2026-09-27T12:15:25.657Z",
-      "msg": "step-4 round-1: architecture PASS (2 notes), experience FAIL (unconfirmed copy), spec pending; fix attempt 1"
-    },
-    {
-      "ts": "2026-09-27T12:18:43.476Z",
-      "msg": "step-4 round-2: spec/architecture/experience PASS after fix attempt 1; retry cleared; review record written"
-    },
-    {
-      "ts": "2026-09-27T12:19:34.831Z",
-      "msg": "step-4-onboarding COMPLETED: full gate PASS, browser 18 PASS, reviews spec/architecture/experience PASS; awaiting user approval"
-    },
-    {
-      "ts": "2026-09-27T12:47:54.150Z",
-      "msg": "step-4 approved; step-5-recovery started"
-    },
-    {
-      "ts": "2026-09-27T12:54:20.175Z",
-      "msg": "step-5 slice IX-041 close done; lint/typecheck/unit 180 PASS"
-    },
-    {
-      "ts": "2026-09-27T13:23:13.682Z",
-      "msg": "step-5 completion candidate: all slices done; unit 212, browser 22 PASS; reviews started"
-    },
     {
       "ts": "2026-09-27T13:29:43.546Z",
       "msg": "step-5 round-1: spec PASS (after continuation), architecture FAIL (2), experience FAIL (1 + sheet Back); fix attempt 1 applied; unit 214, browser 22 PASS; architecture round-2 PASS"
@@ -430,6 +383,10 @@
     {
       "ts": "2026-09-27T16:24:05.963Z",
       "msg": "step-7-settings-delete COMPLETED: full gate PASS, unit 272, contract 59, browser 36 PASS, reviews spec/architecture/experience PASS; awaiting user approval"
+    },
+    {
+      "ts": "2026-09-30T01:00:00.000Z",
+      "msg": "step-7 approved; step-8 started; backend-independent slices done, release gate PASS, external evidence BLOCKED"
     }
   ]
 }

@@ -1,0 +1,32 @@
+{
+  "id": "step-8-integration",
+  "reviewers": { "spec": "PASS", "architecture": "PASS", "experience": "PASS" },
+  "methods": { "spec": "agent", "architecture": "local", "experience": "local" },
+  "files": [
+    "src/mocks/handlers.ts",
+    "src/mocks/handlers.contract.test.ts",
+    "src/data/api/errorEnvelope.ts",
+    "src/data/api/arcaApi.test.ts",
+    "src/domain/commands/answerWriteCoordinator.test.ts",
+    "src/domain/drafts/draftWriter.test.ts",
+    "src/domain/drafts/draftRepository.test.ts",
+    "src/screens/today/PastDraftScreen.test.tsx",
+    "src/screens/today/WriteScreen.test.tsx",
+    "src/platform/appsInTossPlatform.test.ts",
+    "tests/support/privacy-sinks.ts",
+    "tests/browser-mock/privacy.spec.ts",
+    "tests/browser-mock/core.spec.ts",
+    "tests/browser-time/privacy.spec.ts",
+    "tests/browser-time/date-change.spec.ts"
+  ],
+  "gate": { "mode": "--release", "result": "PASS" },
+  "external_evidence": [
+    { "status": "BLOCKED", "ref": "08 §14.1 실서버 API-V-001~027·운영 retention/backup" },
+    { "status": "BLOCKED", "ref": "08 §14.1 실제 iOS/Android 토스 WebView·OS IME·VoiceOver/TalkBack" },
+    { "status": "BLOCKED", "ref": "08 §13.6 법무·고객센터·SEMA·API·CORS·TLS 연결" },
+    { "status": "NOT_RUN", "ref": "08 §14.1 분석 수신·allowlist·오류 보고 sink (FE OP-014 미구현)" },
+    { "status": "NOT_RUN", "ref": "08 §14.1 원격 CI" }
+  ],
+  "commit": null,
+  "ts": "2026-09-30T00:45:00.000Z"
+}
