@@ -303,3 +303,6 @@
 | D-TECH-011 | D-TECH-023·D-TECH-050~052 | TDS 제외; UI 선별·Tailwind 허용·Emotion 선택 사용 | [06 §2.4~2.5](./06_FRONTEND_SPEC.md) |
 | D-TECH-037 | D-TECH-038·D-TECH-047 | 핵심 Mock 흐름과 첫 작성의 저장 버튼 비교; inline 운영 시작값·#37 게이트 유지 | [06 §10.2·12](./06_FRONTEND_SPEC.md) |
 | D-API-008 | D-API-027 | 화면명 기반 발췌 대신 공통 프로필·실제 limits; 서버 prefix·FE overflow 판정 유지 | [05 §5.3](./05_API_SPEC.md) |
+| IX-019 | 폐기(구현하지 않음) | F11·F22 조건부 저장 바·inline/bar 비교; 저장은 inline 하나 | [04 §2](./04_INTERACTIONS_AND_COPY.md) |
+| IX-038·CPY-F10-037·CPY-F11-043 | 폐기(구현하지 않음) | 첫 SEMA 설명·첫 작성의 긴 보관 설명·펼쳐 읽기; F11·F22 짧은 보관 안내 상시 표시 | [04 §2](./04_INTERACTIONS_AND_COPY.md) |
+| CPY-F12-002·003 | 폐기(구현하지 않음) | F12 연출 건너뛰기 조작; 이동 행동 즉시 조작·Reduced Motion 정지 | [04 §2](./04_INTERACTIONS_AND_COPY.md) |

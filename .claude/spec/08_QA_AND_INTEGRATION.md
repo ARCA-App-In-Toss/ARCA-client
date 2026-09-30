@@ -1,7 +1,7 @@
 # ARCA QA 및 통합 검증 명세
 
-- v1.3 · 2026-09-28 · 제품 책임자 승인 설계; 로컬 정적·단위·브라우저 실행 및 UI 비교 증거는 §14.1. 실서버·실기기·출시 gate는 별도 미완료.
-- 소유 범위: 검증 층·환경·명령·증거·완료 판정. 시작 상태와 기대 결과는 [.claude/spec/07_MOCK_SCENARIOS.md §11 · 약 L179–307](07_MOCK_SCENARIOS.md#11-이름-있는-시나리오-카탈로그).
+- v1.4 · 2026-09-30 · 제품 책임자 승인 설계; 로컬 정적·단위·브라우저 실행 및 UI 비교 증거는 §14.1. 실서버·실기기·출시 gate는 별도 미완료.
+- 소유 범위: 검증 층·환경·명령·증거·완료 판정. 시작 상태와 기대 결과는 [.claude/spec/07_MOCK_SCENARIOS.md §11 · 약 L181–309](07_MOCK_SCENARIOS.md#11-이름-있는-시나리오-카탈로그).
 
 ## 1. 범위, 원칙과 현재 자료
 
@@ -17,10 +17,10 @@
 | 입력·접근성·플랫폼 | [.claude/spec/08_QA_AND_INTEGRATION.md §7 · 약 L126–138](08_QA_AND_INTEGRATION.md#7-입력-접근성-플랫폼-검증) |
 | 개인정보·분석·보존 | [.claude/spec/08_QA_AND_INTEGRATION.md §9 · 약 L148–177](08_QA_AND_INTEGRATION.md#9-개인정보-분석-보안과-artifact) |
 | 성능·시각 채택 | [.claude/spec/08_QA_AND_INTEGRATION.md §10 · 약 L179–194](08_QA_AND_INTEGRATION.md#10-성능-시각과-사용성) |
-| 명령·실행 기록 | [.claude/spec/08_QA_AND_INTEGRATION.md §11 · 약 L196–209](08_QA_AND_INTEGRATION.md#11-환경과-명령-계약) → [.claude/spec/08_QA_AND_INTEGRATION.md §12 · 약 L211–223](08_QA_AND_INTEGRATION.md#12-결과와-증거-기록) |
-| PR/merge/출시 판단 | [.claude/spec/08_QA_AND_INTEGRATION.md §13 · 약 L225–265](08_QA_AND_INTEGRATION.md#13-결함-flaky-예외와-gate) |
+| 명령·실행 기록 | [.claude/spec/08_QA_AND_INTEGRATION.md §11 · 약 L196–226](08_QA_AND_INTEGRATION.md#11-환경과-명령-계약) → [.claude/spec/08_QA_AND_INTEGRATION.md §12 · 약 L228–240](08_QA_AND_INTEGRATION.md#12-결과와-증거-기록) |
+| PR/merge/출시 판단 | [.claude/spec/08_QA_AND_INTEGRATION.md §13 · 약 L242–282](08_QA_AND_INTEGRATION.md#13-결함-flaky-예외와-gate) |
 
-로컬 source·lockfile·runner와 실행 결과는 §14.1에 기록합니다. 원격 CI·실제 기기·실서버/운영 결과는 미검증이며 로컬 통과로 대신하지 않습니다. 제품 판정은 [docs/ARCA_MVP_ACCEPTANCE.md §3 · 약 L48–150](../../docs/ARCA_MVP_ACCEPTANCE.md#3-핵심-qa-시나리오), 충돌 처리는 [.claude/spec/00_INDEX.md §4 · 약 L55–76](00_INDEX.md#4-충돌-우선순위와-정정-절차)을 따릅니다.
+로컬 source·lockfile·runner와 실행 결과는 §14.1에 기록합니다. 원격 CI·실제 기기·실서버/운영 결과는 미검증이며 로컬 통과로 대신하지 않습니다. 제품 판정은 [docs/ARCA_MVP_ACCEPTANCE.md §3 · 약 L48–150](../../docs/ARCA_MVP_ACCEPTANCE.md#3-핵심-qa-시나리오), 충돌 처리는 [.claude/spec/00_INDEX.md §4 · 약 L57–78](00_INDEX.md#4-충돌-우선순위와-정정-절차)을 따릅니다.
 
 ### 1.4 결과 상태
 
@@ -41,7 +41,7 @@
 | 정적/빌드 | lint·타입·금지 import·생성 drift·Mock 운영 제외 | 사용자 동작은 별도 |
 | domain | 순수 문자열·시간·journal·command 클라이언트 로직 | HTTP/DOM/SDK/DB 보장 제외 |
 | component+MSW | UI·입력·오류·focus와 fetch/validator 연결 | WebView·네이티브 IME/보조기술 제외 |
-| browser E2E | 실제 build의 핵심 route·DOM·재진입·cache 연결 | 실제 Toss SDK·기기 조작 제외 |
+| browser E2E | production bundle의 시작·Mock 제외, Mock dev 서버의 핵심 route·DOM·재진입·cache 연결 | 실제 Toss SDK·기기 조작 제외 |
 | iOS/Android 기기 | Storage·IME·Back·Safe Area·lifecycle·VoiceOver/TalkBack | 서버 원자성·보존 제외 |
 | 실서버/운영 | API 의미·동시성·원자 삭제·KST·CORS/TLS·보존 job | 실제 기기 UI는 별도 |
 
@@ -54,24 +54,24 @@
 - 첫 slice는 개발용 ACTIVE 승객의 질문→작성→저장→다시 읽기입니다. `MS-CORE-001~003·005~009`를 붙이고 운영 build에는 동의/탑승 우회를 포함하지 않습니다.
 - P0-core/recovery는 해당 흐름·Coordinator·Storage 구현과 동시에 검증합니다. P1은 해당 기능 변경 시, P2는 capability/장식 최초 사용 시부터 누적합니다. 관련 MVP 기능의 출시에 P1/P2도 필요합니다.
 - 64개 ID는 추적 단위입니다. 여러 ID를 한 테스트로 충족할 수 있습니다. `MS-CORE-009`와 `MS-PLATFORM-003`은 공통 실행합니다.
-- 고정 고위험 조합은 [.claude/spec/07_MOCK_SCENARIOS.md §12.1 · 약 L311–320](07_MOCK_SCENARIOS.md#121-base--delta--pairwise)를 적용합니다. pairwise·seeded transition·자동 축소는 선택이며 미도입/새 seed 미실행을 완료 차단 사유로 삼지 않습니다. 발견한 계약 위반은 일반 결함으로 처리합니다.
+- 고정 고위험 조합은 [.claude/spec/07_MOCK_SCENARIOS.md §12.1 · 약 L313–322](07_MOCK_SCENARIOS.md#121-base--delta--pairwise)를 적용합니다. pairwise·seeded transition·자동 축소는 선택이며 미도입/새 seed 미실행을 완료 차단 사유로 삼지 않습니다. 발견한 계약 위반은 일반 결함으로 처리합니다.
 
 ### 3.2 scenario family별 필수 층
 
 | scenario 범위 | 주 검증 층과 결과 | 대표 연결 확인 | 실제 환경에서 추가 확인할 사실 |
 |---|---|---|---|
-| `MS-CORE-001~010`  [.claude/spec/07_MOCK_SCENARIOS.md §11.2 · 약 L187–202](07_MOCK_SCENARIOS.md#112-p0-핵심-질문작성저장다시-읽기) | 원문·보관 timing은 domain, 입력·저장·미확인·완료 표시는 component+MSW | 질문→저장→다시 읽기와 응답 유실 후 재진입 browser smoke | iOS/Android 입력·완료 조작, 실서버 저장·중복 방지 |
-| `MS-SES-001~004`  [.claude/spec/07_MOCK_SCENARIOS.md §11.3 · 약 L204–218](07_MOCK_SCENARIOS.md#113-session탑승닉네임) | component+MSW의 bootstrap·guard·복구 결과 | 핵심 흐름 시작에 포함 | 실제 익명 키·session 복구 |
-| `MS-ONB-001~003`, `MS-NICK-001~002`  [.claude/spec/07_MOCK_SCENARIOS.md §11.3 · 약 L204–218](07_MOCK_SCENARIOS.md#113-session탑승닉네임) | component+MSW의 입력·동의·실패 복구 | 탑승→첫 저장 흐름에 포함 | 정책/승객 생성 원자성·receipt, 외부 복귀·IME |
-| `MS-TIME-001~003`, `MS-SEMA-001`, `MS-DRAFT-001~002`, `MS-RESULT-001`  [.claude/spec/07_MOCK_SCENARIOS.md §11.4 · 약 L220–232](07_MOCK_SCENARIOS.md#114-날짜semadraftresult-수명) | 시간·본문 복원은 domain, 만료/교체 안내는 component | 대표 만료 안내와 restart 복구 | 서버 KST·수명·종료 의미, 실제 Storage 지속성 |
-| `MS-CMD-001~006`, `MS-RECEIPT-001`  [.claude/spec/07_MOCK_SCENARIOS.md §11.5 · 약 L234–248](07_MOCK_SCENARIOS.md#115-command수정두-기기) | 고정 응답 순서를 쓰는 domain의 클라이언트 상태 전이 | MSW에서 응답 유실·미확인→확정 UI 대표 case | 서버 멱등성·경쟁·ack·close, 실제 foreground 복구 |
-| `MS-EDIT-001~002`, `MS-DELETE-001~002`  [.claude/spec/07_MOCK_SCENARIOS.md §11.5 · 약 L234–248](07_MOCK_SCENARIOS.md#115-command수정두-기기) [.claude/spec/07_MOCK_SCENARIOS.md §11.6 · 약 L250–262](07_MOCK_SCENARIOS.md#116-개별-삭제전체-삭제) | component+MSW의 수정·삭제·충돌 후 입력 보존 | 기록 흐름에서 수정·삭제 확인 | 두 기기 revision·삭제 결과, Dialog·키보드·Back |
-| `MS-ALLDEL-001~005`  [.claude/spec/07_MOCK_SCENARIOS.md §11.6 · 약 L250–262](07_MOCK_SCENARIOS.md#116-개별-삭제전체-삭제) | 클라이언트 복구·generation 처리는 domain | component+MSW의 확인/실패/복구 UI, browser의 history/cache 부활 방지 | 서버 commit/rollback·fence·보존, 실제 clear/restart |
-| `MS-LIST-001~007`, `MS-NAV-001`  [.claude/spec/07_MOCK_SCENARIOS.md §11.7 · 약 L264–277](07_MOCK_SCENARIOS.md#117-목록cursor탐색) | component+MSW의 목록 경계·오류·복귀·후보 적용 | browser에서 page 추가·깊은 scroll 복귀 대표 case | 서버 cursor·다른 기기 변경, 실제 scroll·큰 글자 |
-| `MS-STORAGE-001~006`  [.claude/spec/07_MOCK_SCENARIOS.md §11.8 · 약 L279–290](07_MOCK_SCENARIOS.md#118-storage-복구) | 실제 journal 로직과 Storage fake를 연결한 domain 복구 | 복구 오류 UI와 restart 대표 case | 실제 SDK persistence·clear; 부분 쓰기 조합은 simulator에서 확인 |
-| `MS-PLATFORM-001~003`  [.claude/spec/07_MOCK_SCENARIOS.md §11.9 · 약 L292–307](07_MOCK_SCENARIOS.md#119-플랫폼분석protocol) | component의 fallback·조작 결과 | `MS-CORE-009`와 자원/Reduced Motion 공통 실행 | 실제 capability·VoiceOver/TalkBack·키보드·Safe Area |
-| `MS-ANALYTICS-001~002`, `MS-PRIVACY-001`  [.claude/spec/07_MOCK_SCENARIOS.md §11.9 · 약 L292–307](07_MOCK_SCENARIOS.md#119-플랫폼분석protocol) | queue는 domain, allowlist/전송은 MSW, sink 검사는 기존 핵심·오류 실행에 부착 | 별도 전체 흐름 대신 기존 실행의 sink와 production build 검사 | 서버 dedupe·보존, 실제 사용 중인 native/proxy/APM/Sentry sink |
-| `MS-PROTOCOL-001~002`  [.claude/spec/07_MOCK_SCENARIOS.md §11.9 · 약 L292–307](07_MOCK_SCENARIOS.md#119-플랫폼분석protocol) | MSW의 validator·오류 정규화 | component에서 입력 보존·오류 안내 대표 case | 실서버 response·error registry 호환 |
+| `MS-CORE-001~010`  [.claude/spec/07_MOCK_SCENARIOS.md §11.2 · 약 L189–204](07_MOCK_SCENARIOS.md#112-p0-핵심-질문작성저장다시-읽기) | 원문·보관 timing은 domain, 입력·저장·미확인·완료 표시는 component+MSW | browser의 질문→저장→다시 읽기·320px/200%·Reduced Motion·자원 차단(`MS-CORE-009`) | iOS/Android 입력·완료 조작, 실서버 저장·중복 방지 |
+| `MS-SES-001~004`  [.claude/spec/07_MOCK_SCENARIOS.md §11.3 · 약 L206–220](07_MOCK_SCENARIOS.md#113-session탑승닉네임) | component+MSW의 bootstrap·guard·복구 결과 | 핵심 흐름 시작에 포함, production bundle의 F90 무요청 시작 | 실제 익명 키·session 복구 |
+| `MS-ONB-001~003`, `MS-NICK-001~002`  [.claude/spec/07_MOCK_SCENARIOS.md §11.3 · 약 L206–220](07_MOCK_SCENARIOS.md#113-session탑승닉네임) | component+MSW의 입력·동의·실패 복구 | browser의 인트로→동의→닉네임→첫 질문 흐름 | 정책/승객 생성 원자성·receipt, 외부 복귀·IME |
+| `MS-TIME-001~003`, `MS-SEMA-001`, `MS-DRAFT-001~002`, `MS-RESULT-001`  [.claude/spec/07_MOCK_SCENARIOS.md §11.4 · 약 L222–234](07_MOCK_SCENARIOS.md#114-날짜semadraftresult-수명) | 시간·본문 복원은 domain, 만료/교체 안내는 component | browser의 날짜 변경→F13→지난 임시본 Sheet 대표 흐름 | 서버 KST·수명·종료 의미, 실제 Storage 지속성 |
+| `MS-CMD-001~006`, `MS-RECEIPT-001`  [.claude/spec/07_MOCK_SCENARIOS.md §11.5 · 약 L236–250](07_MOCK_SCENARIOS.md#115-command수정두-기기) | 고정 응답 순서를 쓰는 domain의 클라이언트 상태 전이 | MSW에서 응답 유실·미확인→확정 UI 대표 case | 서버 멱등성·경쟁·ack·close, 실제 foreground 복구 |
+| `MS-EDIT-001~002`, `MS-DELETE-001~002`  [.claude/spec/07_MOCK_SCENARIOS.md §11.5 · 약 L236–250](07_MOCK_SCENARIOS.md#115-command수정두-기기) [.claude/spec/07_MOCK_SCENARIOS.md §11.6 · 약 L252–264](07_MOCK_SCENARIOS.md#116-개별-삭제전체-삭제) | component+MSW의 수정·삭제·충돌 후 입력 보존 | browser 기록 흐름의 수정·삭제 확인 | 두 기기 revision·삭제 결과, Dialog·키보드·Back |
+| `MS-ALLDEL-001~005`  [.claude/spec/07_MOCK_SCENARIOS.md §11.6 · 약 L252–264](07_MOCK_SCENARIOS.md#116-개별-삭제전체-삭제) | 클라이언트 복구·generation 처리는 domain | component+MSW의 확인/실패/복구 UI, browser의 F31 성공 뒤 F01·Back 부활 방지 | 서버 commit/rollback·fence·보존, 실제 clear/restart |
+| `MS-LIST-001~007`, `MS-NAV-001`  [.claude/spec/07_MOCK_SCENARIOS.md §11.7 · 약 L266–279](07_MOCK_SCENARIOS.md#117-목록cursor탐색) | component+MSW의 목록 경계·오류·복귀·후보 적용 | browser에서 목록 끝 자동 추가 page·`맨 위로`·F21 복귀 위치 대표 case | 서버 cursor·다른 기기 변경, 실제 scroll·큰 글자 |
+| `MS-STORAGE-001~006`  [.claude/spec/07_MOCK_SCENARIOS.md §11.8 · 약 L281–292](07_MOCK_SCENARIOS.md#118-storage-복구) | 실제 journal 로직과 Storage fake를 연결한 domain 복구 | 복구 오류 UI와 restart 대표 case | 실제 SDK persistence·clear; 부분 쓰기 조합은 simulator에서 확인 |
+| `MS-PLATFORM-001~003`  [.claude/spec/07_MOCK_SCENARIOS.md §11.9 · 약 L294–309](07_MOCK_SCENARIOS.md#119-플랫폼분석protocol) | component의 fallback·조작 결과 | `MS-CORE-009`와 자원/Reduced Motion 공통 실행 | 실제 capability·VoiceOver/TalkBack·키보드·Safe Area |
+| `MS-ANALYTICS-001~002`, `MS-PRIVACY-001`  [.claude/spec/07_MOCK_SCENARIOS.md §11.9 · 약 L294–309](07_MOCK_SCENARIOS.md#119-플랫폼분석protocol) | queue는 domain, allowlist/전송은 MSW, sink 검사는 기존 핵심·오류 실행에 부착 | 별도 전체 흐름 대신 기존 실행의 sink와 production build 검사 | 서버 dedupe·보존, 실제 사용 중인 native/proxy/APM/Sentry sink |
+| `MS-PROTOCOL-001~002`  [.claude/spec/07_MOCK_SCENARIOS.md §11.9 · 약 L294–309](07_MOCK_SCENARIOS.md#119-플랫폼분석protocol) | MSW의 validator·오류 정규화 | component에서 입력 보존·오류 안내 대표 case | 실서버 response·error registry 호환 |
 
 같은 assertion을 domain·component·MSW 각각에 복제하지 않습니다. 대표 연결은 기존 흐름에 합치며 행마다 E2E를 만들지 않습니다. 기기에서는 합성 장애의 모든 순서를 반복하지 않습니다. 서버 전용 사실을 확인할 fault hook/감사 가능한 대체 관찰이 없으면 해당 항목만 BLOCKED입니다.
 
@@ -79,13 +79,13 @@
 
 ### 4.1 계약 검증
 
-wire/생성기 기준: [.claude/spec/05_API_SPEC.md §15.2 · 약 L801–805](05_API_SPEC.md#152-기계-판독-계약의-재현-검증); 호환성: [.claude/spec/05_API_SPEC.md §7.6 · 약 L494–502](05_API_SPEC.md#76-wire-호환성); 오류 registry: [.claude/spec/05_API_SPEC.md §8.2 · 약 L512–546](05_API_SPEC.md#82-안정-오류-registry).
+wire/생성기 기준: [.claude/spec/05_API_SPEC.md §15.2 · 약 L825–829](05_API_SPEC.md#152-기계-판독-계약의-재현-검증); 호환성: [.claude/spec/05_API_SPEC.md §7.6 · 약 L516–524](05_API_SPEC.md#76-wire-호환성); 오류 registry: [.claude/spec/05_API_SPEC.md §8.2 · 약 L534–568](05_API_SPEC.md#82-안정-오류-registry).
 
 하나의 고정 버전 contract command로 구조/내부 ref·OP 연결/보안·정상/거절 예시·파생 type/validator drift·Mock/실제 response validation을 확인합니다. 호환 추가 field는 허용하고 필수 field·타입/날짜/nullability·필수 enum·빈 body 오류는 ProtocolFailure로 정규화합니다. 닫힌 error/event allowlist의 추가값은 거절하며 raw body/message를 노출하지 않습니다. HTTP/timeout/5xx/조회 부재를 command 미적용으로 바꾸지 않습니다.
 
 ### 4.2 API-V-001~027 실행 의무
 
-원본 정의: [.claude/spec/05_API_SPEC.md §15 · 약 L763–805](05_API_SPEC.md#15-계약-검증-추적). 클라이언트 반응은 07의 해당 API-V 행, 서버 보장은 아래 담당 결과로 확인합니다. Mock에 DB/worker를 재구현하거나 양쪽 adapter에서 같은 결과를 반복하지 않습니다.
+원본 정의: [.claude/spec/05_API_SPEC.md §15 · 약 L787–829](05_API_SPEC.md#15-계약-검증-추적). 클라이언트 반응은 07의 해당 API-V 행, 서버 보장은 아래 담당 결과로 확인합니다. Mock에 DB/worker를 재구현하거나 양쪽 adapter에서 같은 결과를 반복하지 않습니다.
 
 | API-V | 실서버에서 확인할 결과 |
 |---|---|
@@ -100,19 +100,19 @@ wire/생성기 기준: [.claude/spec/05_API_SPEC.md §15.2 · 약 L801–805](05
 
 ### 4.3 단일 수락 비교의 분리
 
-비교를 수행할 때만 [.claude/spec/05_API_SPEC.md §16 · 약 L807–819](05_API_SPEC.md#16-저장-요청-분할-비교와-상태-전이-검증)을 읽습니다. 같은 입력·지연·fault 조건에서 지연/왕복·수락 날짜·복구 부담을 별도로 기록합니다. 비교 통과는 운영 계약 변경 승인이 아닙니다.
+비교를 수행할 때만 [.claude/spec/05_API_SPEC.md §16 · 약 L831–843](05_API_SPEC.md#16-저장-요청-분할-비교와-상태-전이-검증)을 읽습니다. 같은 입력·지연·fault 조건에서 지연/왕복·수락 날짜·복구 부담을 별도로 기록합니다. 비교 통과는 운영 계약 변경 승인이 아닙니다.
 
 ## 5. 격리, reset과 테스트 데이터
 
 - 테스트마다 사용한 fixture/handler·Clock·Storage fake를 초기화합니다. MSW history/handler를 복원하고 browser context/cache/service worker/영속 상태를 격리합니다. SDK Storage와 browser storage는 구분합니다.
-- reset/restart/reload 의미는 [.claude/spec/07_MOCK_SCENARIOS.md §4.3 · 약 L82–91](07_MOCK_SCENARIOS.md#43-resetrestartreload)를 따릅니다. 사용하지 않는 world/runtime을 만들지 않습니다.
+- reset/restart/reload 의미는 [.claude/spec/07_MOCK_SCENARIOS.md §4.3 · 약 L84–93](07_MOCK_SCENARIOS.md#43-resetrestartreload)를 따릅니다. 사용하지 않는 world/runtime을 만들지 않습니다.
 - 기기·서버는 합성 전용 주체/build를 사용합니다. 서버 데이터는 run별 격리하고 불가능하면 병렬 실행을 막습니다. 실제 사용자·운영 콘텐츠/credential을 쓰지 않습니다.
 - 서버 실행 전 safe subject alias·생성/정리 수단을 설정합니다. assertion/후속 query 뒤 전체 삭제 검증은 제품 삭제 흐름으로, 나머지는 제공된 합성 데이터 cleanup으로 정리하고 성공을 확인합니다.
 - cleanup 실패는 PARTIAL/FAIL과 담당자·재시도 방법을 남깁니다. 존재하지 않는 admin API를 가정하거나 넓은 환경을 삭제하지 않습니다. 재현에는 fixture recipe/ID를 남기고 서버 합성 본문은 정리합니다.
 
 ## 6. Storage, lifecycle과 복구 검증
 
-자동 고정 case는 [.claude/spec/07_MOCK_SCENARIOS.md §7 · 약 L130–150](07_MOCK_SCENARIOS.md#7-storage와-앱-lifecycle)와 [.claude/spec/07_MOCK_SCENARIOS.md §11.8 · 약 L279–290](07_MOCK_SCENARIOS.md#118-storage-복구)를 실행합니다. A/B 손상·pending/ready·동시 metadata·proof/cleanup/ack 중단·삭제 후 old write·clear 실패의 기대 결과를 재작성하지 않습니다.
+자동 고정 case는 [.claude/spec/07_MOCK_SCENARIOS.md §7 · 약 L132–152](07_MOCK_SCENARIOS.md#7-storage와-앱-lifecycle)와 [.claude/spec/07_MOCK_SCENARIOS.md §11.8 · 약 L281–292](07_MOCK_SCENARIOS.md#118-storage-복구)를 실행합니다. A/B 손상·pending/ready·동시 metadata·proof/cleanup/ack 중단·삭제 후 old write·clear 실패의 기대 결과를 재작성하지 않습니다.
 
 iOS·Android에서 실제 확인할 항목:
 
@@ -125,7 +125,7 @@ iOS·Android에서 실제 확인할 항목:
 
 ## 7. 입력, 접근성, 플랫폼 검증
 
-입력 corpus: [.claude/spec/07_MOCK_SCENARIOS.md §3.5 · 약 L61–74](07_MOCK_SCENARIOS.md#35-합성-콘텐츠와-민감정보); 입력/IME 기준: [.claude/spec/04_INTERACTIONS_AND_COPY.md §4.1 · 약 L61–79](04_INTERACTIONS_AND_COPY.md#41-입력ime문자-수--ix-001ix-002); Back/focus: [.claude/spec/04_INTERACTIONS_AND_COPY.md §5.7 · 약 L174–195](04_INTERACTIONS_AND_COPY.md#57-back키보드포커스--ix-017ix-018).
+입력 corpus: [.claude/spec/07_MOCK_SCENARIOS.md §3.5 · 약 L61–76](07_MOCK_SCENARIOS.md#35-합성-콘텐츠와-민감정보); 입력/IME 기준: [.claude/spec/04_INTERACTIONS_AND_COPY.md §4.1 · 약 L68–86](04_INTERACTIONS_AND_COPY.md#41-입력ime문자-수--ix-001ix-002); Back/focus: [.claude/spec/04_INTERACTIONS_AND_COPY.md §5.7 · 약 L181–200](04_INTERACTIONS_AND_COPY.md#57-back키보드포커스--ix-017ix-018).
 
 | 항목 | 자동/대표 연결 | 실제 기기 확인 |
 |---|---|---|
@@ -139,7 +139,7 @@ network/time hint·haptic/장식 실패는 날짜 판정·저장·이동을 바�
 
 ## 8. Query, 목록과 동시성
 
-선택 case와 기대 결과: [.claude/spec/07_MOCK_SCENARIOS.md §11.7 · 약 L264–277](07_MOCK_SCENARIOS.md#117-목록cursor탐색), [.claude/spec/07_MOCK_SCENARIOS.md §11.5 · 약 L234–248](07_MOCK_SCENARIOS.md#115-command수정두-기기), [.claude/spec/07_MOCK_SCENARIOS.md §11.6 · 약 L250–262](07_MOCK_SCENARIOS.md#116-개별-삭제전체-삭제).
+선택 case와 기대 결과: [.claude/spec/07_MOCK_SCENARIOS.md §11.7 · 약 L266–279](07_MOCK_SCENARIOS.md#117-목록cursor탐색), [.claude/spec/07_MOCK_SCENARIOS.md §11.5 · 약 L236–250](07_MOCK_SCENARIOS.md#115-command수정두-기기), [.claude/spec/07_MOCK_SCENARIOS.md §11.6 · 약 L252–264](07_MOCK_SCENARIOS.md#116-개별-삭제전체-삭제).
 
 - 목록 질문·날짜 및 응답 미노출→상세 전문, 수정 후 상세 재열람, 삭제 행 제거와 목록/count 성공·실패 네 조합, 0/1/2/20/21·월/연도·cursor 무효·후보 적용은 빠른 층에서 확인합니다.
 - browser/기기는 deep scroll·anchor/focus·큰 글자 등 연결만 추가합니다.
@@ -149,7 +149,7 @@ network/time hint·haptic/장식 실패는 날짜 판정·저장·이동을 바�
 
 ### 9.1 canary와 캡처 허용
 
-역할별 합성 canary를 기존 핵심·오류·삭제 실행에 붙입니다. 실제 사용하는 sink만 검사하고 미사용 도구는 검증용으로 설치하지 않습니다. 원본 경계: [.claude/spec/05_API_SPEC.md §12 · 약 L695–717](05_API_SPEC.md#12-개인정보보안로그-계약).
+역할별 합성 canary를 기존 핵심·오류·삭제 실행에 붙입니다. 실제 사용하는 sink만 검사하고 미사용 도구는 검증용으로 설치하지 않습니다. 원본 경계: [.claude/spec/05_API_SPEC.md §12 · 약 L718–740](05_API_SPEC.md#12-개인정보보안로그-계약).
 
 | 구분 | 기준 |
 |---|---|
@@ -161,7 +161,7 @@ UI 합성 문장도 로그·분석·오류로 유출되면 FAIL입니다. artifa
 
 ### 9.2 분석·보존
 
-분석 source/allowlist·중복·queue/flush는 [.claude/spec/07_MOCK_SCENARIOS.md §11.9 · 약 L292–307](07_MOCK_SCENARIOS.md#119-플랫폼분석protocol), 소유 계약은 [.claude/spec/05_API_SPEC.md §11 · 약 L640–693](05_API_SPEC.md#11-제품-이벤트-계약)을 따릅니다. 전송 실패가 화면을 막거나 입력을 반사하면 실패입니다.
+분석 source/allowlist·중복·queue/flush는 [.claude/spec/07_MOCK_SCENARIOS.md §11.9 · 약 L294–309](07_MOCK_SCENARIOS.md#119-플랫폼분석protocol), 소유 계약은 [.claude/spec/05_API_SPEC.md §11 · 약 L663–716](05_API_SPEC.md#11-제품-이벤트-계약)을 따릅니다. 전송 실패가 화면을 막거나 입력을 반사하면 실패입니다.
 
 | 출시 전 실제 증거 | 확인할 것 |
 |---|---|
@@ -191,20 +191,37 @@ UI 합성 문장도 로그·분석·오류로 유출되면 FAIL입니다. artifa
 
 첫 slice부터 cold start·긴 입력/IME 반응·layout shift·JS/CSS/font/image 전송량·중복 runtime/CSS·단일 저장 bar의 입력/focus 보존을 측정합니다. 같은 build/기기/network/입력/warm-cold 조건으로 비교하고 예산은 baseline과 제품 책임자 채택 뒤 반영합니다. 운영 표본이 없으면 모니터링 계획을 남기며 운영 달성으로 표시하지 않습니다.
 
-CMP/생성 배경의 상태·320px·200%·키보드·자원 실패·Reduced Motion·권리/출처·production 비용은 [docs/ARCA_MVP_ACCEPTANCE.md · 약 L146–150](../../docs/ARCA_MVP_ACCEPTANCE.md#픽셀-ui-선별-도입의-사용자-결과)와 [.claude/spec/06_FRONTEND_SPEC.md §2.4 · 약 L97–117](06_FRONTEND_SPEC.md#24-픽셀-ui-선별-도입과-출처-추적)의 결과를 확인합니다. pixel diff만으로 입력/조작 결과를 대신하지 않습니다.
+CMP/생성 배경의 상태·320px·200%·키보드·자원 실패·Reduced Motion·권리/출처·production 비용은 [docs/ARCA_MVP_ACCEPTANCE.md · 약 L146–150](../../docs/ARCA_MVP_ACCEPTANCE.md#픽셀-ui-선별-도입의-사용자-결과)와 [.claude/spec/06_FRONTEND_SPEC.md §2.4 · 약 L97–122](06_FRONTEND_SPEC.md#24-픽셀-ui-선별-도입과-출처-추적)의 결과를 확인합니다. pixel diff만으로 입력/조작 결과를 대신하지 않습니다.
 
 ## 11. 환경과 명령 계약
 
-실제 package/lockfile/CI의 확인된 명령을 아래 역할에 연결합니다. 역할을 합친 script도 허용하고 고정 lockfile을 사용합니다. 단계 1(2026-09-27) 기준 pnpm script는 `lint`(Biome)·`typecheck`(`tsc -b`)·`test`(Vitest `unit`)·`test:contract`(OpenAPI 파생 drift + 예시 validator)·`build`(`tsc -b && vite build && ait build`)·`test:browser`(production bundle의 Chromium·WebKit)이며, 도구 버전은 [06 §2.2](./06_FRONTEND_SPEC.md#22-선택한-스택과-설치-상태)와 lockfile이 소유합니다. `.github/workflows/ci.yml`은 같은 순서를 secret 없이 실행하지만 원격 실행 증거는 아직 없습니다(NOT_RUN). 기기·실서버/운영 명령은 미제공·BLOCKED이며 임의로 만들지 않습니다.
+패키지 관리자는 `package.json`의 `packageManager`(pnpm)와 단일 `pnpm-lock.yaml`, Node 버전은 `.nvmrc`, 도구 버전은 [06 §2.2](./06_FRONTEND_SPEC.md#22-선택한-스택과-설치-상태)와 lockfile이 소유합니다. 기기·실서버/운영 명령은 미제공·BLOCKED이며 임의로 만들지 않습니다.
 
-| 역할 | 확인할 결과 |
-|---|---|
-| lint/typecheck/build | Biome·strict/noUncheckedIndexedAccess/exactOptionalPropertyTypes·no emit, Mock 운영 제외·bundle/source map/asset |
-| domain/component/a11y | 선택한 고정 회귀·RTL/user-event/axe·입력/focus·복구 |
-| contract/MSW | schema/ref/예시·파생 drift·validator·HTTP/오류/응답 유실 |
-| browser | Chromium/WebKit 핵심 연결·재진입 |
-| 기기 | QR/sandbox iOS·Android·SDK/보조기술·lifecycle |
-| 실서버/운영 | 합성 data setup/cleanup·API-V·CORS/TLS·sink/retention/backup |
+| 역할 | 명령 | 확인할 결과 |
+|---|---|---|
+| lint/typecheck | `pnpm lint`(`biome check .`)·`pnpm typecheck`(`tsc -b`) | Biome·strict/noUncheckedIndexedAccess/exactOptionalPropertyTypes·no emit·화면 import 제한 |
+| domain/component/a11y | `pnpm test`(Vitest project `unit`: jsdom, `src/**/*.test.{ts,tsx}`, `*.contract.test.ts` 제외, setup `src/test/setup.ts`) | 선택한 고정 회귀·RTL/user-event/axe·입력/focus·복구·MSW handler 연결 |
+| contract | `pnpm test:contract`(`scripts/api-generate.mjs --check` → Vitest project `contract`: node, `src/**/*.contract.test.ts`) | 파생 type/validator drift·예시 validation |
+| build | `pnpm build`(`tsc -b && vite build && ait build`) | Mock 운영 제외·bundle/source map/asset·앱 패키지 |
+| browser | `pnpm test:browser`(`vite build && playwright test`) | 아래 project별 연결 |
+| 기기 | 미제공 | QR/sandbox iOS·Android·SDK/보조기술·lifecycle |
+| 실서버/운영 | 미제공 | 합성 data setup/cleanup·API-V·CORS/TLS·sink/retention/backup |
+
+`playwright.config.ts`의 project는 Chromium(`Pixel 7`)·WebKit(`iPhone 15`) 쌍입니다. `forbidOnly`·`retries: 0`이며 각 서버는 `strictPort`·`reuseExistingServer: false`이므로 실행 전 같은 포트의 개발 서버를 종료합니다.
+
+| project | testDir | 서버·시나리오 | 대표 연결 |
+|---|---|---|---|
+| `chromium`·`webkit` | `tests/browser` | production bundle `vite preview` :4173 | dist의 Mock 표식 부재, platform identity 없는 시작의 F90·API 무요청, F90 reflow |
+| `mock-*` | `tests/browser-mock` | dev 서버 :5174, `MS-SES-001-active` | 질문→저장→다시 읽기, 320px/200%, Reduced Motion, `MS-CORE-009`, F30/F31 |
+| `onboarding-*` | `tests/browser-onboarding` | dev 서버 :5175, `MS-SES-001-pre` | F01→F02→F03→F10, reflow, Primary 하단 위치, 타이핑 줄바꿈 고정, tap highlight |
+| `time-*` | `tests/browser-time` | dev 서버 :5176, `MS-TIME-002` | 날짜 변경→F13→F10→지난 임시본 Sheet→F13, reflow |
+| `archive-*` | `tests/browser-archive` | dev 서버 :5177, `MS-LIST-003` | 20+1·월 구획·F21 Back 복원, 수정·삭제, `맨 위로`, reflow, 이동 scroll, tap highlight |
+
+Mock project는 dev 서버의 MSW worker에서 실행하므로 production bundle·실제 SDK 증거가 아닙니다.
+
+`.github/workflows/ci.yml`은 PR·`main` push에서 secret 없이 `pnpm install --frozen-lockfile` → lint → typecheck → test → test:contract → build → Chromium·WebKit 설치 → test:browser를 실행합니다. 원격 실행 상태는 §14.1을 따릅니다.
+
+하네스 gate `bash .claude/hooks/checks/gate-runner.sh [fast|--full|--release]`는 fast(lint·typecheck·token-lint), `--full`(+test·test:contract·build), `--release`(+test:browser)입니다. `--release` 통과는 로컬 코드 gate이며 §13.6 release-candidate gate가 아닙니다.
 
 local/MSW·Devtools는 SDK·DB·CORS/TLS의 실제 증거가 아닙니다. 실서버는 합성 sandbox, 성능/연결은 staging/production-like에서 확인합니다. 운영 점검은 승인된 제한 작업·합성 canary만 사용하고 secret 없는 CI job에서 배포/기기 작업을 하지 않습니다.
 
@@ -262,58 +279,36 @@ P0-core와 구현된 P0-recovery 고정 회귀, 변경 영역 P1/P2·핵심 brow
 
 ### 13.7 release gate
 
-candidate 필수 행이 모두 PASS이며 [docs/ARCA_MVP_ACCEPTANCE.md §4 · 약 L152–195](../../docs/ARCA_MVP_ACCEPTANCE.md#4-출시-승인-체크리스트)에 증거가 연결돼야 합니다. 승인자는 열린 결함/예외·운영 증거·rollout/rollback·모니터링을 검토합니다. 같은 candidate/환경 결과는 재사용하고 PARTIAL/BLOCKED/NOT_RUN을 완료로 해석하지 않습니다.
+candidate 필수 행이 모두 PASS이며 [docs/ARCA_MVP_ACCEPTANCE.md §4 · 약 L152–194](../../docs/ARCA_MVP_ACCEPTANCE.md#4-출시-승인-체크리스트)에 증거가 연결돼야 합니다. 승인자는 열린 결함/예외·운영 증거·rollout/rollback·모니터링을 검토합니다. 같은 candidate/환경 결과는 재사용하고 PARTIAL/BLOCKED/NOT_RUN을 완료로 해석하지 않습니다.
 
 ## 14. 추적과 완료 판정
 
-구현 순서: [.claude/spec/06_FRONTEND_SPEC.md §12 · 약 L666–683](06_FRONTEND_SPEC.md#12-구현-순서). slice는 선택한 주 검증 층·대표 연결·필요한 실패/접근성/개인정보/실기기 결과를 갖추고 일상 기록에 ID·계약·남은 blocker를 연결하면 완료입니다. 필수 범위가 남으면 PARTIAL, 선택 검증 미도입은 차단 사유가 아닙니다.
+구현 순서: [.claude/spec/06_FRONTEND_SPEC.md §12 · 약 L683–700](06_FRONTEND_SPEC.md#12-구현-순서). slice는 선택한 주 검증 층·대표 연결·필요한 실패/접근성/개인정보/실기기 결과를 갖추고 일상 기록에 ID·계약·남은 blocker를 연결하면 완료입니다. 필수 범위가 남으면 PARTIAL, 선택 검증 미도입은 차단 사유가 아닙니다.
 
-전체 완료는 release gate 통과로 판정합니다. Acceptance별 원문은 [docs/ARCA_MVP_ACCEPTANCE.md §3 · 약 L48–150](../../docs/ARCA_MVP_ACCEPTANCE.md#3-핵심-qa-시나리오), 해당 시나리오는 [.claude/spec/07_MOCK_SCENARIOS.md §11 · 약 L179–307](07_MOCK_SCENARIOS.md#11-이름-있는-시나리오-카탈로그)의 `Acc #`로 찾습니다. 별도 중복 추적표나 완료 체크리스트를 만들지 않습니다.
+전체 완료는 release gate 통과로 판정합니다. Acceptance별 원문은 [docs/ARCA_MVP_ACCEPTANCE.md §3 · 약 L48–150](../../docs/ARCA_MVP_ACCEPTANCE.md#3-핵심-qa-시나리오), 해당 시나리오는 [.claude/spec/07_MOCK_SCENARIOS.md §11 · 약 L181–309](07_MOCK_SCENARIOS.md#11-이름-있는-시나리오-카탈로그)의 `Acc #`로 찾습니다. 별도 중복 추적표나 완료 체크리스트를 만들지 않습니다.
 
+### 14.1 로컬 증거 기록
 
-### 14.1 2026-09-28 UI 정리와 IME 카운터 검증
+로컬 작업 트리의 실행·비교 증거 위치와 상태입니다. `.playwright/`는 Git 제외 로컬 자료이고, 단계 gate·검토 결과는 `.claude/reviews/step-*.json`이 소유합니다. 로컬 PASS는 기록된 작업 트리에만 해당하며 이후 변경의 영향 범위는 재실행합니다. CDP composition·높이 축소 에뮬레이션·axe는 OS 키보드·실기기 IME·보조기술 확인을 대신하지 않습니다.
 
-현행 작업 트리의 로컬 검증 기록입니다. 커밋·배포·빌드 오케스트레이터를 실행하지 않았습니다. 사용자 요청에 따라 디자인을 먼저 비교하고, 채택한 결과를 01~04·06·DECISIONS와 제품 Rules/Flow/Acceptance에 동기화했습니다. 05의 추가 설명은 F20의 표시와 기존 excerpt DTO를 구분하며 wire schema 변경은 없습니다.
-
-| 범위 | 현행 결과 | 증거·재현 위치 |
+| 범위 | 상태 | 증거 위치 |
 |---|---|---|
-| 관측실 UI·장면·읽기·작성·완료·모달·상태 | 합성 데이터 393×852·320×568, 기본/200% 전후 비교. 장식·면 밀도·타깃·포커스·탭 도달성 확인 | `.playwright/design-review/diagnosis.md`, `comparison.html`, `accessibility.json` |
-| 목록·텍스트 행동·폰트·모션 | F20 질문·날짜만 표시→F21 응답, 세 실제 글자 크기, tap 배경 없음·눌림, 180ms 본문 진입·Reduced Motion 0ms | `.playwright/archive-question-review/`, `.playwright/refinement-review/comparison.html`, `interaction.json` |
-| IME 카운터 | F03·F11·F22·F30 회귀: 조합 중 현재 EGC 수·결합 이모지·닉네임 공백, 조합 후 오류 및 조합 중 제출 방지. F11은 조합 중 보관 미확정도 확인 | 각 화면 `.test.tsx`, `.playwright/final-review/unit.log` |
-| Chromium 실제 composition 경로 | CDP `Input.imeSetComposition`으로 F11·F22·F30에서 두 글자 입력 중 카운터 1→2 수정 확인. 393/320px × 기본/200%, 12쌍. 가로 overflow 0 | `.playwright/final-review/capture.mjs`, `before/`, `after/metrics.json`, `comparison.html` |
-| 오늘 날짜 위치 | F10 미응답·완료 날짜를 질문 영역 안쪽 위에 한 번 표시, 하단 발신자·SEMA 코드 제거. 393/320px × 기본/200%, 8쌍. WebKit에서 320px·200% 포함 가로 overflow 0·버튼 중앙 hit test 통과 | `.playwright/today-date-review/comparison.html`, `after/metrics.json`, `after/webkit.json` |
-
-추가 F21 정리: 작성 날짜를 질문 서문 안쪽 상단으로 이동하고 `작성일` 접두 문구·하단 중복 날짜를 제거했습니다. 수정 상태는 본문 아래에 유지합니다. 합성 일반/수정 기록 × 393/320px × 기본/200%의 8쌍을 `.playwright/detail-date-review/comparison.html`과 `before/`·`after/metrics.json`에 보관합니다. 추가 변경의 최종 재실행 로그는 `.playwright/detail-date-review/unit-final.log`·`playwright.log`입니다.
-
-최종 명령 결과는 아래에 기록합니다. 테스트 전 개발 서버를 종료해 포트 충돌을 방지합니다.
-
-- `./node_modules/.bin/biome check .`: PASS (108 files)
-- `./node_modules/.bin/tsc -b`: PASS
-- `node .claude/hooks/checks/token-lint.mjs`: PASS
-- `./node_modules/.bin/vitest run --project unit`: PASS (23 files, 276 tests)
-- `./node_modules/.bin/vite build && ./node_modules/.bin/playwright test`: PASS (Chromium·WebKit, 36 tests)
-
-이전 디자인 검증의 axe 자동 위반은 0이며 CSS 배경 프레임의 일부 대비는 자동 판정 불가여서 실제 토큰 계산을 병행했습니다. 카운터 CDP 경로와 높이 축소 키보드 공간 에뮬레이션은 OS 키보드·iOS/Android IME·토스 WebView 실기기 확인을 대신하지 않습니다. 실제 기기·VoiceOver/TalkBack·운영 서버·출시 gate는 미완료입니다. Vite의 500kB 초과 청크 경고는 남아 있으며 별도 번들 분할 검토 대상입니다.
-
-`.playwright/`의 원본 캡처·로그는 Git 제외된 로컬 스크래치 자료입니다. `docs/`도 저장소의 기존 ignore 정책으로 로컬 참조이며 해당 파일의 현행 문구는 동기화했으나 추적 설정을 바꾸거나 강제 stage하지 않았습니다. 재현 가능한 회귀 테스트와 이 명세의 결과 기록을 함께 보존합니다.
-
-### 14.2 2026-09-28 인트로·탑승 흐름 정리
-
-F01 6장면 대화창, F02·F03 하단 Primary 정렬·약관 링크·기억 조각 발광, F20 빈 상태, 이동 scroll 초기화, tap highlight 제거의 로컬 검증입니다. 합성 데이터만 사용했습니다.
-
-| 범위 | 현행 결과 | 증거·재현 위치 |
-|---|---|---|
-| F01 문장 표시 | 문장 교체·즉시 완성·Reduced Motion·Enter/장면 탭·마지막 뒤 Primary 단독; 새 문장 첫 frame에 이전 길이의 일부가 보이지 않음 | `IntroScreen.test.tsx` |
-| F01 줄바꿈 고정 | 마지막 문장을 320·360·390px에서 표시하는 동안 글자별 줄 이동 0회(이전 두 덩어리 표시 방식은 Chromium 320px에서 125회) | `tests/browser-onboarding/onboarding.spec.ts` `typing never moves…` |
-| 하단 Primary 정렬 | F01 `탑승하기`·F02 `동의 후 탑승하기`·F03 `첫 질문 만나기` 하단 좌표 일치(360×740·390×844). 320×568의 F02는 내용이 길어 Primary가 흐름을 따라감 | 같은 파일 `share one bottom position` |
-| 이동 scroll | 긴 F20에서 F21로 이동하면 scrollY 0, 앱 뒤로 버튼으로 F20 행 위치 복원. 초기화 제거 시 실패 확인 | `tests/browser-archive/archive.spec.ts` `scroll: a forward move…` |
-| tap highlight | F01~F03·F10·F20·F21·F30의 button·a·label·input 전부 투명. 전역 규칙 제거 시 실패 확인 | 두 browser spec의 `no native tap highlight…` |
-| F02 약관 | 밑줄 약관 이름은 전문만 열고 선택 불변, 뒷부분 Label은 선택 전환. 상자↔`필수` 12px·`필수`↔약관 8px·세 요소 세로 중심 일치(Chromium·WebKit) | `BoardingScreen.test.tsx`, 로컬 측정 |
-
-- `./node_modules/.bin/biome check .`: PASS (107 files)
-- `./node_modules/.bin/tsc -b`: PASS
-- `node .claude/hooks/checks/token-lint.mjs`: PASS
-- `./node_modules/.bin/vitest run --project unit`: PASS (22 files, 278 tests)
-- `./node_modules/.bin/vite build && ./node_modules/.bin/playwright test`: PASS (Chromium·WebKit, 46 tests)
-
-생성 이미지(AST-004)는 아직 없으며 코드 장면이 정적 대체입니다. 실기기 토스 WebView·VoiceOver/TalkBack·실제 IME에서의 타이핑·발광·tap 반응은 미검증입니다.
+| 단계 1~7 `--full` gate와 단계 검토 | PASS(로컬) | `.claude/reviews/step-1-intake.json`~`step-7-settings-delete.json` |
+| 8단계 작업 트리 `--release` gate(lint·typecheck·unit·contract·build·browser 전 project) | PASS(로컬) | `.claude/reviews/step-8-integration.json` |
+| 07 MS ID ↔ 테스트 이름 연결 | PARTIAL: 62/64, `MS-ANALYTICS-001·002`는 FE 분석(OP-014) 미구현 | 테스트 이름의 `MS-*` |
+| Mock 계약 정합(OP-005·006·007·011·012·015 인증 scope·경쟁·kind 불일치·closure reconciliation) | PASS(contract) | `src/mocks/handlers.contract.test.ts` |
+| 오류 envelope 조합(code·category·recovery) | PASS(unit); HTTP status↔code 조합 검사는 미구현 | `src/data/api/arcaApi.test.ts` `MS-PROTOCOL-001·002` |
+| 금지 sink canary(URL·history·referrer·console·pageerror·Storage·cookie·IndexedDB·title·비API 요청·beacon) | PASS(Mock, Chromium·WebKit) | `tests/browser-mock/privacy.spec.ts`, `tests/browser-time/privacy.spec.ts` |
+| 분석 수신·allowlist·오류 보고 sink | NOT_RUN: FE 분석·오류 보고 미구현 | — |
+| 관측실 UI·장면·읽기·작성·완료·모달·상태 비교(합성, 393×852·320×568, 기본/200%) | PASS(로컬 브라우저) | `.playwright/design-review/diagnosis.md`, `comparison.html`, `accessibility.json` |
+| 목록·텍스트 행동·폰트·모션(F20 질문·날짜→F21 응답, 180ms 본문 진입·Reduced Motion 0ms) | PASS(로컬 브라우저) | `.playwright/archive-question-review/`, `.playwright/refinement-review/comparison.html`, `interaction.json` |
+| IME 카운터(F03·F11·F22·F30 조합 중 현재 EGC 수, 조합 후 검증, 조합 중 제출·보관 미확정) | PASS(jsdom) | 각 화면 `.test.tsx` |
+| Chromium 실제 composition 경로(CDP `Input.imeSetComposition`, F11·F22·F30 카운터 1→2, 가로 overflow 0) | PASS(Chromium) | `.playwright/final-review/capture.mjs`, `after/metrics.json`, `comparison.html` |
+| F10·F21 날짜 위치(가로 overflow 0, WebKit 버튼 중앙 hit test) | PASS(로컬 브라우저) | `.playwright/today-date-review/comparison.html`, `after/metrics.json`, `after/webkit.json`; `.playwright/detail-date-review/comparison.html`, `after/metrics.json` |
+| F01 문장 표시·줄바꿈 고정, F01~F03 Primary 하단 위치, 이동 scroll 초기화, tap highlight | PASS(로컬) | `IntroScreen.test.tsx`, `tests/browser-onboarding/onboarding.spec.ts`, `tests/browser-archive/archive.spec.ts` |
+| F02 약관 이름·Label·`필수` 간격과 세로 중심 | PASS(로컬 측정, Chromium·WebKit) | `BoardingScreen.test.tsx`; 수치는 저장소 기록 없음 |
+| axe 자동 위반 0, CSS 배경 프레임 대비는 토큰 계산 병행 | PASS(자동 가능 범위) | `.playwright/design-review/accessibility.json` |
+| 번들 크기 | PARTIAL: Vite 500kB 초과 청크 경고, 분할 검토 대상 | `vite build` 출력 |
+| 원격 CI | NOT_RUN | `.github/workflows/ci.yml` |
+| 실제 iOS/Android 토스 WebView·OS IME·VoiceOver/TalkBack | BLOCKED: 기기·SDK 환경 미제공 | — |
+| 실서버 API-V-001~027·운영 retention/backup | BLOCKED: 서버·운영 환경 미제공 | — |
