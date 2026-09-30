@@ -5,7 +5,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, test } from 'vitest';
 import { paths } from '../../app/navigation.ts';
 import { createFakeStorage } from '../../mocks/platform.ts';
 import { createMockWorld, SYNTHETIC_KEYS } from '../../mocks/world.ts';
-import { bootApp, findTitle, opCount } from '../../test/boot.tsx';
+import { bootApp, findFocusedTitle, findTitle, opCount } from '../../test/boot.tsx';
 import { copy } from '../../ui/copy.ts';
 
 const server = setupServer();
@@ -45,7 +45,7 @@ describe('F02 boarding (IX-031, MS-ONB-001/002)', () => {
     expect(boardButton()).not.toHaveAttribute('aria-disabled');
     await userEvent.click(boardButton());
 
-    expect(await findTitle(copy['CPY-F03-001'])).toHaveFocus();
+    await findFocusedTitle(copy['CPY-F03-001']);
     expect(router.state.location.pathname).toBe(paths.joinComplete);
     expect(screen.getByText('SYN-1001')).toBeInTheDocument();
     expect(opCount(world, 'OP-003')).toBe(1);
@@ -53,7 +53,7 @@ describe('F02 boarding (IX-031, MS-ONB-001/002)', () => {
     expect([...platform.storage.data.keys()].filter((key) => key.includes(':pre:'))).toEqual([]);
 
     await userEvent.click(screen.getByRole('button', { name: copy['CPY-F03-013'] }));
-    expect(await findTitle(copy['CPY-F10-001'])).toHaveFocus();
+    await findFocusedTitle(copy['CPY-F10-001']);
     expect(router.state.location.pathname).toBe(paths.today);
 
     await act(() => router.navigate(paths.joinComplete));

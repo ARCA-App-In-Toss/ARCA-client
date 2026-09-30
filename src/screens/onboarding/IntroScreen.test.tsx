@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { setupServer } from 'msw/node';
 import { afterAll, afterEach, beforeAll, describe, expect, test } from 'vitest';
 import { paths } from '../../app/navigation.ts';
-import { bootApp, findTitle, opCount } from '../../test/boot.tsx';
+import { bootApp, findFocusedTitle, findTitle, opCount } from '../../test/boot.tsx';
 import { copy } from '../../ui/copy.ts';
 
 const server = setupServer();
@@ -82,7 +82,7 @@ describe('F01 intro (IX-030, MS-ONB-003)', () => {
     expect(button(copy['CPY-F01-005'])).toBeInTheDocument();
     await userEvent.click(button(copy['CPY-F01-005']));
 
-    expect(await findTitle(copy['CPY-F02-001'])).toHaveFocus();
+    await findFocusedTitle(copy['CPY-F02-001']);
     expect(router.state.location.pathname).toBe(paths.join);
     expect(opCount(world, 'OP-003')).toBe(0);
   });

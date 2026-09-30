@@ -5,7 +5,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, test, vi } from 'vite
 import { paths } from '../../app/navigation.ts';
 import { createFakeStorage } from '../../mocks/platform.ts';
 import { createMockWorld, SYNTHETIC_KEYS } from '../../mocks/world.ts';
-import { bootApp, findTitle, opCount } from '../../test/boot.tsx';
+import { bootApp, findFocusedTitle, findTitle, opCount } from '../../test/boot.tsx';
 import { copy } from '../../ui/copy.ts';
 
 const server = setupServer();
@@ -54,7 +54,7 @@ describe('F03 nickname (IX-003, IX-035, MS-NICK-001/002)', () => {
     const { world, router } = await bootBoarded();
     type('   ');
     await userEvent.click(primary());
-    expect(await findTitle(copy['CPY-F10-001'])).toHaveFocus();
+    await findFocusedTitle(copy['CPY-F10-001']);
     expect(router.state.location.pathname).toBe(paths.today);
     expect(opCount(world, 'OP-004')).toBe(0);
   });

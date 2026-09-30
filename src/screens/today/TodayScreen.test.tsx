@@ -5,7 +5,7 @@ import { setupServer } from 'msw/node';
 import { afterAll, afterEach, beforeAll, describe, expect, test } from 'vitest';
 import { paths } from '../../app/navigation.ts';
 import { createMockWorld, SYNTHETIC_ANSWER_TEXT, SYNTHETIC_KEYS } from '../../mocks/world.ts';
-import { bootApp, findTitle, opCount } from '../../test/boot.tsx';
+import { bootApp, findFocusedTitle, findTitle, opCount } from '../../test/boot.tsx';
 import { copy } from '../../ui/copy.ts';
 
 const server = setupServer();
@@ -17,7 +17,7 @@ describe('F10 unanswered (IX-006, IX-033)', () => {
   test('primary question first; F00 data reused without a second OP-005', async () => {
     const { world, started } = bootApp(server);
     await act(() => started);
-    expect(await findTitle(copy['CPY-F10-001'])).toHaveFocus();
+    await findFocusedTitle(copy['CPY-F10-001']);
 
     const question = screen.getByRole('region', { name: copy['CPY-F10-003'] });
     expect(within(question).getByText(world.sema.primaryQuestion.text)).toBeInTheDocument();
@@ -138,7 +138,7 @@ describe('F21 read-back (MS-CORE-001 read side)', () => {
     await findTitle(copy['CPY-F10-001']);
     await userEvent.click(screen.getByRole('button', { name: copy['CPY-F10-016'] }));
 
-    expect(await findTitle(copy['CPY-F21-001'])).toHaveFocus();
+    await findFocusedTitle(copy['CPY-F21-001']);
     const regions = screen.getAllByRole('region');
     expect(regions[0]).toHaveAccessibleName(copy['CPY-F21-002']);
     expect(regions[1]).toHaveAccessibleName(copy['CPY-F21-004']);

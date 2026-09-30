@@ -1,6 +1,7 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import type { SetupServer } from 'msw/node';
 import { createMemoryRouter } from 'react-router';
+import { expect } from 'vitest';
 import { App } from '../app/App.tsx';
 import { createAppServices } from '../app/composition.ts';
 import { paths, routes } from '../app/routes.tsx';
@@ -34,5 +35,11 @@ export function bootApp(server: SetupServer, options: BootOptions = {}) {
 }
 
 export const findTitle = (name: string) => screen.findByRole('heading', { level: 1, name });
+
+export async function findFocusedTitle(name: string) {
+  const title = await findTitle(name);
+  await waitFor(() => expect(title).toHaveFocus());
+  return title;
+}
 
 export const opCount = (world: MockWorld, op: string) => world.requests.filter((r) => r.op === op).length;

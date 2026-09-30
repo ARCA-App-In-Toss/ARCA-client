@@ -241,7 +241,7 @@ describe('MS-CORE-001 question → write → save → read again', () => {
     await userEvent.click(screen.getByRole('button', { name: copy['CPY-F11-018'] }));
 
     const result = await screen.findByRole('heading', { level: 2, name: copy['CPY-F12-004'] });
-    expect(result).toHaveFocus();
+    await waitFor(() => expect(result).toHaveFocus());
     expect(router.state.location.pathname).toBe(paths.saved);
     expect(router.state.location.state).toMatchObject({ answerRef: expect.any(String) });
     expect(document.querySelector('.arca-user-text')).toBeNull();
