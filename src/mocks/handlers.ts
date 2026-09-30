@@ -191,6 +191,37 @@ function pendingResponse(ticketId: string): Response {
   );
 }
 
+type ExecuteKind = 'ANSWER_WRITE' | 'ANSWER_DELETE' | 'ALL_DATA_DELETE';
+
+function executeKindOf(body: { kind?: unknown; content?: unknown }): ExecuteKind | null {
+  if (body.kind === 'ANSWER_WRITE') return typeof body.content === 'string' ? 'ANSWER_WRITE' : null;
+  if (body.kind === 'ANSWER_DELETE' || body.kind === 'ALL_DATA_DELETE') return body.kind;
+  return null;
+}
+
+function executeKindResponse(body: { kind?: unknown; content?: unknown }, expected: ExecuteKind) {
+  const kind = executeKindOf(body);
+  if (kind === null) {
+    return HttpResponse.json(errorBody('INVALID_REQUEST', 'VALIDATION'), { status: 400, headers: noStore });
+  }
+  if (kind !== expected) {
+    return HttpResponse.json(errorBody('COMMAND_PAYLOAD_MISMATCH', 'VALIDATION'), { status: 422, headers: noStore });
+  }
+  return undefined;
+}
+
+function pendingWriteTarget(world: MockWorld, owner: string, body: Record<string, unknown>): MockTicket | undefined {
+  return [...world.tickets.values()].find(
+    (t) =>
+      t.owner === owner &&
+      !t.resultExpired &&
+      (t.state === 'PREPARED' || t.state === 'EXECUTING') &&
+      (body.mode === 'UPDATE'
+        ? t.answerTarget?.answerId === String(body.answerId)
+        : !t.answerTarget && t.dailySemaId === body.dailySemaId),
+  );
+}
+
 function deletionOwner(world: MockWorld, bearer: string | null, deletion: MockDeletion): string | Response {
   const session = bearer ? world.sessions.get(bearer) : undefined;
   if (!session) return HttpResponse.json(errorBody('SESSION_INVALID', 'AUTH'), { status: 401, headers: noStore });
@@ -228,6 +259,8 @@ function deletionDto(world: MockWorld, deletion: MockDeletion) {
   if (deletion.state === 'NOT_APPLIED') return { ...settled, error: deletion.error };
   return { ...settled, proof: DELETION_PROOF };
 }
+
+const RECONCILED_AT = '2026-09-27T02:00:00Z';
 
 const DELETION_PROOF = {
   effect: 'DELETED',
@@ -315,6 +348,10 @@ export function createHandlers(world: MockWorld, baseUrl = MOCK_API_BASE) {
       world.requests.push({ op: 'OP-002', bearer });
       const faulted = await applyFault(world, 'OP-002');
       if (faulted) return faulted;
+      const session = bearer ? world.sessions.get(bearer) : undefined;
+      if (session && !session.revoked && !session.deletionTicketId && !world.passengers.has(session.anonymousKey)) {
+        return HttpResponse.json(errorBody('PASSENGER_NOT_FOUND', 'VALIDATION'), { status: 404, headers: noStore });
+      }
       const owner = activeOwner(world, bearer);
       if (owner instanceof Response) return owner;
       const { passengerCode, nickname, revision } = world.passengers.get(owner) as Passenger;
@@ -460,20 +497,8 @@ export function createHandlers(world: MockWorld, baseUrl = MOCK_API_BASE) {
       const faulted = await applyFault(world, 'OP-005');
       if (faulted) return faulted;
 
-      const session = bearer ? world.sessions.get(bearer) : undefined;
-      if (!session) return HttpResponse.json(errorBody('SESSION_INVALID', 'AUTH'), { status: 401, headers: noStore });
-      if (session.revoked) {
-        return HttpResponse.json(
-          errorBody('SESSION_RECOVERY_REQUIRED', 'AUTH', {
-            recovery: { kind: 'REESTABLISH_SESSION', recoveryAllowed: true },
-          }),
-          { status: 401, headers: noStore },
-        );
-      }
-      if (!world.passengers.has(session.anonymousKey)) {
-        return HttpResponse.json(errorBody('SESSION_SCOPE_INSUFFICIENT', 'AUTH'), { status: 403, headers: noStore });
-      }
-      const owner = session.anonymousKey;
+      const owner = activeOwner(world, bearer);
+      if (owner instanceof Response) return owner;
       const url = new URL(request.url);
       const profile = (url.searchParams.get('excerptProfile') ?? 'EXPANDED') as ExcerptProfile;
       const today = world.answersOf(owner).find((a) => a.dailySemaId === world.sema.dailySemaId);
@@ -512,12 +537,15 @@ export function createHandlers(world: MockWorld, baseUrl = MOCK_API_BASE) {
         world.sema = SYNTHETIC_NEXT_DAY_SEMA;
       }
       const existing = [...world.tickets.values()].find((t) => t.owner === owner && t.operationId === operationId);
+      const pendingTarget = existing ? undefined : pendingWriteTarget(world, owner, body);
       let response: Response;
       if (existing) {
         response =
           existing.fingerprint === fingerprint
             ? HttpResponse.json(ticketDto(world, existing, 'COMPACT'), { status: 200, headers: noStore })
             : HttpResponse.json(errorBody('IDEMPOTENCY_KEY_REUSED', 'CONFLICT'), { status: 409, headers: noStore });
+      } else if (pendingTarget) {
+        response = pendingResponse(pendingTarget.ticketId);
       } else if (body.mode === 'UPDATE') {
         const answer = world.answers.get(String(body.answerId));
         if (!answer || answer.owner !== owner) {
@@ -623,11 +651,16 @@ export function createHandlers(world: MockWorld, baseUrl = MOCK_API_BASE) {
       const existing = [...world.tickets.values()].find((t) => t.owner === owner && t.operationId === operationId);
       let response: Response;
       const answer = world.answers.get(String(body.answerId));
+      const pendingTarget = existing
+        ? undefined
+        : pendingWriteTarget(world, owner, { mode: 'UPDATE', answerId: body.answerId });
       if (existing) {
         response =
           existing.fingerprint === fingerprint
             ? HttpResponse.json(ticketDto(world, existing, 'COMPACT'), { status: 200, headers: noStore })
             : HttpResponse.json(errorBody('IDEMPOTENCY_KEY_REUSED', 'CONFLICT'), { status: 409, headers: noStore });
+      } else if (pendingTarget) {
+        response = pendingResponse(pendingTarget.ticketId);
       } else if (!answer || answer.owner !== owner) {
         response = HttpResponse.json(errorBody('ANSWER_NOT_FOUND', 'VALIDATION'), { status: 404, headers: noStore });
       } else if (answer.revision !== body.expectedRevision) {
@@ -651,10 +684,9 @@ export function createHandlers(world: MockWorld, baseUrl = MOCK_API_BASE) {
       if (deletion) {
         const deleter = deletionOwner(world, bearer, deletion);
         if (deleter instanceof Response) return deleter;
-        const body = (await request.json()) as { kind?: unknown };
-        if (body.kind !== 'ALL_DATA_DELETE') {
-          return HttpResponse.json(errorBody('INVALID_REQUEST', 'VALIDATION'), { status: 400, headers: noStore });
-        }
+        const body = (await request.json()) as { kind?: unknown; content?: unknown };
+        const rejected = executeKindResponse(body, 'ALL_DATA_DELETE');
+        if (rejected) return rejected;
         if (deletion.state === 'PREPARED') {
           deletion.state = 'EXECUTING';
           for (const record of world.sessions.values()) {
@@ -678,10 +710,9 @@ export function createHandlers(world: MockWorld, baseUrl = MOCK_API_BASE) {
       }
       const body = (await request.json()) as { kind?: unknown; content?: unknown };
       const isDelete = ticket.answerTarget?.kind === 'DELETE';
+      const rejected = executeKindResponse(body, isDelete ? 'ANSWER_DELETE' : 'ANSWER_WRITE');
+      if (rejected) return rejected;
       if (isDelete) {
-        if (body.kind !== 'ANSWER_DELETE') {
-          return HttpResponse.json(errorBody('INVALID_REQUEST', 'VALIDATION'), { status: 400, headers: noStore });
-        }
         if (ticket.state === 'PREPARED') {
           ticket.state = 'EXECUTING';
           if (!world.asyncExecution) world.completeExecuting();
@@ -690,10 +721,8 @@ export function createHandlers(world: MockWorld, baseUrl = MOCK_API_BASE) {
         const response = HttpResponse.json(ticketDto(world, ticket, 'COMPACT'), { status, headers: noStore });
         return fault?.kind === 'lose-response' ? HttpResponse.error() : response;
       }
-      if (body.kind !== 'ANSWER_WRITE' || typeof body.content !== 'string') {
-        return HttpResponse.json(errorBody('INVALID_REQUEST', 'VALIDATION'), { status: 400, headers: noStore });
-      }
-      const digest = `d:${body.content}`;
+      const content = String(body.content);
+      const digest = `d:${content}`;
       if (ticket.contentDigest !== null && ticket.contentDigest !== digest) {
         return HttpResponse.json(errorBody('COMMAND_PAYLOAD_MISMATCH', 'VALIDATION'), {
           status: 422,
@@ -702,17 +731,17 @@ export function createHandlers(world: MockWorld, baseUrl = MOCK_API_BASE) {
       }
       if (ticket.state === 'PREPARED') {
         ticket.contentDigest = digest;
-        const count = graphemeCount(body.content);
+        const count = graphemeCount(content);
         if (count < 1 || count > 2_000) {
           ticket.state = 'NOT_APPLIED';
           ticket.error = { code: 'ANSWER_CONTENT_INVALID', category: 'VALIDATION' };
           ticket.completedAt = '2026-09-27T02:00:00Z';
         } else if (world.asyncExecution) {
           ticket.state = 'EXECUTING';
-          ticket.pendingContent = body.content;
+          ticket.pendingContent = content;
         } else {
           ticket.state = 'EXECUTING';
-          ticket.pendingContent = body.content;
+          ticket.pendingContent = content;
           world.completeExecuting();
         }
       }
@@ -787,7 +816,13 @@ export function createHandlers(world: MockWorld, baseUrl = MOCK_API_BASE) {
           deletion.error = { code: 'COMMAND_CLOSED', category: 'CONFLICT' };
         }
         const status = deletion.state === 'EXECUTING' ? 202 : 200;
-        const response = HttpResponse.json(deletionDto(world, deletion), { status, headers: noStore });
+        const closure = deletion.resultExpired
+          ? {
+              ...deletionDto(world, deletion),
+              reconciliation: { checkedAt: RECONCILED_AT, nextAction: 'RETURN_TODAY' },
+            }
+          : deletionDto(world, deletion);
+        const response = HttpResponse.json(closure, { status, headers: noStore });
         return fault?.kind === 'lose-response' ? HttpResponse.error() : response;
       }
       const owner = activeOwner(world, bearer);
@@ -802,13 +837,13 @@ export function createHandlers(world: MockWorld, baseUrl = MOCK_API_BASE) {
           : world.answersOf(owner).find((a) => a.dailySemaId === ticket.dailySemaId);
         const reconciliation = current
           ? {
-              checkedAt: '2026-09-27T02:00:00Z',
+              checkedAt: RECONCILED_AT,
               nextAction: 'REVIEW_CURRENT_ANSWER',
               answerId: current.answerId,
               revision: current.revision,
             }
           : {
-              checkedAt: '2026-09-27T02:00:00Z',
+              checkedAt: RECONCILED_AT,
               nextAction: ticket.answerTarget
                 ? 'RETURN_ARCHIVE'
                 : ticket.dailySemaId === world.sema.dailySemaId
@@ -873,12 +908,10 @@ export function createHandlers(world: MockWorld, baseUrl = MOCK_API_BASE) {
       world.requests.push({ op: 'OP-011', bearer });
       const faulted = await applyFault(world, 'OP-011');
       if (faulted) return faulted;
-      const session = bearer ? world.sessions.get(bearer) : undefined;
-      if (!session || session.revoked) {
-        return HttpResponse.json(errorBody('SESSION_INVALID', 'AUTH'), { status: 401, headers: noStore });
-      }
+      const owner = activeOwner(world, bearer);
+      if (owner instanceof Response) return owner;
       const answer = world.answers.get(String(params.answerId));
-      if (!answer || answer.owner !== session.anonymousKey) {
+      if (!answer || answer.owner !== owner) {
         return HttpResponse.json(errorBody('ANSWER_NOT_FOUND', 'VALIDATION'), { status: 404, headers: noStore });
       }
       const { owner: _owner, ...detail } = answer;
