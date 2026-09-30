@@ -45,13 +45,13 @@ test('320px with 200% text: no horizontal scroll and the save control stays reac
   expect(overflow).toBeLessThanOrEqual(0);
 });
 
-test('Reduced Motion: the same flow completes and the result is shown at once', async ({ page }) => {
+test('MS-PLATFORM-003 Reduced Motion: the same flow completes and the result is shown at once', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await writeAndSave(page);
   await expect(page.getByRole('button', { name: '오늘의 항해로' })).toBeEnabled();
 });
 
-test('MS-CORE-009 fonts and images blocked: question, writing, result and moves never wait on them', async ({
+test('MS-CORE-009 / MS-PLATFORM-003 fonts and images blocked: question, writing, result and moves never wait on them', async ({
   page,
 }) => {
   const blocked: string[] = [];

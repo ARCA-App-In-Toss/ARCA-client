@@ -39,7 +39,7 @@ async function typeKept(textarea: HTMLElement, text: string) {
   });
 }
 
-describe('F11 → F13 when the server day changed (IX-034, DATE_CHANGED)', () => {
+describe('MS-TIME-002 F11 → F13 when the server day changed (IX-034, DATE_CHANGED)', () => {
   test('text, question, date and real expiry move to F13; copy first; nothing saved for the past day', async () => {
     const world = createMockWorld('server.activeUnanswered');
     const now = Date.parse('2026-09-27T05:00:00Z');
@@ -73,7 +73,7 @@ describe('F11 → F13 when the server day changed (IX-034, DATE_CHANGED)', () =>
     expect(JSON.stringify(router.state.location)).not.toContain('synthetic-day');
   });
 
-  test('copy failure: direct selection guidance and focus on the read-only text (IX-040)', async () => {
+  test('MS-PLATFORM-001 copy failure: direct selection guidance and focus on the read-only text (IX-040)', async () => {
     const world = createMockWorld('server.activeUnanswered');
     const { textarea, platform } = await openWrite({ world });
     await typeKept(textarea, '복사 실패 합성');
@@ -158,7 +158,7 @@ describe('F10 past drafts Sheet → F13 review (IX-015, IX-034)', () => {
   });
 });
 
-describe('IX-012 SEMA replaced while writing', () => {
+describe('MS-SEMA-001 IX-012 SEMA replaced while writing', () => {
   test('text read-only, copy Primary, new question Secondary; nothing moved into the new question', async () => {
     const world = createMockWorld('server.activeUnanswered');
     const { textarea, platform } = await openWrite({ world });
@@ -179,6 +179,45 @@ describe('IX-012 SEMA replaced while writing', () => {
     await userEvent.click(screen.getByRole('button', { name: copy['CPY-F10-005'] }));
     expect(await screen.findByRole('textbox', { name: copy['CPY-F11-003'] })).toHaveValue('');
     expect(world.tickets.size).toBe(0);
+  });
+
+  test('an answer saved before the replacement stays complete with its own question snapshot', async () => {
+    const world = createMockWorld('server.activeAnswered');
+    world.sema = SYNTHETIC_REPLACED_SEMA;
+    const booted = bootApp(server, { world });
+    await act(() => booted.started);
+    await findTitle(copy['CPY-F10-001']);
+
+    const saved = screen.getByRole('region', { name: copy['CPY-F10-015'] });
+    expect(saved).toHaveTextContent(SYNTHETIC_SEMA.primaryQuestion.text);
+    expect(saved).not.toHaveTextContent(SYNTHETIC_REPLACED_SEMA.primaryQuestion.text);
+    expect(screen.queryByRole('button', { name: copy['CPY-F10-005'] })).toBeNull();
+    expect(world.answers.size).toBe(1);
+  });
+
+  test('a request accepted before the replacement still runs: F12, the accepted question kept', async () => {
+    const world = createMockWorld('server.activeUnanswered');
+    const { textarea, router } = await openWrite({ world });
+    await typeKept(textarea, '교체 직전 수락 합성');
+    let release = () => {};
+    world.addFault('OP-007', {
+      kind: 'hold',
+      release: new Promise<void>((resolve) => {
+        release = resolve;
+      }),
+    });
+    await userEvent.click(screen.getByRole('button', { name: copy['CPY-F11-018'] }));
+    await waitFor(() => expect(world.requests.some((r) => r.op === 'OP-007')).toBe(true));
+    world.sema = SYNTHETIC_REPLACED_SEMA;
+    release();
+
+    await screen.findByRole('heading', { level: 2, name: copy['CPY-F12-004'] });
+    expect(router.state.location.pathname).toBe(paths.saved);
+    const [answer] = [...world.answers.values()];
+    expect(world.answers.size).toBe(1);
+    expect(answer?.content).toBe('교체 직전 수락 합성');
+    expect(answer?.question.questionId).toBe(SYNTHETIC_SEMA.primaryQuestion.questionId);
+    expect(answer?.dailySemaId).toBe(SYNTHETIC_SEMA.dailySemaId);
   });
 });
 

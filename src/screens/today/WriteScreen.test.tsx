@@ -1,4 +1,4 @@
-import { act, fireEvent, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import axe from 'axe-core';
 import { setupServer } from 'msw/node';
@@ -124,7 +124,7 @@ test('IME live count does not commit a draft or validate/save unfinished input',
   expect(screen.getByRole('button', { name: copy['CPY-F11-018'] })).toBeDisabled();
 });
 
-describe('F11 question switch (IX-006)', () => {
+describe('MS-DRAFT-001 F11 question switch (IX-006)', () => {
   test('keeps the current text first, then shows the other question with its own draft', async () => {
     const storage = createFakeStorage();
     const { world, textarea } = await openWrite({ storage });
@@ -163,6 +163,72 @@ describe('F11 question switch (IX-006)', () => {
       world.sema.primaryQuestion.text,
     );
     expect(textarea).toHaveValue('보관 실패 합성');
+  });
+
+  test('a failed keep before the switch leaves the cursor where it was', async () => {
+    const storage = createFakeStorage();
+    const { textarea } = await openWrite({ storage });
+    fireEvent.change(textarea, { target: { value: '커서 유지 합성' } });
+    (textarea as HTMLTextAreaElement).setSelectionRange(2, 4);
+    storage.failNextWrite((key) => key.includes(':manifest:'));
+    await userEvent.click(screen.getByRole('button', { name: copy['CPY-F10-006'] }));
+
+    await waitFor(() =>
+      expect(screen.getAllByRole('status').some((s) => s.textContent === copy['CPY-F11-017'])).toBe(true),
+    );
+    expect(textarea).toHaveValue('커서 유지 합성');
+    expect((textarea as HTMLTextAreaElement).selectionStart).toBe(2);
+    expect((textarea as HTMLTextAreaElement).selectionEnd).toBe(4);
+  });
+
+  test('each question keeps its own text across round trips and a restart', async () => {
+    const storage = createFakeStorage();
+    const first = await openWrite({ storage });
+    const field = () => screen.findByRole('textbox', { name: copy['CPY-F11-003'] });
+    const question = () => screen.getByRole('region', { name: copy['CPY-F11-002'] });
+    fireEvent.change(first.textarea, { target: { value: '기본 질문 합성 본문' } });
+
+    await userEvent.click(screen.getByRole('button', { name: copy['CPY-F10-006'] }));
+    await waitFor(() => expect(question()).toHaveTextContent(first.world.sema.alternateQuestion.text));
+    fireEvent.change(await field(), { target: { value: '대체 질문 합성 본문' } });
+    await userEvent.click(screen.getByRole('button', { name: copy['CPY-F10-007'] }));
+    await waitFor(() => expect(question()).toHaveTextContent(first.world.sema.primaryQuestion.text));
+    await waitFor(async () => expect(await field()).toHaveValue('기본 질문 합성 본문'));
+    await userEvent.click(screen.getByRole('button', { name: copy['CPY-F10-006'] }));
+    await waitFor(async () => expect(await field()).toHaveValue('대체 질문 합성 본문'));
+    await waitFor(() => expect(draftRecords(storage)).toHaveLength(2));
+    first.view.unmount();
+
+    await openWrite({ storage, world: first.world });
+    await waitFor(() => expect(question()).toHaveTextContent(first.world.sema.primaryQuestion.text));
+    await waitFor(async () => expect(await field()).toHaveValue('기본 질문 합성 본문'));
+    await userEvent.click(screen.getByRole('button', { name: copy['CPY-F10-006'] }));
+    await waitFor(() => expect(question()).toHaveTextContent(first.world.sema.alternateQuestion.text));
+    await waitFor(async () => expect(await field()).toHaveValue('대체 질문 합성 본문'));
+  });
+});
+
+describe('MS-PLATFORM-002 missing capabilities only reduce sensory extras', () => {
+  test('no haptics and a device clock far from the server day: the save, server date and moves are unchanged', async () => {
+    const deviceNow = Date.parse('2031-03-03T03:00:00Z');
+    const { world, platform, router, textarea } = await openWrite({ now: () => deviceNow });
+    platform.haptic.memorySaved = async () => undefined;
+    fireEvent.change(textarea, { target: { value: '기능 부재 합성' } });
+    await waitFor(() => expect(help()).toContain(copy['CPY-F11-011']), { timeout: 3_000 });
+    await userEvent.click(screen.getByRole('button', { name: copy['CPY-F11-018'] }));
+
+    await screen.findByRole('heading', { level: 2, name: copy['CPY-F12-004'] });
+    expect(router.state.location.pathname).toBe(paths.saved);
+    expect(platform.hapticCount).toBe(0);
+    const [answer] = [...world.answers.values()];
+    expect(answer?.content).toBe('기능 부재 합성');
+    expect(answer?.dailySemaId).toBe(world.sema.dailySemaId);
+
+    await userEvent.click(screen.getByRole('button', { name: copy['CPY-F12-014'] }));
+    await findTitle(copy['CPY-F10-001']);
+    expect(
+      within(screen.getByRole('region', { name: copy['CPY-F10-015'] })).getByText('2026년 9월 27일'),
+    ).toHaveAttribute('datetime', '2026-09-27');
   });
 });
 

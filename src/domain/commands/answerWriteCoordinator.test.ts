@@ -5,7 +5,14 @@ import { createHttpTransport } from '../../data/api/transport.ts';
 import { StorageJournal } from '../../data/storage/journal.ts';
 import { createHandlers } from '../../mocks/handlers.ts';
 import { createFakePlatform, createFakeStorage } from '../../mocks/platform.ts';
-import { createMockWorld, MOCK_API_BASE, SYNTHETIC_KEYS } from '../../mocks/world.ts';
+import {
+  createMockWorld,
+  MOCK_API_BASE,
+  type MockAnswer,
+  type MockTicket,
+  type MockWorld,
+  SYNTHETIC_KEYS,
+} from '../../mocks/world.ts';
 import { DraftRepository } from '../drafts/draftRepository.ts';
 import type { PrepareAnswerCreate } from '../models.ts';
 import { SessionController } from '../session/sessionController.ts';
@@ -164,7 +171,7 @@ describe('MS-CORE-006 execute response lost', () => {
     expect(world.answersOf(SYNTHETIC_KEYS.registered)).toHaveLength(1);
   });
 
-  test('EXECUTING beyond the 10s cycle becomes static unconfirmed, never failed; recheck later succeeds', async () => {
+  test('MS-CMD-003 EXECUTING beyond the 10s cycle becomes static unconfirmed, never failed; recheck later succeeds', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
     const { world, coordinator, save, ops } = await setup();
     world.asyncExecution = true;
@@ -229,7 +236,7 @@ describe('MS-CORE-002 corpus round-trip without trim, normalization or truncatio
   });
 });
 
-describe('finishing stages are ordered, confirmed and resumable (06 §8.7)', () => {
+describe('MS-STORAGE-005 finishing stages are ordered, confirmed and resumable (06 §8.7)', () => {
   test('termination after the proof: re-entry finishes quietly (drafts, payload, ack once, tracker)', async () => {
     const { world, storage, store, drafts, draftIdentity, coordinator, ops, input } = await setup();
     await drafts.save(draftIdentity, '끝맺음 중 종료 합성', Date.now());
@@ -312,6 +319,27 @@ describe('finishing stages are ordered, confirmed and resumable (06 §8.7)', () 
     await coordinator.recheck(input.dailySemaId);
     expect(view(coordinator).kind).toBe('idle');
     expect(ops('OP-009')).toBe(1);
+    expect(await store.getTracker(input.dailySemaId)).toBeNull();
+  });
+
+  test('termination after the ack: re-entry re-syncs the cache, repeats only the safe ack and removes the tracker', async () => {
+    const { world, store, coordinator, save, ops, input, synced } = await setup();
+    const spy = vi.spyOn(store, 'removeTracker').mockRejectedValueOnce(new Error('synthetic tracker delete failure'));
+    await save('확인 뒤 종료 합성');
+    const [answer] = world.answersOf(SYNTHETIC_KEYS.registered);
+    expect(view(coordinator).kind).toBe('succeeded');
+    expect(ops('OP-009')).toBe(1);
+    expect(synced).toEqual([answer?.answerId]);
+    expect((await store.getTracker(input.dailySemaId))?.outcome?.state).toBe('SUCCEEDED');
+
+    spy.mockRestore();
+    await coordinator.recheck(input.dailySemaId, { quiet: true });
+    expect(view(coordinator).kind).toBe('idle');
+    expect(synced).toEqual([answer?.answerId, answer?.answerId]);
+    expect(ops('OP-006')).toBe(1);
+    expect(ops('OP-007')).toBe(1);
+    expect(ops('OP-009')).toBe(2);
+    expect(world.answersOf(SYNTHETIC_KEYS.registered)).toHaveLength(1);
     expect(await store.getTracker(input.dailySemaId)).toBeNull();
   });
 });
@@ -562,7 +590,7 @@ describe('tracker kept before its payload (06 §8.3 #4)', () => {
   });
 });
 
-describe('IX-041 past result no longer retained (CLOSED_OUTCOME_UNAVAILABLE)', () => {
+describe('MS-RESULT-001 IX-041 past result no longer retained (CLOSED_OUTCOME_UNAVAILABLE)', () => {
   const OPERATION = '66d9e9af-2026-4000-8000-000000000006';
 
   async function expiredTicket(options: { answered: boolean }) {
@@ -832,4 +860,232 @@ describe('expiry sweep never removes a newer payload (architecture round 1)', ()
     expect(world.tickets.size).toBe(1);
     expect(world.requests.filter((r) => r.op === 'OP-007')).toHaveLength(1);
   });
+});
+
+describe('command replays, two devices and receipts (07 §11.5)', () => {
+  const OPERATION = '66d9e9af-2026-4000-8000-000000000003';
+  type Ctx = Awaited<ReturnType<typeof setup>>;
+
+  async function trackedTicket(ctx: Ctx, server: Partial<MockTicket>, local: { ticketId?: string | null } = {}) {
+    const { world, store, input } = ctx;
+    const ticket: MockTicket = {
+      owner: SYNTHETIC_KEYS.registered,
+      ticketId: 'synthetic-ticket-3',
+      operationId: OPERATION,
+      fingerprint: JSON.stringify(input),
+      dailySemaId: input.dailySemaId,
+      question: world.sema.primaryQuestion,
+      state: 'PREPARED',
+      contentDigest: null,
+      pendingContent: null,
+      answerId: null,
+      error: null,
+      completedAt: null,
+      acknowledged: false,
+      ...server,
+    };
+    world.tickets.set(ticket.ticketId, ticket);
+    await store.putTracker(input.dailySemaId, {
+      recordType: 'command',
+      kind: 'ANSWER_WRITE',
+      operationId: OPERATION,
+      prepareInput: input,
+      executeIntent: true,
+      networkAllowed: true,
+      ticketId: local.ticketId === undefined ? ticket.ticketId : local.ticketId,
+      outcome: null,
+      createdAt: Date.now(),
+    });
+    return ticket;
+  }
+
+  const settledTicket = (answer: MockAnswer): Partial<MockTicket> => ({
+    state: 'SUCCEEDED',
+    contentDigest: `d:${answer.content}`,
+    answerId: answer.answerId,
+    proofRevision: answer.revision,
+    completedAt: '2026-09-27T02:00:00Z',
+  });
+
+  test('MS-CMD-001 repeated prepare and execute reuse one operation, ticket and payload: one answer, one proof', async () => {
+    const { world, coordinator, save, ops, api, input } = await setup();
+    const prepares = vi.spyOn(api, 'prepareAnswerWrite');
+    const executes = vi.spyOn(api, 'executeAnswerWrite');
+    world.addFault('OP-006', { kind: 'lose-response' });
+    world.addFault('OP-007', { kind: 'lose-response' });
+    await save('중복 전송 합성');
+    expect(view(coordinator)).toEqual({ kind: 'unconfirmed', trackerKept: true });
+    await coordinator.recheck(input.dailySemaId);
+    expect(view(coordinator).kind).toBe('succeeded');
+
+    const [first, second] = prepares.mock.calls;
+    expect(prepares).toHaveBeenCalledTimes(2);
+    expect(second?.[1]).toBe(first?.[1]);
+    expect(second?.[2]).toEqual(first?.[2]);
+    const [ticket] = [...world.tickets.values()];
+    const [answer] = world.answersOf(SYNTHETIC_KEYS.registered);
+    expect(world.tickets.size).toBe(1);
+
+    const auth = { bearer: world.issueToken(SYNTHETIC_KEYS.registered) };
+    const replay = await api.executeAnswerWrite(auth, ticket?.ticketId ?? '', '중복 전송 합성', 1_000);
+    expect(replay).toMatchObject({
+      state: 'SUCCEEDED',
+      ticketId: ticket?.ticketId,
+      proof: { answerId: answer?.answerId, revision: answer?.revision },
+    });
+    expect(executes.mock.calls.map(([, ticketId, content]) => [ticketId, content])).toEqual([
+      [ticket?.ticketId, '중복 전송 합성'],
+      [ticket?.ticketId, '중복 전송 합성'],
+    ]);
+    expect(world.answersOf(SYNTHETIC_KEYS.registered)).toHaveLength(1);
+    expect(ops('OP-009')).toBe(1);
+  });
+
+  test('MS-CMD-002 an operation id reused with another input is refused: no new ticket or effect, the draft stays', async () => {
+    const ctx = await setup();
+    const { world, coordinator, store, drafts, draftIdentity, input, ops } = ctx;
+    const original = await trackedTicket(
+      ctx,
+      { fingerprint: JSON.stringify({ ...input, questionId: world.sema.alternateQuestion.questionId }) },
+      { ticketId: null },
+    );
+    await store.putPayload(input.dailySemaId, {
+      recordType: 'command-payload',
+      operationId: OPERATION,
+      content: '다른 입력 재사용 합성',
+      lastModifiedAt: Date.now(),
+    });
+    await drafts.save(draftIdentity, '다른 입력 재사용 합성', Date.now());
+
+    await coordinator.recheck(input.dailySemaId);
+    expect(view(coordinator)).toEqual({ kind: 'rejected', code: 'IDEMPOTENCY_KEY_REUSED' });
+    expect(ops('OP-007')).toBe(0);
+    expect(world.tickets.size).toBe(1);
+    expect(world.tickets.get(original.ticketId)).toMatchObject({
+      state: 'PREPARED',
+      fingerprint: original.fingerprint,
+      contentDigest: null,
+    });
+    expect(world.answersOf(SYNTHETIC_KEYS.registered)).toHaveLength(0);
+    expect((await drafts.load(draftIdentity))?.text).toBe('다른 입력 재사용 합성');
+  });
+
+  test('MS-CMD-002 the same ticket with another content is COMMAND_PAYLOAD_MISMATCH: the first payload and result stay', async () => {
+    const { world, coordinator, save, api } = await setup();
+    await save('처음 고정 합성');
+    expect(view(coordinator).kind).toBe('succeeded');
+    const [ticket] = [...world.tickets.values()];
+    const [answer] = world.answersOf(SYNTHETIC_KEYS.registered);
+    const auth = { bearer: world.issueToken(SYNTHETIC_KEYS.registered) };
+
+    await expect(api.executeAnswerWrite(auth, ticket?.ticketId ?? '', '바꾼 합성', 1_000)).rejects.toMatchObject({
+      code: 'COMMAND_PAYLOAD_MISMATCH',
+      category: 'VALIDATION',
+    });
+    const result = await api.getAnswerWriteResult(auth, ticket?.ticketId ?? '', 'COMPACT', 1_000);
+    expect(result).toMatchObject({
+      state: 'SUCCEEDED',
+      proof: { answerId: answer?.answerId, revision: answer?.revision },
+    });
+    expect(world.answersOf(SYNTHETIC_KEYS.registered).map((a) => a.content)).toEqual(['처음 고정 합성']);
+  });
+
+  test('MS-CMD-005 another device already acknowledged the success: the proof is restored and the current answer re-read', async () => {
+    const ctx = await setup();
+    const { world, coordinator, store, input, ops, synced } = ctx;
+    const answer = world.seedAnswer(SYNTHETIC_KEYS.registered, '기기 A 확인 합성');
+    await trackedTicket(ctx, { ...settledTicket(answer), acknowledged: true });
+
+    await coordinator.recheck(input.dailySemaId);
+    expect(view(coordinator)).toEqual({
+      kind: 'succeeded',
+      completion: { answerId: answer.answerId, presentation: { state: 'ACKNOWLEDGED' } },
+    });
+    expect(synced).toEqual([answer.answerId]);
+    expect(ops('OP-006') + ops('OP-007')).toBe(0);
+    expect(await store.getTracker(input.dailySemaId)).toBeNull();
+  });
+
+  test('MS-CMD-005 another device already acknowledged the not-applied result: the error is restored', async () => {
+    const ctx = await setup();
+    const { world, coordinator, input, ops } = ctx;
+    await trackedTicket(ctx, {
+      state: 'NOT_APPLIED',
+      error: { code: 'COMMAND_EXPIRED', category: 'CONFLICT' },
+      completedAt: '2026-09-27T02:00:00Z',
+      acknowledged: true,
+    });
+
+    await coordinator.recheck(input.dailySemaId);
+    expect(view(coordinator)).toEqual({ kind: 'notApplied', code: 'COMMAND_EXPIRED' });
+    expect(ops('OP-006') + ops('OP-007')).toBe(0);
+    expect(world.answersOf(SYNTHETIC_KEYS.registered)).toHaveLength(0);
+  });
+
+  test('MS-CMD-006 a prepare that never arrived: no ticket and unconfirmed, never not applied; the retry restores one ticket', async () => {
+    const { world, coordinator, save, api, input } = await setup();
+    const prepares = vi.spyOn(api, 'prepareAnswerWrite');
+    world.addFault('OP-006', { kind: 'network' });
+    await save('미도착 준비 합성');
+    expect(view(coordinator)).toEqual({ kind: 'unconfirmed', trackerKept: true });
+    expect(world.tickets.size).toBe(0);
+
+    await coordinator.recheck(input.dailySemaId);
+    expect(view(coordinator).kind).toBe('succeeded');
+    const [first, second] = prepares.mock.calls;
+    expect(second?.[1]).toBe(first?.[1]);
+    expect(second?.[2]).toEqual(first?.[2]);
+    expect(world.tickets.size).toBe(1);
+    expect(world.answersOf(SYNTHETIC_KEYS.registered).map((a) => a.content)).toEqual(['미도착 준비 합성']);
+  });
+
+  test('MS-CMD-006 an execute that never arrived: the ticket stays PREPARED, unconfirmed; the retry runs the same ticket and payload once', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    const { world, coordinator, save, api, input } = await setup();
+    const executes = vi.spyOn(api, 'executeAnswerWrite');
+    world.addFault('OP-007', { kind: 'network' });
+    const saving = save('미도착 실행 합성');
+    await vi.advanceTimersByTimeAsync(10_500);
+    await saving;
+    expect(view(coordinator)).toEqual({ kind: 'unconfirmed', trackerKept: true });
+    const [ticket] = [...world.tickets.values()];
+    expect(ticket?.state).toBe('PREPARED');
+    expect(world.answersOf(SYNTHETIC_KEYS.registered)).toHaveLength(0);
+
+    await coordinator.recheck(input.dailySemaId);
+    expect(view(coordinator).kind).toBe('succeeded');
+    expect(executes.mock.calls.map(([, ticketId, content]) => [ticketId, content])).toEqual([
+      [ticket?.ticketId, '미도착 실행 합성'],
+      [ticket?.ticketId, '미도착 실행 합성'],
+    ]);
+    expect(world.tickets.size).toBe(1);
+    expect(world.answersOf(SYNTHETIC_KEYS.registered).map((a) => a.content)).toEqual(['미도착 실행 합성']);
+  });
+
+  test.each([
+    [
+      'edited',
+      (world: MockWorld, answer: MockAnswer) =>
+        world.answers.set(answer.answerId, { ...answer, content: '다른 기기 수정 합성', revision: 'a-r9' }),
+    ],
+    ['deleted', (world: MockWorld, answer: MockAnswer) => world.answers.delete(answer.answerId)],
+  ])(
+    'MS-RECEIPT-001 %s on another device after the receipt: proof kept as RESOURCE_CHANGED, no new excerpt on the old revision, current state re-read',
+    async (_label, change) => {
+      const ctx = await setup();
+      const { world, coordinator, input, synced } = ctx;
+      const answer = world.seedAnswer(SYNTHETIC_KEYS.registered, '처음 기록 합성');
+      await trackedTicket(ctx, settledTicket(answer));
+      change(world, answer);
+
+      await coordinator.recheck(input.dailySemaId);
+      const v = view(coordinator);
+      expect(v).toEqual({
+        kind: 'succeeded',
+        completion: { answerId: answer.answerId, presentation: { state: 'RESOURCE_CHANGED' } },
+      });
+      expect(JSON.stringify(v)).not.toContain('다른 기기 수정 합성');
+      expect(synced).toEqual([answer.answerId]);
+    },
+  );
 });

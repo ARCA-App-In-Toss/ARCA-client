@@ -42,7 +42,7 @@ describe('past drafts (06 §7.4, F10 Sheet)', () => {
     expect([...storage.data.keys()].some((k) => k.includes('질문') || k.includes('합성'))).toBe(false);
   });
 
-  test('an expired draft is removed on read; the clock going back never expires early', async () => {
+  test('MS-DRAFT-002 an expired draft is removed on read; the clock going back never expires early', async () => {
     const { storage, repository, advance, at } = await setup();
     await repository.save(identityFor('day-1'), '만료 합성', at(), { dateKst: '2026-09-20', questionText: '질문' });
     advance(DRAFT_TTL_MS - 1);

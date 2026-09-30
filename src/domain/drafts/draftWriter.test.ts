@@ -108,7 +108,7 @@ describe('MS-CORE-003 keeping schedule', () => {
   });
 });
 
-describe('draft lifetime (06 §7.4)', () => {
+describe('MS-DRAFT-002 draft lifetime (06 §7.4)', () => {
   test('expires exactly 7 days after the last user edit; opening does not extend it', async () => {
     const { writer, repository } = await setup();
     writer.change('만료 합성', false);

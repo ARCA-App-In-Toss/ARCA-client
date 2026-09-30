@@ -12,7 +12,7 @@ async function saveAcrossMidnight(page: Page) {
   await expect(page.getByRole('heading', { level: 1, name: '날짜가 바뀌었어요' })).toBeVisible();
 }
 
-test('date change → F13 (copy first) → today → past-draft Sheet → F13 review', async ({ page }) => {
+test('MS-TIME-002 date change → F13 (copy first) → today → past-draft Sheet → F13 review', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await saveAcrossMidnight(page);
