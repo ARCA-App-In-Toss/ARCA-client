@@ -295,11 +295,12 @@ candidate 필수 행이 모두 PASS이며 [docs/ARCA_MVP_ACCEPTANCE.md §4 · �
 |---|---|---|
 | 단계 1~7 `--full` gate와 단계 검토 | PASS(로컬) | `.claude/reviews/step-1-intake.json`~`step-7-settings-delete.json` |
 | 8단계 작업 트리 `--release` gate(lint·typecheck·unit·contract·build·browser 전 project) | PASS(로컬) | `.claude/reviews/step-8-integration.json` |
-| 07 MS ID ↔ 테스트 이름 연결 | PARTIAL: 62/64, `MS-ANALYTICS-001·002`는 FE 분석(OP-014) 미구현 | 테스트 이름의 `MS-*` |
+| 07 MS ID ↔ 테스트 이름 연결 | PASS: 64/64 | 테스트 이름의 `MS-*` |
 | Mock 계약 정합(OP-005·006·007·011·012·015 인증 scope·경쟁·kind 불일치·closure reconciliation) | PASS(contract) | `src/mocks/handlers.contract.test.ts` |
 | 오류 envelope 조합(code·category·recovery) | PASS(unit); HTTP status↔code 조합 검사는 미구현 | `src/data/api/arcaApi.test.ts` `MS-PROTOCOL-001·002` |
 | 금지 sink canary(URL·history·referrer·console·pageerror·Storage·cookie·IndexedDB·title·비API 요청·beacon) | PASS(Mock, Chromium·WebKit) | `tests/browser-mock/privacy.spec.ts`, `tests/browser-time/privacy.spec.ts` |
-| 분석 수신·allowlist·오류 보고 sink | NOT_RUN: FE 분석·오류 보고 미구현 | — |
+| 분석 전송·Mock 수신·allowlist·중복 제거·queue/flush·body canary | PASS(unit·contract·Mock 브라우저 Chromium·WebKit) | `src/domain/analytics/analyticsQueue.test.ts`, `src/mocks/handlers.contract.test.ts`, `src/screens/productEvents.test.tsx`, `tests/browser-mock/privacy.spec.ts`, `tests/browser-time/privacy.spec.ts` |
+| 실서버 분석 수신·보존, 오류 보고 sink | NOT_RUN: 실서버 없음, 오류 보고(Sentry) 미구현 | — |
 | 관측실 UI·장면·읽기·작성·완료·모달·상태 비교(합성, 393×852·320×568, 기본/200%) | PASS(로컬 브라우저) | `.playwright/design-review/diagnosis.md`, `comparison.html`, `accessibility.json` |
 | 목록·텍스트 행동·폰트·모션(F20 질문·날짜→F21 응답, 180ms 본문 진입·Reduced Motion 0ms) | PASS(로컬 브라우저) | `.playwright/archive-question-review/`, `.playwright/refinement-review/comparison.html`, `interaction.json` |
 | IME 카운터(F03·F11·F22·F30 조합 중 현재 EGC 수, 조합 후 검증, 조합 중 제출·보관 미확정) | PASS(jsdom) | 각 화면 `.test.tsx` |

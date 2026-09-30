@@ -70,7 +70,7 @@ composition root·레이어/port·route/guard·상태/cache·session epoch/gener
 | 모션·날짜 | CSS/Web Animations API, `Intl.DateTimeFormat`, 주입 `Clock` | Motion/date utility library 없음 |
 | Mock·검증 | AIT Devtools, MSW 2, Vitest 5, RTL, user-event, axe-core, Playwright Chromium·WebKit, 실제 iOS·Android QR | MSW 2.15.0(`pnpm-workspace.yaml`에서 postinstall 비허용, dev server plugin이 `msw/mockServiceWorker.js`를 제공), Vitest 5.0.2(jsdom 30.1.1, `unit`·`contract` project), RTL 16.3.3·`@testing-library/dom` 10.4.2, user-event 14.6.7, jest-dom 7.0.1, axe-core 4.13.0, Playwright 1.63.0(Chromium·WebKit, 정적 preview와 Mock 시나리오별 dev server project). AIT Devtools는 Vite plugin 연결. 기기 QR 미실행 |
 | 정적 품질·패키지 | TypeScript strict 옵션, Biome 2, Node 24 LTS, 고정 pnpm·lockfile | strict·`noUncheckedIndexedAccess`·`exactOptionalPropertyTypes`(`tsc -b`, 각 tsconfig `noEmit`), Biome 2.5.14 recommended + 계층별 `noRestrictedImports`(§3.1), pnpm 12.6.0(`packageManager`)·`pnpm-lock.yaml`, `.nvmrc`=24·`engines` ≥24 |
-| 오류·분석 | Replay·PII를 끈 최소 Sentry, ARCA OP-014 | Sentry SDK·`AnalyticsQueue`·OP-014 전송 미구현(단계 8). 실제 DSN·환경값 없음; 비밀값은 문서 범위 아님 |
+| 오류·분석 | Replay·PII를 끈 최소 Sentry, ARCA OP-014 | `AnalyticsQueue`(`src/domain/analytics/`)가 `ArcaApi.submitProductEvents`로 OP-014를 전송(§10.3). Sentry SDK 미구현(단계 8). 실제 DSN·환경값 없음; 비밀값은 문서 범위 아님 |
 
 프로젝트 생성 시점의 공식 템플릿·SDK·peer dependency를 확인하고 정확한 버전을 lockfile로 고정합니다([D-TECH-008 · L63](./DECISIONS.md#4-기술-스택-결정)). 월 1회 검증 후 업데이트합니다. Radix는 ARCA wrapper 밖에서 직접 import하지 않습니다.
 
@@ -139,7 +139,7 @@ src/
   main.tsx             PlatformPort 선택(DEV Mock 시나리오 또는 Apps in Toss)과 앱 mount
   app/                 composition root(composition.ts), services context, routes·guard, navigation, answerSync
     bootstrap/         F00 bootstrap 순서와 시작 화면
-    hooks/             화면이 쓰는 요약값·좁은 행동 hook(today·writes·answers·archive·drafts·pastDrafts·onboarding·passenger·settings·start·device·sky)
+    hooks/             화면이 쓰는 요약값·좁은 행동 hook(today·writes·answers·archive·drafts·pastDrafts·onboarding·passenger·settings·start·device·sky·analytics)
   screens/
     RootTabs.tsx       F10·F20·F30 루트 탭 연결
     shared/            화면 간 공통 흐름(작성 입력·보관 표시·복사 결과, 이탈 가드, 닉네임 입력, 오프라인 표시)
@@ -156,6 +156,7 @@ src/
     commands/          답변 저장·수정·개별 삭제 command coordinator와 tracker store
     onboarding/        OP-003 탑승·OP-004 닉네임 command coordinator
     deletion/          OP-013 전체 삭제 coordinator
+    analytics/         FE 제품 이벤트 닫힌 타입·AnalyticsQueue(OP-014)·저장 실패 reasonCode 매핑
     drafts/            draft identity·7일 만료·자동 보관 writer
     archive/           F20 page chain·보류 후보·anchor(메모리 전용)
     text/              EGC 계산·닉네임 정규화
@@ -198,7 +199,7 @@ screen + UI
 2. native fetch 기반 HTTP transport와 `ArcaApi`
 3. persister가 없는 `QueryClient`
 4. `SessionController`, `StorageJournal`, `DraftRepository`, `ArchiveChains`
-5. `CommandCoordinator`(§3.2의 종류별 coordinator), 메모리 전용 `NavigationContext`, `AnalyticsQueue`(미구현, 단계 8)
+5. `CommandCoordinator`(§3.2의 종류별 coordinator), 메모리 전용 `NavigationContext`, `AnalyticsQueue`
 6. React Router(`createBrowserRouter(routes)`)와 앱 lifecycle bridge(`platform.lifecycle.onVisibilityChange`)
 
 `AppServicesProvider`가 services를 전달하고, 전역 반응 상태는 `AppSnapshot`의 `bootstrap`(`starting`·`ready{target, routeEpoch}`·`failed`)과 `session`(`ownerScope`·mode·epoch·generation) 요약뿐입니다. 전체 삭제 recovery gate는 `bootstrap.target = deletion`으로 표현합니다. access token은 `SessionController`의 메모리에만 있고 React state·Query cache·Storage·URL·오류 context에 복사하지 않습니다. command의 정본은 Storage tracker와 서버이며 Provider는 화면 잠금에 필요한 파생 요약만 구독합니다.
@@ -240,7 +241,7 @@ F10·F11·F12는 각자의 route에서 공통 셸 `PixelAppShell`(CMP-001)을 �
 | 현재 편집 문자열 | F11·F22 화면 | controlled input state | draft record에도 마지막 확인본을 보관하되 화면 값이 편집 중 최신값 |
 | 신규·수정 임시본 | 기기 DraftRepository | 화면 load 뒤 local state | SDK Storage, 마지막 수정 후 7일 |
 | command operation·ticket·고정 payload·최소 proof | 종류별 command store(journal record) + 서버 result | CommandCoordinator 파생 view | SDK Storage, §8 수명 적용 |
-| 제품 이벤트 대기열 | AnalyticsQueue(미구현, 단계 8) | 메모리 | 영속 금지 |
+| 제품 이벤트 대기열 | AnalyticsQueue | 메모리 | 영속 금지 |
 
 Query 결과를 별도 Context나 `ArchiveChains`에 복사하지 않습니다. 화면에서 정렬·월 구획·버튼 위계처럼 필요한 값은 query/domain model에서 파생합니다. draft의 화면 값과 Storage 확인본은 `editVersion`별 보관 상태(§7.4)로 구분해 표시합니다.
 
@@ -625,6 +626,15 @@ Radix primitive는 `PixelAlertDialog`, `PixelSheet` wrapper 내부에서만 사�
 - 전송 실패는 현재 session 안에서만 bounded backoff 후 다시 시도합니다. reload에는 유실될 수 있습니다.
 - generation 변경·전체 삭제 성공에는 queued/in-flight old generation event를 폐기합니다.
 - `answer_saved`, `answer_edited`, `answer_deleted`, `onboarding_completed`, `all_data_deleted`는 BE 소유이므로 FE가 생성하지 않습니다.
+
+구현 기준:
+
+- event는 기록 시점 session의 generation(PRE_PASSENGER는 없음)을 메모리에 함께 둡니다. 전송 대상은 generation이 없거나 현재 generation과 같은 event입니다. 따라서 PRE_PASSENGER에서 기록한 F01 event는 탑승 뒤 ACTIVE session으로 전송될 수 있고, 다른 generation의 event는 대기열에서 제거하며 실패한 in-flight batch에서도 되돌리지 않습니다. 전체 삭제 성공(§9.4의 메모리 폐기)은 대기열 전체를 비웁니다. DELETION_RECOVERY나 session 부재 중에는 기록·전송하지 않습니다.
+- flush hint는 20개 도달, `platform.lifecycle`의 visible/hidden 전환, `platform.network.onReconnect`입니다. 시간 주기 flush는 두지 않습니다.
+- 재시도는 실패 뒤 2초·8초·30초 세 번이며, 다음 hint가 횟수를 초기화합니다. 400 `VALIDATION` 거절과 요청 측 schema 불일치 batch는 재시도하지 않고 폐기합니다.
+- transport metadata는 `appVersion`(package version)만 보냅니다. `platform`은 PlatformPort가 OS를 노출하지 않으므로 생략합니다.
+- 발생 기준의 FE 해석: `onboarding_started`는 앱 session당 첫 F01 표시 한 번, `today_sema_viewed`는 F10 방문마다 표시된 dailySemaId·answerState 조합마다 한 번, `alternate_question_viewed`는 SEMA(dailySemaId·semaId·version)별 F10·F11 첫 대체 질문 표시 한 번, `sema_question_changed`는 F10·F11의 질문 전환 조작마다, `answer_started`는 F11(CREATE)·F22(UPDATE) 방문의 초기 본문과 다른 첫 저장 가능 입력(IME 조합 완료 기준) 한 번, `archive_viewed`는 F20 방문의 첫 page 표시 한 번입니다.
+- `answer_save_failed`는 F11·F22에 표시된 `WriteView`마다 한 번입니다. `unconfirmed`는 `UNKNOWN`·`NETWORK_UNCONFIRMED`, `notApplied`·`rejected`는 `NOT_APPLIED`와 code별 reasonCode(ANSWER_CONTENT_INVALID·COMMAND_PAYLOAD_MISMATCH·INVALID_REQUEST→VALIDATION_REJECTED, DATE_CHANGED→DATE_CHANGED, SEMA_REPLACED→CONTENT_REPLACED, REVISION_CONFLICT·ANSWER_ALREADY_EXISTS·ANSWER_NOT_FOUND·COMMAND_ALREADY_PENDING·IDEMPOTENCY_KEY_REUSED→CONFLICT, RATE_LIMITED·MAINTENANCE·INTERNAL_ERROR→SERVER_UNAVAILABLE, COMMAND_CLOSED·COMMAND_EXPIRED→같은 이름, 그 밖→VALIDATION_REJECTED)입니다. 로컬 보관 실패(`localFailure`)와 `reconciled`는 보내지 않습니다.
 
 ### 10.4 민감 정보와 오류 보고
 

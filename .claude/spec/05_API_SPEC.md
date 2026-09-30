@@ -759,7 +759,7 @@ anonymous key 검증은 유효한 앱별 key인지 확인하는 흐름이며, �
 |---|---|---|
 | ARCA API host·환경·CORS origin | 없음 | 실제 배포값과 TLS 확인 전 실서버 통합 차단 |
 | OpenAPI·백엔드 route·DTO 구현 | 제안 OpenAPI, FE 파생 타입·validator·MSW Mock 있음, 서버 없음 | 서버 구현·양방향 contract test 통과 |
-| OP-014 FE 전송 경로 | ArcaApi·Mock 모두 미구현(06 단계 8) | 06 §10의 queue·flush 구현과 08 §9 검증 |
+| OP-014 FE 전송 경로 | ArcaApi `submitProductEvents`·MSW Mock(생성 Zod 검증·eventId 중복 제거)·06 §10.3 queue 구현, 실서버 없음 | 서버 수신·allowlist·90일 raw 삭제의 실제 증거(08 §9.2) |
 | partner app 식별·mTLS 인증서·Toss 검증 설정 | 없음 | OP-001 sandbox/운영 검증 전 로그인 흐름 통합 차단 |
 | session TTL·command `executeBy` 운영 수치 | 없음 | response field를 구현하고 07 경계 fixture 확정 |
 | 약관·개인정보처리방침 ID·version·실제 URL | 없음 | F02·F30 운영 연결과 법무 승인 전 출시 차단 |
